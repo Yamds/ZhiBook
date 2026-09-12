@@ -1,0 +1,20 @@
+[package]
+name = "tk-config"
+description = "配置横切:原子 JSON 存储 / data_root 布局 / schema 迁移"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tk-domain = { path = "../tk-domain" }
+tk-traits = { path = "../tk-traits" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

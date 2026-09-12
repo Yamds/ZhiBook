@@ -1,0 +1,18 @@
+[package]
+name = "tk-traits"
+description = "Layer 2 接口契约:ConfigStore / EventBus / MigrationStep"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tk-domain = { path = "../tk-domain" }
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["sync"] }
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
+
+[lints]
+workspace = true

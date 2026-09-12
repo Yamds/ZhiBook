@@ -1,0 +1,41 @@
+[package]
+name = "yamds-bill"
+description = "Yamds记账 · Android 应用壳"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+build = "build.rs"
+
+# 移动端要求 cdylib；staticlib 供将来嵌入其他宿主；rlib 供测试与桌面预览。
+[lib]
+name = "yamds_bill"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "yamds-bill"
+path = "src/main.rs"
+
+[dependencies]
+tk-domain = { path = "../crates/tk-domain" }
+tk-traits = { path = "../crates/tk-traits" }
+tk-config = { path = "../crates/tk-config" }
+tk-log = { path = "../crates/tk-log" }
+tk-runtime = { path = "../crates/tk-runtime" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tokio = { version = "1", features = ["rt", "sync", "macros", "time"] }
+dirs = "5"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = "0.4"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

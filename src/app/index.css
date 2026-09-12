@@ -1,0 +1,653 @@
+/* Tailwind v4 入口：CSS-first 配置，无 tailwind.config.js。
+   这个文件仅在新 UI 树（VITE_UI_NEXT=1）下加载，不污染旧 Fluent 树。 */
+
+@import "tailwindcss";
+@import "./fonts.css";
+@import "../core/design/tokens.css";
+@source "../../plugins";
+
+/* 把 design token 暴露给 tailwind utility class。
+   这样写完之后 className="bg-surface-card text-primary rounded-md" 就能直接用。 */
+@theme {
+    /* color: bg-* / text-* / border-* utilities */
+    --color-canvas: var(--surface-canvas);
+    --color-surface: var(--surface-card);
+    --color-elevated: var(--surface-elevated);
+    --color-inset: var(--surface-inset);
+    --color-muted: var(--surface-muted);
+    --color-field: var(--surface-field);
+    --color-sidebar: var(--surface-sidebar);
+    --color-surface-hero: var(--surface-hero);
+    --color-hero-title: var(--text-hero-title);
+    --color-hero-accent: var(--text-hero-accent);
+
+    --color-text: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-text-tertiary: var(--text-tertiary);
+    --color-text-disabled: var(--text-disabled);
+
+    --color-border: var(--border-default);
+    --color-border-subtle: var(--border-subtle);
+    --color-border-strong: var(--border-strong);
+
+    --color-brand: var(--brand-500);
+    --color-brand-hover: var(--brand-600);
+    --color-brand-soft: var(--brand-soft);
+    --color-brand-tint: var(--brand-tint);
+
+    --color-accent: var(--accent-500);
+    --color-accent-soft: var(--accent-soft);
+
+    --color-success: var(--state-success);
+    --color-success-soft: var(--state-success-bg);
+    --color-warning: var(--state-warning);
+    --color-warning-soft: var(--state-warning-bg);
+    --color-danger: var(--state-danger);
+    --color-danger-soft: var(--state-danger-bg);
+    --color-info: var(--state-info);
+    --color-info-soft: var(--state-info-bg);
+
+    /* radius: rounded-* utilities */
+    --radius-xs: var(--radius-xs);
+    --radius-sm: var(--radius-sm);
+    --radius-md: var(--radius-md);
+    --radius-lg: var(--radius-lg);
+    --radius-xl: var(--radius-xl);
+    --radius-pill: var(--radius-pill);
+
+    /* shadow: shadow-* utilities */
+    --shadow-card: var(--shadow-md);
+    --shadow-popover: var(--shadow-lg);
+    --shadow-glow-success: var(--shadow-glow-success);
+    --shadow-glow-brand: var(--shadow-glow-brand);
+
+    /* font family */
+    --font-display: var(--font-display);
+    --font-sans: var(--font-body);
+    --font-mono: var(--font-mono);
+    --font-mono-strict: var(--font-mono-strict);
+
+    /* font size: text-* utilities */
+    --text-2xs: var(--text-2xs);
+    --text-xs: var(--text-xs);
+    --text-sm: var(--text-sm);
+    --text-base: var(--text-base);
+    --text-md: var(--text-md);
+    --text-lg: var(--text-lg);
+    --text-xl: var(--text-xl);
+    --text-2xl: var(--text-2xl);
+
+    /* progress bar indeterminate：1.4s 一轮，从 -100% 到 100%，
+       配合 width:35% 的 thumb 和 overflow:hidden 容器形成滑条效果。 */
+    --animate-progress-indeterminate: progress-indeterminate 1.4s cubic-bezier(0.65, 0.05, 0.36, 1) infinite;
+}
+
+@keyframes progress-indeterminate {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(285%);
+    }
+}
+
+/* InfoBar：不透明分色调面板（Fluent 式可读性，无 backdrop-blur） */
+.ndf-infobar {
+    border-radius: var(--radius-sm);
+    border-width: 1px;
+    border-style: solid;
+    box-shadow: var(--shadow-md);
+}
+
+.ndf-infobar--info {
+    background: var(--infobar-info-bg);
+    border-color: var(--infobar-info-border);
+}
+
+.ndf-infobar--success {
+    background: var(--infobar-success-bg);
+    border-color: var(--infobar-success-border);
+}
+
+.ndf-infobar--warning {
+    background: var(--infobar-warning-bg);
+    border-color: var(--infobar-warning-border);
+}
+
+.ndf-infobar--danger {
+    background: var(--infobar-danger-bg);
+    border-color: var(--infobar-danger-border);
+}
+
+.ndf-infobar-icon-well {
+    display: flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+}
+
+.ndf-infobar-icon-well--info {
+    background: var(--infobar-icon-well-info);
+}
+
+.ndf-infobar-icon-well--success {
+    background: var(--infobar-icon-well-success);
+}
+
+.ndf-infobar-icon-well--warning {
+    background: var(--infobar-icon-well-warning);
+}
+
+.ndf-infobar-icon-well--danger {
+    background: var(--infobar-icon-well-danger);
+}
+
+/* InfoBar 进场动画已迁移到 framer-motion + useMotion(),原 @keyframes infobar-in
+   不再使用,删除避免误用。
+   TabsContent 切换也已迁移到 framer + AnimatePresence,原 tabcontent-fade 也已移除。 */
+
+/* Shimmer 扫光:rich 档骨架卡片用。背景已经被业务侧以 200% 100% 拉宽,
+   这里只负责把 background-position 从 -100% 推到 100%。 */
+@keyframes shimmer-sweep {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* 角落柔光呼吸:rich 档启用,通过 .ndf-canvas-glow.is-breathing 类启用。
+   只在 BootstrapPanel mount 时附加这个类,避免全 App 常驻渲染。 */
+@keyframes glow-breath {
+
+    0%,
+    100% {
+        opacity: 0.85;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* 全局 reset / 基础样式：仅在新 UI 树激活。 */
+html,
+body,
+#root {
+    height: 100%;
+}
+
+/* 移动端安全区。Android 15+ 强制 edge-to-edge，WebView 通过
+   env(safe-area-inset-*) 上报系统栏插入量；不支持时不生效，回落 0。 */
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+}
+
+html {
+    /* 移动端不跟随系统字号放大破坏像素级布局；字号控制在设计 token 内。 */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* 阻止下拉刷新 / 边缘回弹把整个壳拖走。 */
+    overscroll-behavior: none;
+}
+
+body {
+    margin: 0;
+    background: var(--surface-canvas);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* OpenType 特性：cv11 = Inter 单层 a，ss01 = 直角 i/l 顶，ss03 = 平 g。
+       让 Inter 看起来更现代不那么"邮件" */
+    font-feature-settings: "cv11", "ss01", "ss03";
+    /* 触摸端去掉系统高亮块，按压反馈统一交给 active: 与 useMotion()。 */
+    -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+}
+
+button,
+input,
+textarea,
+select,
+optgroup {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+/* UI 等宽：拉丁 JetBrains + tabular-nums；CJK 走 --font-mono 栈内雅黑/苹方 */
+code,
+kbd,
+pre,
+samp,
+.font-mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "calt", "liga";
+    font-variant-numeric: tabular-nums;
+}
+
+/* 纯 ASCII 片段（JSON/路径），可接受泛族 monospace 收尾 */
+.font-mono-strict {
+    font-family: var(--font-mono-strict);
+    font-feature-settings: "calt", "liga";
+    font-variant-numeric: tabular-nums;
+}
+
+/* 角落柔光：只用 brand / accent 暖色，避免右上冰蓝与标题栏区域抢戏。
+   三层径向：左上桃粉、右上淡暖杏（原 blue 已改）、底部居中轻橙。 */
+.ndf-canvas-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(65% 45% at -8% -8%, color-mix(in srgb, var(--accent-300) 28%, transparent), transparent 62%),
+        radial-gradient(55% 40% at 108% -5%, color-mix(in srgb, var(--brand-200) 18%, transparent), transparent 58%),
+        radial-gradient(75% 55% at 50% 108%, color-mix(in srgb, var(--brand-300) 12%, transparent), transparent 65%);
+}
+
+/* rich 档独享:角落柔光呼吸。BootstrapPanel.next mount 时把 is-breathing 类
+   加到根 .ndf-canvas-glow,8s 一轮缓慢呼吸 opacity 0.85↔1。
+   prefers-reduced-motion 命中时浏览器会自动暂停 animation。 */
+.ndf-canvas-glow.is-breathing {
+    animation: glow-breath 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ndf-canvas-glow.is-breathing {
+        animation: none;
+    }
+}
+
+/* 暗色角落柔光：降低渐变强度，深底上不刺眼 */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .ndf-canvas-glow {
+        background:
+            radial-gradient(65% 45% at -8% -8%, color-mix(in srgb, var(--accent-500) 8%, transparent), transparent 62%),
+            radial-gradient(55% 40% at 108% -5%, color-mix(in srgb, var(--brand-500) 6%, transparent), transparent 58%),
+            radial-gradient(75% 55% at 50% 108%, color-mix(in srgb, var(--brand-500) 4%, transparent), transparent 65%);
+    }
+}
+
+:root[data-theme="dark"] .ndf-canvas-glow {
+    background:
+        radial-gradient(65% 45% at -8% -8%, color-mix(in srgb, var(--accent-500) 8%, transparent), transparent 62%),
+        radial-gradient(55% 40% at 108% -5%, color-mix(in srgb, var(--brand-500) 6%, transparent), transparent 58%),
+        radial-gradient(75% 55% at 50% 108%, color-mix(in srgb, var(--brand-500) 4%, transparent), transparent 65%);
+}
+
+/* Catppuccin 规范：纯色平面背景，禁用角落柔光渐变。 */
+:root:is([data-theme="latte"], [data-theme="frappe"], [data-theme="macchiato"], [data-theme="mocha"]) .ndf-canvas-glow {
+    background: none;
+}
+
+/*
+ * 指标「时间颗粒度」面板布局（对齐 CCS UsageDateRangePicker 思路）。
+ * 用弹层自身 inline-size 做容器查询，不用 viewport sm:，避免窄窗把日历挤出裁切。
+ * 默认上下叠；弹层够宽时左右并排，右侧月历始终可见。
+ */
+.ndf-metrics-range-popover {
+    container-type: inline-size;
+    container-name: metrics-range;
+}
+
+.ndf-metrics-range-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+.ndf-metrics-range-fields {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ndf-metrics-range-calendar {
+    min-width: 0;
+    min-height: 16rem;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+@container metrics-range (min-width: 32rem) {
+    .ndf-metrics-range-layout {
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    .ndf-metrics-range-fields {
+        width: 15.5rem;
+        flex: 0 0 15.5rem;
+    }
+
+    .ndf-metrics-range-calendar {
+        flex: 1 1 0%;
+        min-height: 0;
+    }
+}
+
+/* 开屏粒子：静态样式 + 缓慢漂移（具体位移由 GSAP 进场覆盖） */
+@keyframes splash-particle-drift {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.35;
+    }
+
+    50% {
+        transform: translate(6px, -10px) scale(1.15);
+        opacity: 0.7;
+    }
+}
+
+@keyframes splash-orbit-spin {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+@keyframes splash-laser-flow {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 200% 50%;
+    }
+}
+
+@keyframes splash-pulse-dot {
+
+    0%,
+    100% {
+        opacity: 0.4;
+        transform: scale(0.85);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+}
+
+.ndf-splash-orbit-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 9999px;
+    border: 1px dashed color-mix(in srgb, var(--brand-400) 25%, transparent);
+    pointer-events: none;
+}
+
+.ndf-splash-orbit-ring--solid {
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--accent-400) 18%, transparent);
+}
+
+.ndf-splash-laser-bar {
+    background: linear-gradient(90deg, var(--brand-600), var(--accent-400), var(--brand-300), var(--brand-600));
+    background-size: 200% 100%;
+    animation: splash-laser-flow 2.2s linear infinite;
+}
+
+.ndf-splash-pulse-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--brand-400);
+    box-shadow: 0 0 8px var(--brand-400);
+    animation: splash-pulse-dot 1.8s ease-in-out infinite;
+}
+
+.ndf-splash-particle {
+    position: absolute;
+    border-radius: 9999px;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--brand-400) 65%, transparent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent-400) 45%, transparent);
+    animation: splash-particle-drift 4.5s ease-in-out infinite;
+}
+
+.ndf-splash-particle--accent {
+    background: color-mix(in srgb, var(--accent-400) 60%, transparent);
+}
+
+.ndf-splash-logo-shine {
+    position: relative;
+    display: inline-block;
+    width: 72px;
+    height: 72px;
+    overflow: hidden;
+    border-radius: 1rem;
+    flex-shrink: 0;
+}
+
+.ndf-splash-shine-stripe {
+    position: absolute;
+    top: -50%;
+    left: -120%;
+    width: 50%;
+    height: 200%;
+    transform: skewX(-20deg);
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.45),
+            transparent);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ndf-splash-bar-shine {
+    background: linear-gradient(90deg,
+            transparent,
+            color-mix(in srgb, var(--text-primary) 35%, transparent),
+            transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ndf-splash-particle {
+        animation: none;
+        opacity: 0.25;
+    }
+}
+
+/* 主界面就绪入场律动展开动效 */
+@keyframes shell-slide-in-left {
+    from {
+        transform: translateX(-24px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes shell-slide-in-top {
+    from {
+        transform: translateY(-14px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes shell-pop-in-main {
+    from {
+        transform: scale(0.98) translateY(16px);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.ndf-shell-enter-sidebar {
+    animation: shell-slide-in-left 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ndf-shell-enter-titlebar {
+    animation: shell-slide-in-top 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both;
+}
+
+.ndf-shell-enter-main {
+    animation: shell-pop-in-main 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ndf-shell-enter-sidebar,
+    .ndf-shell-enter-titlebar,
+    .ndf-shell-enter-main {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ContextMenu 进出场动效：根据 data-state=open / data-state=closed 驱动。
+   配合 Radix Presence 的 animationend 事件自动等待退场完成再 unmount。 */
+@keyframes context-menu-in {
+    from {
+        opacity: 0;
+        transform: scale(var(--cm-scale-from, 0.92));
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes context-menu-in-rich {
+    0% {
+        opacity: 0;
+        transform: scale(var(--cm-scale-from, 0.88));
+    }
+    70% {
+        opacity: 1;
+        transform: scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes context-menu-out {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(var(--cm-scale-to, 0.95));
+    }
+}
+
+.ndf-context-menu-content {
+    transform-origin: var(--radix-context-menu-content-transform-origin, top left);
+    will-change: transform, opacity;
+}
+
+.ndf-context-menu-content[data-state="open"] {
+    animation-name: var(--cm-anim-in-name, context-menu-in);
+    animation-duration: var(--cm-duration-in, 140ms);
+    animation-timing-function: var(--cm-ease-in, cubic-bezier(0.16, 1, 0.3, 1));
+    animation-fill-mode: both;
+}
+
+.ndf-context-menu-content[data-state="closed"] {
+    animation-name: context-menu-out;
+    animation-duration: var(--cm-duration-out, 100ms);
+    animation-timing-function: var(--cm-ease-out, cubic-bezier(0.4, 0, 1, 1));
+    animation-fill-mode: both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ndf-context-menu-content[data-state="open"],
+    .ndf-context-menu-content[data-state="closed"] {
+        animation: none !important;
+    }
+}
+
+/* 全局滚动条：默认隐藏，悬停滚动区域时纤细显现，拖拽拇指时加深。
+   WebKit 用 thumb 透明 + 祖先 :hover；Firefox 用 scrollbar-color 两档。 */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+*:hover {
+    scrollbar-color: var(--scrollbar-thumb-rest) transparent;
+}
+
+::-webkit-scrollbar {
+    width: var(--scrollbar-size, 5px);
+    height: var(--scrollbar-size, 5px);
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: var(--radius-pill);
+    transition: background 0.18s ease;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-rest);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: var(--scrollbar-thumb-active);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::-webkit-scrollbar-thumb {
+        transition: none;
+    }
+}
+
+/* 仍需要完全隐藏滚动条时用 .scrollbar-hide（少用） */
+.scrollbar-hide {
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE / 旧 Edge */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}

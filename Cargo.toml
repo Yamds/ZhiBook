@@ -1,0 +1,51 @@
+[workspace]
+members = [
+    "src-tauri",
+    "crates/tk-domain",
+    "crates/tk-traits",
+    "crates/tk-config",
+    "crates/tk-log",
+    "crates/tk-runtime",
+]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+rust-version = "1.85"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[workspace.lints.rust]
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+# 错误处理：生产路径禁止 unwrap/expect/panic，逼出 ? + 上下文。
+# 测试代码由 clippy.toml 的 allow-*-in-tests 统一豁免。
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+unimplemented = "warn"
+unwrap_in_result = "warn"
+
+# 残留调试/占位/直接 stdout 输出（GUI 应用走 log，不该 println!）
+dbg_macro = "warn"
+todo = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+
+# 体积优先的 release 配置: LTO + 单编译单元 + 去符号 + 尺寸优化。
+# Android 上直接决定 libyamds_bill.so 的大小，是 APK 体积的主要来源。
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+opt-level = "z"
+incremental = false
+debug = false

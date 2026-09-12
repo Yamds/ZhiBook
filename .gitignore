@@ -1,0 +1,76 @@
+# ===== 依赖 =====
+node_modules/
+.pnpm-store/
+
+# ===== 前端产物 =====
+dist/
+.vite/
+*.tsbuildinfo
+
+# ===== Rust =====
+target/
+**/target/
+
+# Tauri 生成的 capability schema（可复现，不入库）
+src-tauri/gen/schemas/
+
+# ===== Android 构建中间产物（工程本身入库，产物不入库）=====
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/.idea/
+src-tauri/gen/android/build/
+src-tauri/gen/android/app/build/
+src-tauri/gen/android/app/.cxx/
+src-tauri/gen/android/captures/
+src-tauri/gen/android/local.properties
+src-tauri/gen/android/app/src/main/assets/
+src-tauri/gen/android/app/src/main/jniLibs/
+src-tauri/gen/android/keystore.properties
+*.jks
+*.keystore
+
+# ===== 日志 =====
+*.log
+*.log.*
+
+# ===== 环境变量与本地配置 =====
+.env
+.env.*
+!.env.example
+*.local
+
+# ===== 本地调试数据根 =====
+.local-data/
+.dev-data/
+.runtime-data/
+
+# ===== 编辑器 / IDE =====
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.code-workspace
+
+# ===== 操作系统 =====
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ===== 临时与备份文件 =====
+temp/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# ===== 强制提交的可复现构建输入 =====
+!Cargo.lock
+!pnpm-lock.yaml
+!src/core/ipc/generated/
+!src/core/ipc/generated/**

@@ -1,0 +1,205 @@
+.page {
+    display: flex;
+    min-height: 0;
+    height: 100%;
+    flex-direction: column;
+    gap: 24px;
+    overflow: auto;
+    padding: 12px 0 24px;
+}
+
+.clockPanel {
+    position: relative;
+    display: flex;
+    min-height: 280px;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--surface-hero);
+    padding: 38px 42px;
+}
+
+.clockCopy {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.clockCopy strong {
+    margin-top: 9px;
+    font-family: var(--font-mono);
+    font-size: clamp(56px, 7vw, 94px);
+    font-weight: 620;
+    line-height: 1;
+    letter-spacing: 0;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.date {
+    margin-top: 14px;
+    color: var(--text-secondary);
+    font-size: 15px;
+}
+
+.clockPanel > img {
+    position: absolute;
+    right: 20px;
+    bottom: -18px;
+    width: min(34%, 320px);
+    max-height: 310px;
+    object-fit: contain;
+    object-position: bottom right;
+    pointer-events: none;
+    user-select: none;
+}
+
+.featureSection {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sectionHeading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+}
+
+.sectionHeading > div {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.sectionHeading h1 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 650;
+}
+
+.sectionHeading span {
+    color: var(--text-tertiary);
+    font-size: 12px;
+}
+
+.featureList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+}
+
+.featureList > button {
+    display: grid;
+    min-width: 0;
+    height: 68px;
+    grid-template-columns: 38px minmax(0, 1fr) 18px;
+    align-items: center;
+    gap: 11px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 7px;
+    background: var(--surface-card);
+    padding: 0 14px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    text-align: left;
+}
+
+.featureList > button:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-elevated);
+    color: var(--brand-500);
+}
+
+.featureList > button:active {
+    border-color: var(--brand-500);
+    background: var(--surface-elevated);
+    color: var(--brand-500);
+    transform: scale(0.985);
+}
+
+.featureIcon {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    background: var(--brand-soft);
+    color: var(--brand-500);
+}
+
+.featureCopy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.featureCopy strong,
+.featureCopy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.featureCopy strong {
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 620;
+}
+
+.featureCopy small {
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+
+.empty {
+    display: flex;
+    min-height: 80px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px dashed var(--border-subtle);
+    border-radius: 7px;
+    color: var(--text-disabled);
+    font-size: 12px;
+}
+
+@media (max-width: 760px) {
+    .page { gap: 20px; }
+
+    .clockPanel {
+        min-height: 210px;
+        padding: 26px 22px;
+        align-items: flex-end;
+        padding-bottom: 30px;
+    }
+
+    .clockCopy strong { font-size: 46px; }
+
+    .date { margin-top: 10px; font-size: 13px; }
+
+    .clockPanel > img {
+        width: 44%;
+        max-height: 200px;
+        right: 8px;
+        opacity: 0.8;
+    }
+
+    .featureList { grid-template-columns: minmax(0, 1fr); }
+
+    .featureList > button { height: 64px; }
+}

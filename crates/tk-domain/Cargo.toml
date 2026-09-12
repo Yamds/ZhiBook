@@ -1,0 +1,15 @@
+[package]
+name = "tk-domain"
+description = "Layer 1 数据契约:跨边界类型定义(纯数据,零运行时依赖)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+ts-rs = { version = "12", features = ["serde-compat"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,4 @@
+# Android-Template 是独立项目：自己声明为 workspace 根，
+# 避免 pnpm 向上找到外层桌面仓库的 workspace 配置。
+packages:
+  - "."
