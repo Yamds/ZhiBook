@@ -1,9 +1,13 @@
-// 底部导航栏：5 个页签（账单 / 明细 / 日历 / 添加 / 资产），顺序由导航注册表决定。
+// 底部导航栏：5 个槽位（账单 / 明细 / 日历 / 添加 / 资产）。
 //
-// 点击语义由壳层处理：
+// 槽位内容由导航注册表决定：在设置页时，「日历」槽位临时换成「设置」页签
+//（图标 / 文案 / 高亮全走同一套渲染），因为设置只是日历位置上的另一个状态。
+//
+// 点击语义由壳层处理（见 AppNext.handleTabSelect）：
 //   普通点击   → 切页签
-//   重复点日历 → 进设置页
-//   重复点其它 → 回到该页顶部
+//   已激活日历 → 进设置
+//   已激活设置 → 回日历
+//   已激活其它 → 回到该页顶部
 //
 // 视觉与设计系统同源：brand 激活指示条 + MotionIcon 语义 + 触摸按压反馈。
 
@@ -12,14 +16,15 @@ import gsap from 'gsap';
 import { cn } from '../../utils/cn';
 import { MotionIcon, NAV_ROUTE_MOTION } from '../../ui/motion';
 import { useMotion } from '../../../hooks/preferences/useMotion';
-import { APP_ROUTES, type AppRoute } from '../../../app/navigation';
+import { bottomNavTabs, type AppRoute, type AppScreen } from '../../../app/navigation';
 
 export const BottomNav: React.FC<{
-    /** 当前激活页签；设置页等非页签页面传 null，此时不显示指示条。 */
-    active: AppRoute | null;
-    onSelect: (route: AppRoute) => void;
+    /** 当前页面（含设置页）：决定哪个槽位高亮、日历槽位是否换成设置。 */
+    active: AppScreen;
+    onSelect: (id: AppRoute | 'settings') => void;
 }> = ({ active, onSelect }) => {
     const motion = useMotion();
+    const tabs = bottomNavTabs(active);
     const navRef = useRef<HTMLElement | null>(null);
     const indicatorRef = useRef<HTMLSpanElement | null>(null);
 
@@ -60,7 +65,7 @@ export const BottomNav: React.FC<{
                 style={{ visibility: 'hidden', opacity: 0 }}
                 className="pointer-events-none absolute left-0 top-0 h-[2px] rounded-b-pill bg-brand"
             />
-            {APP_ROUTES.map((item) => {
+            {tabs.map((item) => {
                 const isActive = active === item.id;
                 const Icon = item.icon;
                 return (

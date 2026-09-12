@@ -6,8 +6,16 @@
 //   3. 重复点击已激活页签 = retap，只对当前页生效
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { APP_ROUTES, HOME_ROUTE, ROUTE_ORDER, routeTitle } from './navigation';
 import {
+    APP_ROUTES,
+    HOME_ROUTE,
+    ROUTE_ORDER,
+    SETTINGS_TAB,
+    bottomNavTabs,
+    routeTitle,
+} from './navigation';
+import {
+    backActionFor,
     clearNavigationIntent,
     navigationStore,
     navigateTo,
@@ -33,6 +41,39 @@ describe('navigation registry', () => {
         expect(ROUTE_ORDER).not.toContain('settings');
         expect(routeTitle('settings')).toBe('设置');
         expect(routeTitle('bills')).toBe('账单');
+    });
+
+    it('在设置页时，日历槽位被设置替身占用', () => {
+        expect(bottomNavTabs('bills').map((tab) => tab.id))
+            .toEqual(['bills', 'details', 'home', 'add', 'assets']);
+
+        const onSettings = bottomNavTabs('settings').map((tab) => tab.id);
+        expect(onSettings).toEqual(['bills', 'details', 'settings', 'add', 'assets']);
+        expect(onSettings).not.toContain('home');
+    });
+
+    it('设置替身页签与普通页签同源（图标 / 文案复用注册表）', () => {
+        const slot = bottomNavTabs('settings')[2];
+        expect(slot).toBe(SETTINGS_TAB);
+        expect(slot?.label).toBe('设置');
+        expect(slot?.icon).toBeDefined();
+    });
+});
+
+describe('back key actions', () => {
+    it('弹层打开时优先关闭弹层', () => {
+        expect(backActionFor('home', true)).toBe('close-overlay');
+        expect(backActionFor('settings', true)).toBe('close-overlay');
+    });
+
+    it('设置页返回 = 回日历，绝不弹退出框', () => {
+        expect(backActionFor('settings', false)).toBe('go-home');
+        expect(backActionFor('bills', false)).toBe('go-home');
+        expect(backActionFor('details', false)).toBe('go-home');
+    });
+
+    it('只有日历首页才弹退出确认', () => {
+        expect(backActionFor('home', false)).toBe('confirm-exit');
     });
 });
 

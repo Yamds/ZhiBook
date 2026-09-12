@@ -70,6 +70,20 @@ export function useNavigation(): NavigationState {
 }
 
 /**
+ * 返回键动作：弹层 > 回到首页 > 退出确认。
+ *
+ * 抽成纯函数的原因：设置页只是「日历槽位的替身页签」，返回键必须回日历、
+ * 不能直接弹退出框；这条语义值得被单测钉住，而不是埋在 effect 的 if 里。
+ */
+export type BackAction = 'close-overlay' | 'go-home' | 'confirm-exit';
+
+export function backActionFor(screen: AppScreen, overlayOpen: boolean): BackAction {
+    if (overlayOpen) return 'close-overlay';
+    if (screen !== HOME_ROUTE) return 'go-home';
+    return 'confirm-exit';
+}
+
+/**
  * 订阅「重复点击当前页签」事件。
  *
  * 页面拿它做「回到顶部 / 重置默认视图」；同一次 retap 只触发一次

@@ -25,16 +25,20 @@ import { HomePage } from '../modules/home/HomePage';
 import { SettingsPage } from '../modules/settings/SettingsPage';
 import { AppExitGate } from './AppExitGate';
 import { HOME_ROUTE, ROUTE_ORDER, routeTitle, type AppRoute, type AppScreen } from './navigation';
-import { navigateTo, retapScreen, useNavigation, useRetapHandler } from './navigationStore';
+import { backActionFor, navigateTo, retapScreen, useNavigation, useRetapHandler } from './navigationStore';
 import { SwipeProvider, neighborOf, type NestedSwipeHandler, type SwipeDirection } from './swipeNavigation';
 
 /** 顶部栏右侧的账本入口：P3 接入真实账本数据前先显示占位名。 */
 const ACTIVE_BOOK_PLACEHOLDER = '默认账本';
 
-/** 过渡方向用的页序号；设置页排在页签之后，保证方向单调。 */
+/**
+ * 过渡方向用的页序号。
+ *
+ * 设置页是「日历槽位的替身」，序号与日历相同 → 日历 ↔ 设置 是无方向的
+ * 淡入淡出，不会出现「从最后一个页签飞进来」的错觉。
+ */
 function screenIndex(screen: AppScreen): number {
-    if (screen === 'settings') return ROUTE_ORDER.length;
-    return ROUTE_ORDER.indexOf(screen);
+    return ROUTE_ORDER.indexOf(screen === 'settings' ? HOME_ROUTE : screen);
 }
 
 function renderScreen(screen: AppScreen) {
@@ -92,12 +96,17 @@ export function AppNext() {
     });
 
     // ===== 底部导航 =====
-    const handleTabSelect = useCallback((next: AppRoute) => {
+    // 设置页签只想当于「日历」槽位的临时替换：
+    //   日历已激活 → 进设置；设置已激活 → 回日历；其它 → 切页签；重复点 → 回顶
+    const handleTabSelect = useCallback((next: AppRoute | 'settings') => {
+        if (next === 'settings') {
+            navigateTo(HOME_ROUTE);
+            return;
+        }
         if (next !== screen) {
             navigateTo(next);
             return;
         }
-        // 已激活的日历页签：再点一次进设置。
         if (next === HOME_ROUTE) {
             navigateTo('settings');
             return;
@@ -127,16 +136,17 @@ export function AppNext() {
 
     // ===== Android 返回键 =====
     useEffect(() => registerBackButtonHandler(() => {
-        if (exitGateOpen) {
-            setExitGateOpen(false);
-            return 'handled';
+        switch (backActionFor(screen, exitGateOpen)) {
+            case 'close-overlay':
+                setExitGateOpen(false);
+                return 'handled';
+            case 'go-home':
+                navigateTo(HOME_ROUTE);
+                return 'handled';
+            case 'confirm-exit':
+                setExitGateOpen(true);
+                return 'handled';
         }
-        if (screen !== HOME_ROUTE) {
-            navigateTo(HOME_ROUTE);
-            return 'handled';
-        }
-        setExitGateOpen(true);
-        return 'handled';
     }), [exitGateOpen, screen]);
 
     return (
@@ -162,10 +172,7 @@ export function AppNext() {
                             </div>
                         </PageTransition>
                     </main>
-                    <BottomNav
-                        active={screen === 'settings' ? null : screen}
-                        onSelect={handleTabSelect}
-                    />
+                    <BottomNav active={screen} onSelect={handleTabSelect} />
                     <InfoBarStack items={bars} onDismiss={dismiss} onAutoDismiss={remove} />
                     <AppExitGate open={exitGateOpen} onOpenChange={setExitGateOpen} />
                     <GlobalTitleTooltip />
