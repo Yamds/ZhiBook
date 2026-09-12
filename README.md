@@ -19,7 +19,7 @@ UI 与业务直接写在源码树里。
 | 类型同源 | `ts-rs`：Rust 定义 → 生成 TypeScript |
 | 测试 | Rust 内建 harness · Vitest + Testing Library |
 
-体积基线：release APK ≈ 8.8 MB（其中 `libyamds_bill.so` ≈ 6.0 MB，已开 fat LTO +
+体积基线：release APK ≈ 8.7 MB（其中 `libyamds_bill.so` ≈ 5.6 MB，已开 fat LTO +
 `opt-level="z"` + `panic="abort"` + strip）。
 
 ---
