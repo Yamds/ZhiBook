@@ -9,7 +9,7 @@
 // elegant 档退化为单纯瞬时显隐(GSAP set + 不跑 tween),保证视觉一致。
 
 import * as RadixCheckbox from '@radix-ui/react-checkbox';
-import { Check } from 'lucide-react';
+import { UI_ICONS } from '../../core/design/icons';
 import { forwardRef, useLayoutEffect, useRef, type ReactNode } from 'react';
 import gsap from 'gsap';
 import { cn } from '../utils/cn';
@@ -99,12 +99,11 @@ export const Checkbox = forwardRef<
                     className="flex items-center justify-center text-white"
                 >
                     <MotionIcon
-                        icon={Check}
+                        icon={UI_ICONS.check}
                         motion="none"
                         playEnter
                         enterKey={String(checked === true)}
                         size={11}
-                        strokeWidth={3}
                     />
                 </span>
             </RadixCheckbox.Indicator>

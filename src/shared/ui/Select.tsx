@@ -4,7 +4,8 @@
 // 如需自定义 item 渲染（带图标、双行）后续可再 export 一个 SelectAdvanced。
 
 import * as RadixSelect from '@radix-ui/react-select';
-import { Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { UI_ICONS } from '../../core/design/icons';
+import { AppIcon } from './AppIcon';
 import { forwardRef, type ReactNode } from 'react';
 import gsap from 'gsap';
 import { cn } from '../utils/cn';
@@ -95,7 +96,7 @@ function SelectInner<V extends string>(
                     <RadixSelect.Value placeholder={placeholder} />
                     <RadixSelect.Icon asChild>
                         <MotionIcon
-                            icon={ChevronDown}
+                            icon={UI_ICONS.chevronDown}
                             motion="none"
                             playEnter={false}
                             size={14}
@@ -158,7 +159,7 @@ function SelectInner<V extends string>(
                         }
                     >
                         <RadixSelect.ScrollUpButton className="flex h-6 cursor-default items-center justify-center bg-elevated text-text-tertiary">
-                            <ChevronUp size={14} />
+                            <AppIcon name={UI_ICONS.chevronUp} size={14} />
                         </RadixSelect.ScrollUpButton>
                         <RadixSelect.Viewport className="p-1">
                             {items.map((item) => (
@@ -176,13 +177,13 @@ function SelectInner<V extends string>(
                                 >
                                     <RadixSelect.ItemText>{item.label}</RadixSelect.ItemText>
                                     <RadixSelect.ItemIndicator className="absolute right-2 inline-flex items-center">
-                                        <Check size={12} strokeWidth={3} />
+                                        <AppIcon name={UI_ICONS.check} size={12} />
                                     </RadixSelect.ItemIndicator>
                                 </RadixSelect.Item>
                             ))}
                         </RadixSelect.Viewport>
                         <RadixSelect.ScrollDownButton className="flex h-6 cursor-default items-center justify-center bg-elevated text-text-tertiary">
-                            <ChevronDown size={14} />
+                            <AppIcon name={UI_ICONS.chevronDown} size={14} />
                         </RadixSelect.ScrollDownButton>
                     </RadixSelect.Content>
                 </RadixSelect.Portal>

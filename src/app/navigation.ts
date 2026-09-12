@@ -9,15 +9,7 @@
 //
 // 页签顺序固定：账单 → 明细 → 日历 → 添加 → 资产（日历为首页）。
 
-import {
-    CalendarDays,
-    ListChecks,
-    PlusCircle,
-    Receipt,
-    Settings,
-    Wallet,
-    type LucideIcon,
-} from 'lucide-react';
+import { UI_ICONS, type IconName } from '../core/design/icons';
 
 /** 底部页签路由。 */
 export type AppRoute = 'bills' | 'details' | 'home' | 'add' | 'assets';
@@ -29,7 +21,7 @@ export type AppScreen = AppRoute | 'settings';
 export interface TabDef {
     readonly id: AppRoute | 'settings';
     readonly label: string;
-    readonly icon: LucideIcon;
+    readonly icon: IconName;
 }
 
 export interface AppRouteDef extends TabDef {
@@ -39,11 +31,11 @@ export interface AppRouteDef extends TabDef {
 }
 
 export const APP_ROUTES: ReadonlyArray<AppRouteDef> = [
-    { id: 'bills', label: '账单', icon: Receipt },
-    { id: 'details', label: '明细', icon: ListChecks },
-    { id: 'home', label: '日历', icon: CalendarDays },
-    { id: 'add', label: '添加', icon: PlusCircle },
-    { id: 'assets', label: '资产', icon: Wallet },
+    { id: 'bills', label: '账单', icon: UI_ICONS.bills },
+    { id: 'details', label: '明细', icon: UI_ICONS.details },
+    { id: 'home', label: '日历', icon: UI_ICONS.calendar },
+    { id: 'add', label: '添加', icon: UI_ICONS.add },
+    { id: 'assets', label: '资产', icon: UI_ICONS.assets },
 ];
 
 /** 首页 = 日历页。App 启动、返回键兜底都回到这里。 */
@@ -55,7 +47,7 @@ export const ROUTE_ORDER: ReadonlyArray<AppRoute> = APP_ROUTES.map((route) => ro
 export const SETTINGS_LABEL = '设置';
 
 /** 设置替身页签：占用「日历」槽位，图标 / 文案与普通页签同源。 */
-export const SETTINGS_TAB: TabDef = { id: 'settings', label: SETTINGS_LABEL, icon: Settings };
+export const SETTINGS_TAB: TabDef = { id: 'settings', label: SETTINGS_LABEL, icon: UI_ICONS.settings };
 
 export function findRoute(id: AppRoute): AppRouteDef | undefined {
     return APP_ROUTES.find((route) => route.id === id);

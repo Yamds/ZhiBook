@@ -4,7 +4,8 @@
 // 右侧显示当前账本名，点击进入资产页（账本数据 P3 落地，切换交互 P8 完成）。
 
 import React from 'react';
-import { ChevronRight, Wallet } from 'lucide-react';
+import { AppIcon } from '../../ui/AppIcon';
+import { UI_ICONS } from '../../../core/design/icons';
 import { cn } from '../../utils/cn';
 
 export const MobileAppBar: React.FC<{
@@ -27,9 +28,9 @@ export const MobileAppBar: React.FC<{
                     'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand',
                 )}
             >
-                <Wallet aria-hidden size={13} strokeWidth={1.9} className="shrink-0" />
+                <AppIcon name={UI_ICONS.assets} size={13} className="shrink-0" />
                 <span className="truncate">{bookName}</span>
-                <ChevronRight aria-hidden size={13} strokeWidth={2} className="shrink-0 text-text-tertiary" />
+                <AppIcon name={UI_ICONS.chevronRight} size={13} className="shrink-0 text-text-tertiary" />
             </button>
         </div>
     </header>

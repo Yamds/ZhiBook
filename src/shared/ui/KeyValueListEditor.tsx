@@ -1,6 +1,7 @@
 // 自定义键：主行 key / value / 删除，注释单独一行，避免四列挤爆。
 
-import { Plus, Trash2 } from 'lucide-react';
+import { UI_ICONS } from '../../core/design/icons';
+import { AppIcon } from './AppIcon';
 import type { ReactNode } from 'react';
 import { cn } from '../utils/cn';
 import { Button } from './Button';
@@ -67,7 +68,7 @@ export const KeyValueListEditor: React.FC<KeyValueListEditorProps> = ({
                                 disabled={disabled}
                                 onClick={() => onChange(value.filter((_, i) => i !== idx))}
                             >
-                                <Trash2 size={15} />
+                                <AppIcon name={UI_ICONS.trash} size={15} />
                             </Button>
                         </div>
                         <TextField
@@ -87,7 +88,7 @@ export const KeyValueListEditor: React.FC<KeyValueListEditorProps> = ({
                     disabled={disabled}
                     onClick={() => onChange([...value, { key: '', value: '', comment: '' }])}
                 >
-                    <Plus size={13} /> {addLabel}
+                    <AppIcon name={UI_ICONS.plus} size={13} /> {addLabel}
                 </Button>
             </div>
         </div>

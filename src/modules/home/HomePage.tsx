@@ -3,8 +3,9 @@
 // 日历是默认首页：启动进入这里；首页按返回键弹退出确认。
 
 import { useEffect, useState } from 'react';
-import { Clock3 } from 'lucide-react';
 import mascot from '../../assets/mascot.png';
+import { AppIcon } from '../../shared/ui/AppIcon';
+import { UI_ICONS } from '../../core/design/icons';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
@@ -32,7 +33,7 @@ export function HomePage() {
         <section className={styles.page}>
             <div className={styles.clockPanel}>
                 <div className={styles.clockCopy}>
-                    <span className={styles.eyebrow}><Clock3 size={15} />当前时间</span>
+                    <span className={styles.eyebrow}><AppIcon name={UI_ICONS.calendarToday} size={15} />当前时间</span>
                     <strong>{time}</strong>
                     <span className={styles.date}>{date}</span>
                 </div>

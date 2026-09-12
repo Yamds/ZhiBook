@@ -781,3 +781,50 @@ samp,
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
 }
+
+/* ── 底部弹层（shared/ui/BottomSheet）────────────────────────────────────────
+   进退场用 keyframes：Radix 会等动画结束再卸载内容。
+   动效关闭（data-motion="off"）或系统减少动画时直接落终态。 */
+
+.ndf-bottom-sheet-overlay[data-state="open"][data-motion="on"] {
+    animation: ndf-sheet-overlay-in 0.18s ease-out;
+}
+
+.ndf-bottom-sheet-overlay[data-state="closed"][data-motion="on"] {
+    animation: ndf-sheet-overlay-out 0.16s ease-in;
+}
+
+.ndf-bottom-sheet[data-state="open"][data-motion="on"] {
+    animation: ndf-sheet-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ndf-bottom-sheet[data-state="closed"][data-motion="on"] {
+    animation: ndf-sheet-out 0.18s cubic-bezier(0.4, 0, 1, 1);
+}
+
+@keyframes ndf-sheet-in {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+@keyframes ndf-sheet-out {
+    from { transform: translateY(0); }
+    to { transform: translateY(100%); }
+}
+
+@keyframes ndf-sheet-overlay-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes ndf-sheet-overlay-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ndf-bottom-sheet[data-state],
+    .ndf-bottom-sheet-overlay[data-state] {
+        animation: none !important;
+    }
+}

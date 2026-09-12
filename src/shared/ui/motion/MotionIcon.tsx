@@ -1,10 +1,15 @@
-// 动态图标：Lucide SVG + 描边绘制 / 弹入 / 循环动效（零额外依赖）。
+// 动态图标：Iconify 图标 + 弹入 / 循环动效。
+//
+// 图标本体由 AppIcon 渲染。MDI 是填充图标（没有 stroke），所以这里不做
+// 「描边绘制」——进场统一是缩放 + 淡入，选中态再叠一层循环动效。
+// 档位（elegant / standard / rich）与时长仍然全部走 useMotion()。
 
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
-import type { LucideProps } from 'lucide-react';
 import { useMotion } from '../../../hooks/preferences/useMotion';
 import { cn } from '../../utils/cn';
+import type { IconName } from '../../../core/design/icons';
+import { AppIcon } from '../AppIcon';
 import { bindVisibilityPause } from './visibilityPause';
 
 export type MotionIconPreset =
@@ -17,45 +22,30 @@ export type MotionIconPreset =
     | 'nudge'
     | 'bob';
 
-export interface MotionIconProps extends LucideProps {
-    icon: ComponentType<LucideProps>;
+export interface MotionIconProps {
+    icon: IconName;
     motion?: MotionIconPreset;
-    /// 选中时播一次描边绘制 + 轻弹入（侧栏切换）。
+    /// 选中时播一次轻弹入（底部导航切换）。
     playEnter?: boolean;
     /// 变化时重播进场（传路由 id）。
     enterKey?: string;
     /// 悬停时短暂 pop，适合工具栏图标按钮。
     hoverAccent?: boolean;
     className?: string;
-}
-
-function collectStrokedNodes(svg: SVGSVGElement): SVGGeometryElement[] {
-    return Array.from(
-        svg.querySelectorAll<SVGGeometryElement>(
-            'path, line, circle, rect, polyline, ellipse',
-        ),
-    ).filter((el) => {
-        const stroke = el.getAttribute('stroke');
-        return stroke !== 'none' && stroke !== null;
-    });
-}
-
-function resetStrokeDash(nodes: SVGGeometryElement[]) {
-    nodes.forEach((p) => {
-        gsap.set(p, { clearProps: 'strokeDasharray,strokeDashoffset' });
-    });
+    size?: number;
+    /// 有语义的图标传标题；不传则 aria-hidden。
+    title?: string;
 }
 
 export function MotionIcon({
-    icon: Icon,
+    icon,
     motion: preset = 'none',
     playEnter = true,
     enterKey,
     hoverAccent = false,
     className,
     size = 18,
-    strokeWidth = 1.75,
-    ...rest
+    title,
 }: MotionIconProps) {
     const wrapRef = useRef<HTMLSpanElement>(null);
     const lastEnterKeyRef = useRef<string | null>(null);
@@ -69,36 +59,27 @@ export function MotionIcon({
             lastEnterKeyRef.current = null;
             return;
         }
-        // 无进场动画时直接允许循环动效（如 Loader2 spin），否则 enterSettled 会一直为 false
+        // 不播进场时直接允许循环动效（如 spin），否则 enterSettled 会一直是 false
         if (!playEnter) {
             setEnterSettled(true);
         }
     }, [preset, playEnter]);
 
-    // 选中瞬间：轻弹入 + 描边绘制
+    // 选中瞬间：轻弹入
     useEffect(() => {
         const wrap = wrapRef.current;
         if (!wrap || !m.enabled || preset === 'none' || !playEnter || !enterKey) {
             if (wrap && preset === 'none') {
-                const svg = wrap.querySelector('svg');
-                if (svg) resetStrokeDash(collectStrokedNodes(svg));
                 gsap.set(wrap, { scale: 1, rotation: 0, opacity: 1, y: 0 });
             }
             return;
         }
-
         if (lastEnterKeyRef.current === enterKey) return;
         lastEnterKeyRef.current = enterKey;
         setEnterSettled(false);
 
-        const svg = wrap.querySelector('svg');
-        const paths = svg ? collectStrokedNodes(svg) : [];
-        const speed = Math.max(0.5, m.speed);
         const popEase = m.preset.timing.ease.pop;
-        const enterTl = gsap.timeline({
-            onComplete: () => setEnterSettled(true),
-        });
-
+        const enterTl = gsap.timeline({ onComplete: () => setEnterSettled(true) });
         enterTl.fromTo(
             wrap,
             { scale: 0.82, y: 3, opacity: 0.5 },
@@ -110,29 +91,12 @@ export function MotionIcon({
                 ease: popEase,
             },
         );
-
-        if (paths.length > 0) {
-            const drawDur = (m.duration('fast') * 1.1) / speed;
-            paths.forEach((p, i) => {
-                const len =
-                    typeof p.getTotalLength === 'function'
-                        ? Math.max(p.getTotalLength(), 6)
-                        : 24;
-                gsap.set(p, { strokeDasharray: len, strokeDashoffset: len });
-                enterTl.to(
-                    p,
-                    { strokeDashoffset: 0, duration: drawDur, ease: 'power2.out' },
-                    0.04 + i * 0.022,
-                );
-            });
-        } else {
-            enterTl.call(() => setEnterSettled(true), [], '+=0.02');
-        }
+        enterTl.call(() => setEnterSettled(true), [], '+=0.02');
 
         return () => {
             enterTl.kill();
         };
-    }, [preset, playEnter, enterKey, m.enabled, m.speed, m.preset.timing.ease.pop]);
+    }, [preset, playEnter, enterKey, m.enabled, m.duration, m.preset.timing.ease.pop]);
 
     // 选中态持续动效（进场结束后再开，避免和弹入打架）
     useEffect(() => {
@@ -223,7 +187,7 @@ export function MotionIcon({
         return () => {
             unbindVis();
             tl?.kill();
-            // 同一 DOM 在 spin → 静止图标间复用时，必须清零 rotation，否则会「歪着」停住
+            // 同一 DOM 在 spin → 静止图标间复用时必须清零 rotation，否则会「歪着」停住
             if (el) {
                 gsap.set(el, { rotation: 0 });
             }
@@ -262,7 +226,7 @@ export function MotionIcon({
             )}
             style={{ transformOrigin: '50% 50%' }}
         >
-            <Icon size={size} strokeWidth={strokeWidth} aria-hidden {...rest} />
+            <AppIcon name={icon} size={size} title={title} />
         </span>
     );
 }

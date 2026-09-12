@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import { AppIcon } from './AppIcon';
+import { UI_ICONS } from '../../core/design/icons';
 import { cn } from '../utils/cn';
 import { Button } from './Button';
 
@@ -41,7 +42,7 @@ export function CopyCodeBlock({ command, className }: CopyCodeBlockProps) {
                 onClick={() => void onCopy()}
                 aria-label={copied ? '已复制' : '复制命令'}
             >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
+                {copied ? <AppIcon name={UI_ICONS.check} size={14} /> : <AppIcon name={UI_ICONS.copy} size={14} />}
             </Button>
         </div>
     );

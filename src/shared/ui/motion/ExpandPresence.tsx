@@ -3,7 +3,8 @@
 
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import gsap from 'gsap';
-import { ChevronDown } from 'lucide-react';
+import { AppIcon } from '../AppIcon';
+import { UI_ICONS } from '../../../core/design/icons';
 import { useMotion, type MotionEnv } from '../../../hooks/preferences/useMotion';
 import { GsapPresence, type EnterFn, type ExitFn } from './GsapPresence';
 
@@ -126,7 +127,7 @@ export function ExpandChevron({ open, size = 14 }: { open: boolean; size?: numbe
 
     return (
         <span ref={ref} className="inline-flex shrink-0 text-text-tertiary" aria-hidden>
-            <ChevronDown size={size} />
+            <AppIcon name={UI_ICONS.chevronDown} size={size} />
         </span>
     );
 }

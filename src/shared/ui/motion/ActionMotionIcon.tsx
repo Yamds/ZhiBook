@@ -1,16 +1,17 @@
 // 图标按钮 / 工具栏 / 卡片操作区：统一尺寸与可选持续动效。
 
-import type { ComponentType } from 'react';
-import type { LucideProps } from 'lucide-react';
+import type { IconName } from '../../../core/design/icons';
 import { MotionIcon, type MotionIconPreset } from './MotionIcon';
 import { cn } from '../../utils/cn';
 
-export interface ActionMotionIconProps extends Omit<LucideProps, 'ref'> {
-    icon: ComponentType<LucideProps>;
+export interface ActionMotionIconProps {
+    icon: IconName;
     motion?: MotionIconPreset;
     playEnter?: boolean;
     enterKey?: string;
+    size?: number;
     className?: string;
+    title?: string;
 }
 
 export function ActionMotionIcon({
@@ -20,8 +21,7 @@ export function ActionMotionIcon({
     enterKey,
     className,
     size = 16,
-    strokeWidth = 2.2,
-    ...rest
+    title,
 }: ActionMotionIconProps) {
     return (
         <MotionIcon
@@ -30,9 +30,8 @@ export function ActionMotionIcon({
             playEnter={playEnter}
             enterKey={enterKey}
             size={size}
-            strokeWidth={strokeWidth}
+            title={title}
             className={cn('shrink-0', className)}
-            {...rest}
         />
     );
 }

@@ -94,4 +94,10 @@ export {
 export { RouteErrorBoundary } from './RouteErrorBoundary';
 export { BodyPortal } from './BodyPortal';
 export { CopyCodeBlock } from './CopyCodeBlock';
+export { AppIcon, type AppIconProps } from './AppIcon';
+export { IconPicker, type IconPickerProps } from './IconPicker';
+export { BottomSheet, type BottomSheetProps } from './BottomSheet';
+export { SegmentedControl, type SegmentedControlProps, type SegmentedItem } from './SegmentedControl';
+export { EmptyState, type EmptyStateProps } from './EmptyState';
+export { PeriodSelector, type PeriodSelectorProps } from './PeriodSelector';
 

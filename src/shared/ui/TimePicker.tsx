@@ -2,7 +2,8 @@
 // 嵌在 Popover 内时用 modal={false}，避免抢焦点。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Clock3 } from 'lucide-react';
+import { UI_ICONS } from '../../core/design/icons';
+import { AppIcon } from './AppIcon';
 import { cn } from '../utils/cn';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
 
@@ -209,7 +210,7 @@ export function TimePicker({
                     className,
                 )}
             >
-                <Clock3 aria-hidden size={13} strokeWidth={2.1} className="text-text-tertiary" />
+                <AppIcon name={UI_ICONS.calendarToday} size={13} className="text-text-tertiary" />
                 <span>
                     {pad2(h)}:{pad2(m)}
                 </span>
@@ -226,7 +227,7 @@ export function TimePicker({
                     className,
                 )}
             >
-                <Clock3 aria-hidden size={13} strokeWidth={2.1} />
+                <AppIcon name={UI_ICONS.calendarToday} size={13} />
             </button>
         );
 

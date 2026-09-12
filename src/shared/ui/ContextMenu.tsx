@@ -9,7 +9,8 @@
 
 import * as React from 'react';
 import * as RadixContextMenu from '@radix-ui/react-context-menu';
-import { Check, ChevronRight, Circle } from 'lucide-react';
+import { UI_ICONS } from '../../core/design/icons';
+import { AppIcon } from './AppIcon';
 import { cn } from '../utils/cn';
 import { useMotion } from '../../hooks/preferences/useMotion';
 
@@ -104,7 +105,7 @@ export const ContextMenuSubTrigger = React.forwardRef<
         {...props}
     >
         {children}
-        <ChevronRight size={13} className="ml-auto text-text-tertiary" />
+        <AppIcon name={UI_ICONS.chevronRight} size={13} className="ml-auto text-text-tertiary" />
     </RadixContextMenu.SubTrigger>
 ));
 ContextMenuSubTrigger.displayName = RadixContextMenu.SubTrigger.displayName;
@@ -198,7 +199,7 @@ export const ContextMenuCheckboxItem = React.forwardRef<
     >
         <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
             <RadixContextMenu.ItemIndicator>
-                <Check size={13} className="text-brand stroke-[2.5]" />
+                <AppIcon name={UI_ICONS.check} size={13} className="text-brand" />
             </RadixContextMenu.ItemIndicator>
         </span>
         {children}
@@ -220,7 +221,7 @@ export const ContextMenuRadioItem = React.forwardRef<
     >
         <span className="absolute left-2.5 flex h-3.5 w-3.5 items-center justify-center">
             <RadixContextMenu.ItemIndicator>
-                <Circle size={6} className="fill-brand text-brand" />
+                <AppIcon name={UI_ICONS.dot} size={6} className="text-brand" />
             </RadixContextMenu.ItemIndicator>
         </span>
         {children}

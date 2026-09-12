@@ -3,7 +3,8 @@
 // 受控：value 是 string[]，去重与 trim 由本组件负责。
 
 import { useId, useRef, useState, type KeyboardEvent, type ClipboardEvent, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { UI_ICONS } from '../../core/design/icons';
+import { AppIcon } from './AppIcon';
 import { cn } from '../utils/cn';
 
 export interface StringListFieldProps {
@@ -115,7 +116,7 @@ export const StringListField: React.FC<StringListFieldProps> = ({
                                     onChange(value.filter((v) => v !== item));
                                 }}
                             >
-                                <X size={11} />
+                                <AppIcon name={UI_ICONS.close} size={11} />
                             </button>
                         )}
                     </span>

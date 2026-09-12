@@ -2,7 +2,8 @@
 // 不是日历：没有年月、没有星期，纯粹选一个日期数字。
 
 import { useState } from 'react';
-import { CalendarDays } from 'lucide-react';
+import { UI_ICONS } from '../../core/design/icons';
+import { AppIcon } from './AppIcon';
 import { cn } from '../utils/cn';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
 
@@ -47,7 +48,7 @@ export function DayOfMonthPicker({
                         className,
                     )}
                 >
-                    <CalendarDays aria-hidden size={13} strokeWidth={2.1} className="text-text-tertiary" />
+                    <AppIcon name={UI_ICONS.calendar} size={13} className="text-text-tertiary" />
                     <span>{current} 日</span>
                 </button>
             </PopoverTrigger>

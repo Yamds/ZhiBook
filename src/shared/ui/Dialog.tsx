@@ -15,7 +15,7 @@
 //   - 多步骤内容可用 DialogStepTransition 做步骤淡入。
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { X as CloseIcon } from 'lucide-react';
+import { UI_ICONS } from '../../core/design/icons';
 import gsap from 'gsap';
 import {
     createContext,
@@ -520,7 +520,7 @@ const ContentBody = forwardRef<
                     className="absolute right-3 top-3 z-10 rounded-xs p-1 text-text-tertiary transition-colors hover:bg-inset hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                     <MotionIcon
-                        icon={CloseIcon}
+                        icon={UI_ICONS.close}
                         motion="none"
                         hoverAccent
                         playEnter={false}
@@ -572,4 +572,4 @@ export const DialogFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
     />
 );
 
-export const DialogPortal = RadixDialog.Portal;
+export const DialogPortal = RadixDialog.Portal;

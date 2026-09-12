@@ -48,7 +48,7 @@ export default defineConfig({
       'gsap/CustomEase',
       'gsap/CustomBounce',
       'gsap/CustomWiggle',
-      'lucide-react',
+      '@iconify/react',
     ],
   },
   resolve: {
@@ -70,7 +70,7 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             if (id.includes('gsap')) return 'vendor-gsap';
             if (id.includes('@radix-ui')) return 'vendor-radix';
-            if (id.includes('lucide-react')) return 'vendor-icons';
+            if (id.includes('@iconify')) return 'vendor-icons';
             return 'vendor';
           }
           return undefined;

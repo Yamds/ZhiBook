@@ -12,9 +12,10 @@
 // 注意:本组件 forwardRef 把 root div 暴露给外部,GsapPresence 才能拿到节点。
 
 import { forwardRef, useEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
-import { AlertCircle, CheckCircle2, Info, X, AlertTriangle } from 'lucide-react';
 import { cva } from 'class-variance-authority';
+import { UI_ICONS, type IconName } from '../../core/design/icons';
 import { cn } from '../utils/cn';
+import { AppIcon } from './AppIcon';
 import { MotionIcon, infoToneMotion } from './motion';
 
 const toneClass = {
@@ -43,17 +44,17 @@ const iconVariants = cva('shrink-0', {
     defaultVariants: { tone: 'info' },
 });
 
-function defaultIconFor(tone: 'info' | 'success' | 'warning' | 'danger') {
+function defaultIconFor(tone: 'info' | 'success' | 'warning' | 'danger'): IconName {
     switch (tone) {
         case 'success':
-            return CheckCircle2;
+            return UI_ICONS.success;
         case 'warning':
-            return AlertTriangle;
+            return UI_ICONS.warning;
         case 'danger':
-            return AlertCircle;
+            return UI_ICONS.danger;
         case 'info':
         default:
-            return Info;
+            return UI_ICONS.info;
     }
 }
 
@@ -120,7 +121,6 @@ export const InfoBar = forwardRef<HTMLDivElement, InfoBarProps>(
                         motion={infoToneMotion(toneKey)}
                         playEnter={false}
                         size={18}
-                        strokeWidth={2.2}
                         className={iconVariants({ tone: toneKey })}
                     />
                 </div>
@@ -145,7 +145,7 @@ export const InfoBar = forwardRef<HTMLDivElement, InfoBarProps>(
                             'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand',
                         )}
                     >
-                        <X size={13} strokeWidth={2.2} />
+                        <AppIcon name={UI_ICONS.close} size={13} />
                     </button>
                 )}
             </div>

@@ -67,7 +67,6 @@ export const BottomNav: React.FC<{
             />
             {tabs.map((item) => {
                 const isActive = active === item.id;
-                const Icon = item.icon;
                 return (
                     <button
                         key={item.id}
@@ -82,12 +81,11 @@ export const BottomNav: React.FC<{
                         )}
                     >
                         <MotionIcon
-                            icon={Icon}
+                            icon={item.icon}
                             motion={isActive ? NAV_ROUTE_MOTION[item.id] ?? 'none' : 'none'}
                             playEnter={isActive}
                             enterKey={isActive ? item.id : undefined}
                             size={20}
-                            strokeWidth={1.75}
                             className={cn('shrink-0', isActive && 'text-brand')}
                         />
                         <span className={cn('truncate text-[10.5px] font-medium leading-none', isActive && 'text-brand')}>

@@ -2,7 +2,8 @@
 // 不依赖原生 date 控件。
 
 import { useMemo } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { UI_ICONS } from '../../core/design/icons';
+import { AppIcon } from './AppIcon';
 import { cn } from '../utils/cn';
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'] as const;
@@ -90,7 +91,7 @@ export function MonthCalendar({
                     className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:bg-elevated hover:text-text disabled:pointer-events-none disabled:opacity-35"
                     aria-label="上个月"
                 >
-                    <ChevronLeft aria-hidden size={14} />
+                    <AppIcon name={UI_ICONS.chevronLeft} size={14} />
                 </button>
                 <button
                     type="button"
@@ -115,7 +116,7 @@ export function MonthCalendar({
                     className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:bg-elevated hover:text-text disabled:pointer-events-none disabled:opacity-35"
                     aria-label="下个月"
                 >
-                    <ChevronRight aria-hidden size={14} />
+                    <AppIcon name={UI_ICONS.chevronRight} size={14} />
                 </button>
             </div>
 
