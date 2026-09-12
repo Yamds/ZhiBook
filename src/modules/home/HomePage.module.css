@@ -8,10 +8,8 @@
     --mascot-top-gap: 12px;
     display: flex;
     min-height: 0;
-    height: 100%;
     flex-direction: column;
-    gap: 24px;
-    overflow: auto;
+    gap: 18px;
     /* 顶部留白 = 立绘伸出卡片的量（下沿间距 + 高出量）+ 顶部呼吸区。
        绝对定位的 bottom 是相对卡片 padding box 的，所以伸出量是
        【--mascot-lift + --mascot-foot】而不是只有 --mascot-lift：
@@ -29,7 +27,7 @@
        背景裁剪走 border-radius，与 overflow 无关。 */
     overflow: visible;
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     background: var(--surface-hero);
     /* 与 Card variant="hero" 的 shadow-card 一致 */
     box-shadow: var(--shadow-md);
@@ -54,7 +52,7 @@
 .clockCopy strong {
     margin-top: 9px;
     font-family: var(--font-mono);
-    font-size: clamp(56px, 7vw, 94px);
+    font-size: clamp(48px, 6.2vw, 82px);
     font-weight: 620;
     line-height: 1;
     letter-spacing: 0;
@@ -85,138 +83,36 @@
     user-select: none;
 }
 
-.featureSection {
+/* 日历槽位：P7 接入月历后替换掉这块占位。 */
+.calendarSlot {
     display: flex;
+    min-height: 220px;
+    flex: 1;
     flex-direction: column;
-    gap: 12px;
-}
-
-.sectionHeading {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-}
-
-.sectionHeading > div {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-}
-
-.sectionHeading h1 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 650;
-}
-
-.sectionHeading span {
-    color: var(--text-tertiary);
-    font-size: 12px;
-}
-
-.featureList {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 10px;
-}
-
-.featureList > button {
-    display: grid;
-    min-width: 0;
-    height: 68px;
-    grid-template-columns: 38px minmax(0, 1fr) 18px;
-    align-items: center;
-    gap: 11px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    background: var(--surface-card);
-    /* 与 Card default 的 shadow-card 一致 */
-    box-shadow: var(--shadow-md);
-    padding: 0 14px;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    text-align: left;
-    transition: border-color 0.2s ease-out, background-color 0.2s ease-out,
-        color 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.15s ease-out;
-}
-
-.featureList > button:hover {
-    border-color: var(--border-strong);
-    background: var(--surface-elevated);
-    color: var(--brand-500);
-}
-
-.featureList > button:active {
-    border-color: var(--brand-500);
-    background: var(--surface-elevated);
-    color: var(--brand-500);
-    /* 触摸端用按压态承接桌面的 hover:shadow-popover */
-    box-shadow: var(--shadow-lg);
-    transform: scale(0.985);
-}
-
-.featureIcon {
-    display: inline-flex;
-    width: 36px;
-    height: 36px;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-    background: var(--brand-soft);
-    color: var(--brand-500);
-}
-
-.featureCopy {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 3px;
-}
-
-.featureCopy strong,
-.featureCopy small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.featureCopy strong {
-    color: var(--text-primary);
-    font-size: 13px;
-    font-weight: 620;
-}
-
-.featureCopy small {
-    color: var(--text-tertiary);
-    font-family: var(--font-mono);
-    font-size: 10px;
-}
-
-.empty {
-    display: flex;
-    min-height: 80px;
     align-items: center;
     justify-content: center;
     gap: 6px;
     border: 1px dashed var(--border-subtle);
-    border-radius: var(--radius-sm);
-    color: var(--text-disabled);
+    border-radius: var(--radius-lg);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-sm);
+}
+
+.slotTitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.slotHint {
+    margin: 0;
+    color: var(--text-tertiary);
     font-size: 12px;
 }
 
 @media (max-width: 760px) {
-    .page { gap: 20px; }
-
-    .clockPanel { padding: 18px 20px; }
-
     .clockCopy strong { font-size: 46px; }
 
     .date { margin-top: 8px; font-size: 13px; }
-
-    /* 立绘右移一点，给左侧文字留出更长的横排空间 */
-    .clockPanel > img { right: 10px; }
-
-    .featureList { grid-template-columns: minmax(0, 1fr); }
-
-    .featureList > button { height: 64px; }
 }

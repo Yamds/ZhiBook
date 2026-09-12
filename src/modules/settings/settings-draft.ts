@@ -1,45 +1,25 @@
 // 设置页草稿。设置页改动即时生效：先应用客户端偏好，后端写入由
 // useBackendSettings 防抖。没有「保存 / 撤销」。
+//
+// 草稿就是外观偏好本身：退出行为 / 后台策略 / 双指缩放 / 开机自启都不是设置项。
 
 import type { MotionLevel } from '../../core/design/motion';
 import { scaleDuration } from '../../core/design/motion';
 import type { RadiusStyle } from '../../core/design/radius';
 import { playThemeTransition } from '../../core/design/themeTransition';
 import type { AppSettings } from '../../core/ipc/types';
-import {
-    clientPrefsFromBackend,
-    settingsWithPreferences,
-    type AfterCloseUiBehavior,
-    type UiModeOnStartup,
-} from '../../core/services/settings.service';
+import { clientPrefsFromBackend, settingsWithPreferences } from '../../core/services/settings.service';
 import { preferencesStore, type AppPreferences, type ThemeMode } from '../../hooks/preferences/preferencesStore';
 
-export type SettingsDraft = AppPreferences & {
-    afterCloseUiBehavior: AfterCloseUiBehavior;
-    enterLightweightDelaySecs: number;
-    uiModeOnStartup: UiModeOnStartup;
-    launchOnStartup: boolean;
-};
+/** 设置页草稿 = 客户端外观偏好（后端 uiPreferences 的镜像）。 */
+export type SettingsDraft = AppPreferences;
 
 export function draftFromBackendAndPrefs(backend: AppSettings): SettingsDraft {
-    const client = clientPrefsFromBackend(backend);
-    return {
-        ...client,
-        afterCloseUiBehavior: backend.afterCloseUiBehavior,
-        enterLightweightDelaySecs: backend.enterLightweightDelaySecs,
-        uiModeOnStartup: backend.uiModeOnStartup,
-        launchOnStartup: backend.launchOnStartup,
-    };
+    return clientPrefsFromBackend(backend);
 }
 
 export function backendFromDraft(draft: SettingsDraft, baseline: AppSettings): AppSettings {
-    return settingsWithPreferences({
-        ...baseline,
-        afterCloseUiBehavior: draft.afterCloseUiBehavior,
-        enterLightweightDelaySecs: draft.enterLightweightDelaySecs,
-        uiModeOnStartup: draft.uiModeOnStartup,
-        launchOnStartup: draft.launchOnStartup,
-    }, draft);
+    return settingsWithPreferences(baseline, draft);
 }
 
 /** 把草稿里的客户端偏好一次性写到 preferencesStore；主题变化时走 View Transition。 */
@@ -49,12 +29,10 @@ export async function applyClientPrefsFromDraft(draft: SettingsDraft): Promise<v
     const commit = () => {
         preferencesStore.applySnapshot({
             theme: draft.theme,
-            closeAction: draft.closeAction,
             motionEnabled: draft.motionEnabled,
             motionLevel: draft.motionLevel,
             motionSpeed: draft.motionSpeed,
             radiusStyle: draft.radiusStyle,
-            allowPinchZoom: draft.allowPinchZoom,
         });
     };
 

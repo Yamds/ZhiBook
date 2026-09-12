@@ -5,12 +5,13 @@
 //
 // 当前承载：
 //   theme           auto / light / dark / latte / frappe / macchiato / mocha
-//   closeAction     close（退出程序）/ tray（退到后台）
 //   motionEnabled   动画总开关。系统级 prefers-reduced-motion 命中时也会被强制覆盖
 //   motionLevel     elegant / standard / rich。决定动画风格强度
 //   motionSpeed     0.5 ~ 1.5（内部值）。0.5 = 体感 1× 基准，越大越快
 //   radiusStyle     square / standard / round。全局圆角风格（统一系数缩放）
-//   allowPinchZoom  是否允许双指缩放整个界面
+//
+// 退出行为 / 后台策略 / 双指缩放 / 开机自启已不是设置项：
+// 首页返回键固定弹退出确认、退到后台不做特殊处理、缩放始终关闭。
 
 import { useSyncExternalStore } from 'react';
 import {
@@ -26,35 +27,25 @@ import {
     applyRadiusStyle,
 } from '../../core/design/radius';
 import { syncRootChromeBackground } from '../../core/design/surfaceCanvas';
-import { applyPinchZoom } from '../../core/platform/pinchZoom';
 
 export type ThemeMode = 'light' | 'dark' | 'auto' | 'latte' | 'frappe' | 'macchiato' | 'mocha';
-export type CloseAction = 'close' | 'tray';
-
-export function normalizeCloseAction(raw: unknown): CloseAction {
-    return raw === 'tray' ? 'tray' : 'close';
-}
 
 export interface AppPreferences {
     theme: ThemeMode;
-    closeAction: CloseAction;
     motionEnabled: boolean;
     motionLevel: MotionLevel;
     motionSpeed: number;
     radiusStyle: RadiusStyle;
-    allowPinchZoom: boolean;
 }
 
 const STORAGE_KEY = 'yamds-bill:preferences:v1';
 
 const defaultPrefs: AppPreferences = {
     theme: 'auto',
-    closeAction: 'close',
     motionEnabled: true,
     motionLevel: 'standard',
     motionSpeed: MOTION_SPEED_DEFAULT,
     radiusStyle: RADIUS_STYLE_DEFAULT,
-    allowPinchZoom: true,
 };
 
 let state: AppPreferences = loadFromStorage();
@@ -68,12 +59,10 @@ function loadFromStorage(): AppPreferences {
         const parsed = JSON.parse(raw) as Partial<AppPreferences>;
         return {
             theme: normalizeTheme(parsed.theme),
-            closeAction: parsed.closeAction === 'tray' ? 'tray' : 'close',
             motionEnabled: parsed.motionEnabled !== false,
             motionLevel: normalizeMotionLevel(parsed.motionLevel),
             motionSpeed: normalizeMotionSpeed(parsed.motionSpeed),
             radiusStyle: normalizeRadiusStyle(parsed.radiusStyle),
-            allowPinchZoom: parsed.allowPinchZoom !== false,
         };
     } catch {
         return defaultPrefs;
@@ -119,7 +108,7 @@ function update(patch: Partial<AppPreferences>) {
     applySideEffects();
 }
 
-/// 把当前偏好应用到 DOM / window。`AppNext` 启动时调一次让初始状态生效；
+/// 把当前偏好应用到 DOM / window。`AppBootGate` 启动时调一次让初始状态生效；
 /// 用户切偏好时由 update 自动调。
 export function applySideEffects() {
     if (typeof document === 'undefined') return;
@@ -133,8 +122,6 @@ export function applySideEffects() {
     }
     // 圆角风格：覆盖 :root 上的 --radius-* CSS 变量。
     applyRadiusStyle(state.radiusStyle);
-    // 双指缩放：改写 viewport meta，立即生效。
-    applyPinchZoom(state.allowPinchZoom);
     syncRootChromeBackground();
     if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('theme-changed'));
@@ -148,9 +135,6 @@ export const preferencesStore = {
     setTheme(theme: ThemeMode) {
         update({ theme: normalizeTheme(theme) });
     },
-    setCloseAction(action: CloseAction) {
-        update({ closeAction: action === 'tray' ? 'tray' : 'close' });
-    },
     setMotionEnabled(enabled: boolean) {
         update({ motionEnabled: !!enabled });
     },
@@ -163,9 +147,6 @@ export const preferencesStore = {
     setRadiusStyle(style: RadiusStyle) {
         update({ radiusStyle: normalizeRadiusStyle(style) });
     },
-    setAllowPinchZoom(enabled: boolean) {
-        update({ allowPinchZoom: !!enabled });
-    },
     reset() {
         state = { ...defaultPrefs };
         persist();
@@ -176,10 +157,6 @@ export const preferencesStore = {
     applySnapshot(patch: Partial<AppPreferences>) {
         state = {
             theme: normalizeTheme(patch.theme ?? state.theme),
-            closeAction:
-                patch.closeAction !== undefined
-                    ? normalizeCloseAction(patch.closeAction)
-                    : state.closeAction,
             motionEnabled:
                 patch.motionEnabled !== undefined ? !!patch.motionEnabled : state.motionEnabled,
             motionLevel: normalizeMotionLevel(patch.motionLevel ?? state.motionLevel),
@@ -189,8 +166,6 @@ export const preferencesStore = {
             radiusStyle: normalizeRadiusStyle(
                 patch.radiusStyle ?? state.radiusStyle,
             ),
-            allowPinchZoom:
-                patch.allowPinchZoom !== undefined ? !!patch.allowPinchZoom : state.allowPinchZoom,
         };
         persist();
         notify();

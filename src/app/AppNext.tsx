@@ -1,68 +1,109 @@
-// 应用壳：顶部栏 + 底部导航 + 抽屉侧栏 + 路由过渡 + 全局 InfoBar。
+// 应用壳：顶部栏 + 底部导航 + 路由过渡 + 全局 InfoBar + 退出闸门。
 //
 // 页面业务只放在 modules；壳只负责编排生命周期和跨页面能力。
-// 底部导航承载「重要功能」，抽屉侧栏承载「全部功能」，两者共用 app/navigation 注册表。
+// 侧边栏 / 抽屉已整体移除，所有导航入口收敛为底部 5 个页签 + 日历页重复点击进设置。
 //
 // 三种导航输入统一在这里收敛：
-//   点击  —— 底部导航 / 抽屉
-//   横滑  —— 先问页面的嵌套消费方（页签），未消费才切顶级路由
-//   返回键 —— 抽屉 → 非首页 → 退出闸门 / 退到后台
+//   点击  —— 底部导航：重复点日历 = 进设置；重复点其它页签 = 回到该页顶部
+//   横滑  —— 先问页面的嵌套消费方（选择器等），未消费才切顶级页签；设置页不参与
+//   返回键 —— 首页弹退出确认；其它页面回首页
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { MobileAppBar } from '../shared/components/shell/MobileAppBar';
 import { BottomNav } from '../shared/components/shell/BottomNav';
-import { AppDrawer } from '../shared/components/shell/AppDrawer';
 import { GlobalTitleTooltip, InfoBarStack, RouteErrorBoundary, TooltipProvider } from '../shared/ui';
 import { PageTransition } from '../shared/ui/motion';
 import { useGlobalInfoBars } from '../hooks/ui/useGlobalInfoBars';
 import { useHorizontalSwipe } from '../hooks/ui/useHorizontalSwipe';
 import { useMotion } from '../hooks/preferences/useMotion';
-import { preferencesStore } from '../hooks/preferences/preferencesStore';
-import { APP_SETTINGS_QUERY_KEY } from '../hooks/preferences/useBackendSettings';
-import { OverviewPage } from '../modules/overview/OverviewPage';
+import { registerBackButtonHandler } from '../core/platform/androidBridge';
+import { AddPage } from '../modules/add/AddPage';
+import { AssetsPage } from '../modules/assets/AssetsPage';
+import { BillsPage } from '../modules/bills/BillsPage';
+import { DetailsPage } from '../modules/details/DetailsPage';
+import { HomePage } from '../modules/home/HomePage';
 import { SettingsPage } from '../modules/settings/SettingsPage';
-import {
-    registerBackButtonHandler,
-    registerBackgroundPolicyProvider,
-    type BackgroundPolicy,
-} from '../core/platform/androidBridge';
-import type { AppSettings } from '../core/ipc/types';
 import { AppExitGate } from './AppExitGate';
-import { ROUTE_ORDER, routeTitle, type AppRoute } from './navigation';
+import { HOME_ROUTE, ROUTE_ORDER, routeTitle, type AppRoute, type AppScreen } from './navigation';
+import { navigateTo, retapScreen, useNavigation, useRetapHandler } from './navigationStore';
 import { SwipeProvider, neighborOf, type NestedSwipeHandler, type SwipeDirection } from './swipeNavigation';
 
-const HOME_ROUTE: AppRoute = 'overview';
-const DEFAULT_BACKGROUND_POLICY: BackgroundPolicy = { mode: 'delayed_lightweight', delaySecs: 300 };
+/** 顶部栏右侧的账本入口：P3 接入真实账本数据前先显示占位名。 */
+const ACTIVE_BOOK_PLACEHOLDER = '默认账本';
+
+/** 过渡方向用的页序号；设置页排在页签之后，保证方向单调。 */
+function screenIndex(screen: AppScreen): number {
+    if (screen === 'settings') return ROUTE_ORDER.length;
+    return ROUTE_ORDER.indexOf(screen);
+}
+
+function renderScreen(screen: AppScreen) {
+    switch (screen) {
+        case 'bills':
+            return <BillsPage />;
+        case 'details':
+            return <DetailsPage />;
+        case 'home':
+            return <HomePage />;
+        case 'add':
+            return <AddPage />;
+        case 'assets':
+            return <AssetsPage />;
+        case 'settings':
+            return <SettingsPage />;
+    }
+}
 
 export function AppNext() {
-    const [route, setRoute] = useState<AppRoute>(HOME_ROUTE);
-    const [displayedRoute, setDisplayedRoute] = useState<AppRoute>(HOME_ROUTE);
-    const [drawerOpen, setDrawerOpen] = useState(false);
-    const [exitGateOpen, setExitGateOpen] = useState(false);
+    const navigation = useNavigation();
+    const screen = navigation.screen;
+    const [displayedScreen, setDisplayedScreen] = useState<AppScreen>(screen);
     const [pageVisible, setPageVisible] = useState(true);
     const [direction, setDirection] = useState<-1 | 0 | 1>(0);
+    const [exitGateOpen, setExitGateOpen] = useState(false);
     const motion = useMotion();
-    const queryClient = useQueryClient();
     const { bars, dismiss, remove } = useGlobalInfoBars();
 
-    const navigate = useCallback((next: AppRoute) => {
-        if (next === route) return;
-        const oldIndex = ROUTE_ORDER.indexOf(route);
-        const newIndex = ROUTE_ORDER.indexOf(next);
-        setDirection(newIndex > oldIndex ? 1 : newIndex < oldIndex ? -1 : 0);
-        setRoute(next);
+    const previousScreenRef = useRef<AppScreen>(screen);
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+
+    // 目标页变化：先定方向并让旧页退场，退场结束后再切换内容。
+    useEffect(() => {
+        const previous = previousScreenRef.current;
+        if (previous === screen) return;
+        previousScreenRef.current = screen;
+        const delta = screenIndex(screen) - screenIndex(previous);
+        setDirection(delta > 0 ? 1 : delta < 0 ? -1 : 0);
         setPageVisible(false);
-    }, [route]);
+    }, [screen]);
 
     useEffect(() => {
-        if (route === displayedRoute && !pageVisible) setPageVisible(true);
-    }, [route, displayedRoute, pageVisible]);
+        if (screen === displayedScreen && !pageVisible) setPageVisible(true);
+    }, [screen, displayedScreen, pageVisible]);
 
     const handleExited = useCallback(() => {
-        setDisplayedRoute(route);
+        setDisplayedScreen(screen);
         setPageVisible(true);
-    }, [route]);
+    }, [screen]);
+
+    // 重复点当前页签：回到该页顶部（日历页的重复点击在下面单独处理成进设置）。
+    useRetapHandler(screen, () => {
+        scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // ===== 底部导航 =====
+    const handleTabSelect = useCallback((next: AppRoute) => {
+        if (next !== screen) {
+            navigateTo(next);
+            return;
+        }
+        // 已激活的日历页签：再点一次进设置。
+        if (next === HOME_ROUTE) {
+            navigateTo('settings');
+            return;
+        }
+        retapScreen(next);
+    }, [screen]);
 
     // ===== 横滑导航 =====
     const mainRef = useRef<HTMLElement | null>(null);
@@ -74,60 +115,57 @@ export function AppNext() {
     }), []);
 
     const handleSwipe = useCallback((swipe: SwipeDirection) => {
-        // 抽屉打开时不参与页面滑动。
-        if (drawerOpen) return;
-        // 页签优先：设置页会消费外观 ↔ 行为之间的滑动。
+        // 页内消费优先（后续的周期选择器 / 分类宫格会注册到这里）。
         if (nestedSwipeRef.current?.(swipe)) return;
-        const next = neighborOf(ROUTE_ORDER, route, swipe);
-        if (next) navigate(next);
-    }, [drawerOpen, route, navigate]);
+        // 设置页不参与页签横滑。
+        if (screen === 'settings') return;
+        const next = neighborOf(ROUTE_ORDER, screen as AppRoute, swipe);
+        if (next) navigateTo(next);
+    }, [screen]);
 
     useHorizontalSwipe(mainRef, handleSwipe);
 
     // ===== Android 返回键 =====
     useEffect(() => registerBackButtonHandler(() => {
-        if (drawerOpen) {
-            setDrawerOpen(false);
+        if (exitGateOpen) {
+            setExitGateOpen(false);
             return 'handled';
         }
-        if (route !== HOME_ROUTE) {
-            navigate(HOME_ROUTE);
+        if (screen !== HOME_ROUTE) {
+            navigateTo(HOME_ROUTE);
             return 'handled';
         }
-        if (preferencesStore.get().closeAction === 'tray') return 'background';
         setExitGateOpen(true);
         return 'handled';
-    }), [drawerOpen, route, navigate]);
-
-    // ===== 后台界面策略 =====
-    useEffect(() => registerBackgroundPolicyProvider(() => {
-        const settings = queryClient.getQueryData<AppSettings>(APP_SETTINGS_QUERY_KEY);
-        if (!settings) return DEFAULT_BACKGROUND_POLICY;
-        return {
-            mode: settings.afterCloseUiBehavior,
-            delaySecs: settings.enterLightweightDelaySecs,
-        };
-    }), [queryClient]);
-
-    const body = displayedRoute === 'settings' ? <SettingsPage /> : <OverviewPage onNavigate={navigate} />;
+    }), [exitGateOpen, screen]);
 
     return (
         <SwipeProvider value={swipeContextValue}>
             <TooltipProvider>
                 <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-canvas">
-                    <div className={'ndf-canvas-glow' + (motion.enabled && motion.preset.feel.overshoot && route === 'overview' ? ' is-breathing' : '')} />
+                    <div className={'ndf-canvas-glow' + (motion.enabled && motion.preset.feel.overshoot && screen === HOME_ROUTE ? ' is-breathing' : '')} />
                     <div className={motion.enabled ? 'ndf-shell-enter-titlebar' : ''}>
-                        <MobileAppBar title={routeTitle(route)} onOpenDrawer={() => setDrawerOpen(true)} />
+                        <MobileAppBar
+                            title={routeTitle(screen)}
+                            bookName={ACTIVE_BOOK_PLACEHOLDER}
+                            onOpenBook={() => navigateTo('assets')}
+                        />
                     </div>
                     <main ref={mainRef} className={'relative z-10 flex min-h-0 min-w-0 flex-1 overflow-hidden ' + (motion.enabled ? 'ndf-shell-enter-main' : '')}>
                         <PageTransition visible={pageVisible} onExited={handleExited} direction={direction} className="flex min-h-0 min-w-0 flex-1 flex-col">
-                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
-                                <RouteErrorBoundary title="页面渲染失败">{body}</RouteErrorBoundary>
+                            <div
+                                key={displayedScreen}
+                                ref={scrollRef}
+                                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
+                            >
+                                <RouteErrorBoundary title="页面渲染失败">{renderScreen(displayedScreen)}</RouteErrorBoundary>
                             </div>
                         </PageTransition>
                     </main>
-                    <BottomNav active={route} onChange={navigate} />
-                    <AppDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} active={route} onChange={navigate} />
+                    <BottomNav
+                        active={screen === 'settings' ? null : screen}
+                        onSelect={handleTabSelect}
+                    />
                     <InfoBarStack items={bars} onDismiss={dismiss} onAutoDismiss={remove} />
                     <AppExitGate open={exitGateOpen} onOpenChange={setExitGateOpen} />
                     <GlobalTitleTooltip />

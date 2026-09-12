@@ -9,6 +9,10 @@ pub(crate) fn default_true() -> bool {
 /// 序列化时 `Unknown` 回写原始字符串，round-trip 无损。
 ///
 /// 调用方负责 derive `Debug, Clone, PartialEq, Eq`、TS 和 Default（如需）。
+///
+/// 当前暂无调用方：记账域类型（支出/收入、资产/负债、账户类型）将在数据层
+/// 落地时复用，因此保留宏定义。
+#[allow(unused_macros)]
 macro_rules! string_enum {
     (
         $(#[$meta:meta])*

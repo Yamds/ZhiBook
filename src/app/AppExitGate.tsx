@@ -1,5 +1,5 @@
-// 退出闸门：由 Android 返回键（或未来的显式退出入口）触发。
-// 保留源版的异步准备、可阻断与确认交互扩展点。
+// 退出闸门：由 Android 返回键（首页）触发。
+// 确认后释放全部资源、彻底结束进程；没有「退到后台」分支（后台策略固定为什么都不做）。
 
 import React, { useState } from 'react';
 import { prepareExit, requestExitApp, type PrepareExitResponse } from '../core/services/exit.service';
@@ -57,7 +57,7 @@ export const AppExitGate: React.FC<{
         return <Dialog open onOpenChange={handleOpenChange}><DialogContent size="sm"><DialogHeader><DialogTitle>退出程序？</DialogTitle><DialogDescription>正在准备退出…</DialogDescription></DialogHeader><DialogFooter><Spinner size="sm" /></DialogFooter></DialogContent></Dialog>;
     }
 
-    return <Dialog open onOpenChange={handleOpenChange}><DialogContent size="sm"><DialogHeader><DialogTitle>{mode === 'blocked' ? '暂时无法退出' : '退出程序？'}</DialogTitle><DialogDescription>{mode === 'blocked' ? result.reason ?? '当前操作尚未完成，请稍后重试。' : '将关闭制账。需要释放资源的业务可以在后端退出闸门中扩展。'}</DialogDescription></DialogHeader><DialogFooter>{mode === 'blocked' ? <Button onClick={() => onOpenChange(false)}>知道了</Button> : <><Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button><Button variant="danger" disabled={exiting} onClick={() => void confirm()}>{exiting ? '正在退出…' : '退出'}</Button></>}</DialogFooter></DialogContent></Dialog>;
+    return <Dialog open onOpenChange={handleOpenChange}><DialogContent size="sm"><DialogHeader><DialogTitle>{mode === 'blocked' ? '暂时无法退出' : '退出程序？'}</DialogTitle><DialogDescription>{mode === 'blocked' ? result.reason ?? '当前操作尚未完成，请稍后重试。' : '将关闭制账并释放全部资源。'}</DialogDescription></DialogHeader><DialogFooter>{mode === 'blocked' ? <Button onClick={() => onOpenChange(false)}>知道了</Button> : <><Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button><Button variant="danger" disabled={exiting} onClick={() => void confirm()}>{exiting ? '正在退出…' : '退出'}</Button></>}</DialogFooter></DialogContent></Dialog>;
 };
 
 export default AppExitGate;

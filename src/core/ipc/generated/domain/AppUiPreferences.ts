@@ -6,10 +6,6 @@
  */
 export type AppUiPreferences = { theme: string, motionEnabled: boolean, motionLevel: string, motionSpeed: number, radiusStyle: string, 
 /**
- * 允许双指缩放界面。Android WebView 的 pinch zoom，默认开启。
- */
-allowPinchZoom: boolean, 
-/**
  * InfoBar info tone 自动关闭毫秒,0 = 不自动关
  */
 infoBarDismissInfoMs: number, 

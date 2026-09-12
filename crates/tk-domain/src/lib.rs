@@ -15,10 +15,7 @@ pub mod migration;
 
 // 顶层 re-export:下游 crate / Tauri 壳统一从这里拿类型
 
-pub use app_config::{
-    AfterCloseUiBehavior, AppSettings, AppUiPreferences, CloseAction, UiModeOnStartup,
-    clamp_lightweight_delay_secs,
-};
+pub use app_config::{AppSettings, AppUiPreferences, clamp_infobar_dismiss_ms};
 pub use bootstrap::{BootstrapSnapshot, BootstrapStatus, RepairAction};
 pub use domain_event::{DOMAIN_EVENT_ENVELOPE_VERSION, DomainEvent, DomainEventKind};
 pub use errors::{AppError, ConfigError, MigrationError, PathError};

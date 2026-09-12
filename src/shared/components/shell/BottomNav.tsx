@@ -1,19 +1,24 @@
-// 底部导航栏：只承载「重要功能」（导航注册表里 primary=true 的路由）。
+// 底部导航栏：5 个页签（账单 / 明细 / 日历 / 添加 / 资产），顺序由导航注册表决定。
 //
-// 视觉与侧栏同源：同一个 bg-sidebar 表面、同一条品牌色激活指示条、
-// 同一套 MotionIcon 语义，只是把方向从纵向 FLIP 换成横向 FLIP。
+// 点击语义由壳层处理：
+//   普通点击   → 切页签
+//   重复点日历 → 进设置页
+//   重复点其它 → 回到该页顶部
+//
+// 视觉与设计系统同源：brand 激活指示条 + MotionIcon 语义 + 触摸按压反馈。
 
 import React, { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { cn } from '../../utils/cn';
 import { MotionIcon, NAV_ROUTE_MOTION } from '../../ui/motion';
 import { useMotion } from '../../../hooks/preferences/useMotion';
-import { BOTTOM_NAV_ROUTES, type AppRoute } from '../../../app/navigation';
+import { APP_ROUTES, type AppRoute } from '../../../app/navigation';
 
 export const BottomNav: React.FC<{
-    active: AppRoute;
-    onChange: (route: AppRoute) => void;
-}> = ({ active, onChange }) => {
+    /** 当前激活页签；设置页等非页签页面传 null，此时不显示指示条。 */
+    active: AppRoute | null;
+    onSelect: (route: AppRoute) => void;
+}> = ({ active, onSelect }) => {
     const motion = useMotion();
     const navRef = useRef<HTMLElement | null>(null);
     const indicatorRef = useRef<HTMLSpanElement | null>(null);
@@ -55,14 +60,14 @@ export const BottomNav: React.FC<{
                 style={{ visibility: 'hidden', opacity: 0 }}
                 className="pointer-events-none absolute left-0 top-0 h-[2px] rounded-b-pill bg-brand"
             />
-            {BOTTOM_NAV_ROUTES.map((item) => {
+            {APP_ROUTES.map((item) => {
                 const isActive = active === item.id;
                 const Icon = item.icon;
                 return (
                     <button
                         key={item.id}
                         type="button"
-                        onClick={() => onChange(item.id)}
+                        onClick={() => onSelect(item.id)}
                         aria-current={isActive ? 'page' : undefined}
                         className={cn(
                             'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2',

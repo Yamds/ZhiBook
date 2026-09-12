@@ -1,14 +1,17 @@
 // Lucide + MotionIcon 语义映射：按场景选 preset，避免各页面散落魔法字符串。
 
 import type { MotionIconPreset } from './MotionIcon';
+import type { AppRoute } from '../../../app/navigation';
 
-type NavRouteId =
-    | 'overview'
-    | 'settings';
+type NavRouteId = AppRoute | 'settings';
 
-/** 导航当前路由持续动效（侧栏与底部导航共用）。 */
+/** 导航当前路由持续动效（底部导航用）。 */
 export const NAV_ROUTE_MOTION: Record<NavRouteId, MotionIconPreset> = {
-    overview: 'bob',
+    bills: 'bob',
+    details: 'nudge',
+    home: 'breathe',
+    add: 'pulse',
+    assets: 'bob',
     settings: 'spin-slow',
 };
 
