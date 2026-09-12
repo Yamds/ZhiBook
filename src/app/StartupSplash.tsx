@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import gsap from 'gsap';
 import { useMotion } from '../hooks/preferences/useMotion';
 import { APP_PRODUCT_NAME, APP_VERSION_LABEL } from '../core/domain/app-meta';
-import kumiko from '../assets/kumiko-nobg.png';
+import mascotArt from '../assets/mascot.png';
 
 /** 最短展示时间：主界面就绪过快时不让启动层一闪而过。 */
 const MIN_DISPLAY_MS = 900;
@@ -136,20 +136,20 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onFini
             <div className="relative z-10 flex w-full max-w-[320px] flex-col items-center px-8">
                 <img
                     ref={artRef}
-                    src={kumiko}
+                    src={mascotArt}
                     alt=""
-                    width={176}
-                    height={176}
+                    width={208}
+                    height={208}
                     style={HIDDEN}
-                    className="h-44 w-44 select-none object-contain"
+                    className="h-52 w-52 select-none object-contain"
                     draggable={false}
                 />
-                <div ref={copyRef} style={HIDDEN} className="mt-6 flex flex-col items-center">
-                    <span className="font-display text-[22px] font-semibold leading-none tracking-tight text-text">
+                <div ref={copyRef} style={HIDDEN} className="mt-5 flex flex-col items-center">
+                    <span className="font-display text-[32px] font-semibold leading-none tracking-tight text-text">
                         {APP_PRODUCT_NAME}
                     </span>
                 </div>
-                <div className="mt-7 h-1 w-40 overflow-hidden rounded-pill bg-border-subtle">
+                <div className="mt-6 h-1 w-40 overflow-hidden rounded-pill bg-border-subtle">
                     <div
                         ref={barRef}
                         className="ndf-splash-laser-bar h-full w-full origin-left rounded-pill"

@@ -53,12 +53,14 @@
     font-size: 15px;
 }
 
+/* 首页图案：全身立绘，方形透明底。按高度撑满并贴住卡片下沿，
+   比按宽度缩放更能把全身完整地“站”在右下角。 */
 .clockPanel > img {
     position: absolute;
-    right: 20px;
-    bottom: -18px;
-    width: min(34%, 320px);
-    max-height: 310px;
+    right: 16px;
+    bottom: 0;
+    height: min(88%, 330px);
+    width: auto;
     object-fit: contain;
     object-position: bottom right;
     pointer-events: none;
@@ -181,11 +183,11 @@
 @media (max-width: 760px) {
     .page { gap: 20px; }
 
+    /* 竖屏：时钟在左上，立绘贴住右下沿；卡片留足高度避免两者相撞。 */
     .clockPanel {
-        min-height: 210px;
-        padding: 26px 22px;
-        align-items: flex-end;
-        padding-bottom: 30px;
+        min-height: 340px;
+        padding: 24px 20px 0;
+        align-items: flex-start;
     }
 
     .clockCopy strong { font-size: 46px; }
@@ -193,10 +195,9 @@
     .date { margin-top: 10px; font-size: 13px; }
 
     .clockPanel > img {
-        width: 44%;
-        max-height: 200px;
-        right: 8px;
-        opacity: 0.8;
+        right: 0;
+        height: auto;
+        width: min(60%, 220px);
     }
 
     .featureList { grid-template-columns: minmax(0, 1fr); }

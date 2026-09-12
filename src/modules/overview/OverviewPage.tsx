@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Clock3, LayoutGrid } from 'lucide-react';
-import catGirl from '../../assets/cat-girl.svg';
+import mascot from '../../assets/mascot.png';
 import { APP_ROUTES, type AppRoute } from '../../app/navigation';
 import styles from './OverviewPage.module.css';
 
@@ -35,7 +35,7 @@ export function OverviewPage({ onNavigate }: { onNavigate: (route: AppRoute) => 
                     <strong>{time}</strong>
                     <span className={styles.date}>{date}</span>
                 </div>
-                <img src={catGirl} alt="猫娘" draggable={false} />
+                <img src={mascot} alt="制账形象" draggable={false} />
             </div>
 
             <div className={styles.featureSection}>

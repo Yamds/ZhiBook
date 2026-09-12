@@ -61,7 +61,7 @@ pnpm run rust:check          # cargo check --workspace
 pnpm run rust:test           # cargo test --workspace
 pnpm run verify              # typecheck + rust:check
 pnpm run ts-bindings         # 从 Rust 重新生成 TS 类型（改 tk-domain 后必须跑）
-pnpm run icon                # 由 src/assets/kumiko.png 重新生成全套图标
+pnpm run icon                # 由 src/assets/app-icon.png 重新生成全套图标
 ```
 
 ### 安卓
