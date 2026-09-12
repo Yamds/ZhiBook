@@ -1,61 +1,67 @@
-/* 主题切换圆形扩散 — View Transitions 伪元素动画。
-   新主题层从触发点以 clip-path circle 扩张，旧主题层静止垫底被替换。
-   圆心 / 终态半径 / 时长由 themeTransition.ts 在过渡开始前写入
-   --theme-reveal-* 变量；动画全程跑在合成器侧。 */
+/* 主题切换圆形揭示 — View Transitions 伪元素动画。
+   只有一次 mask 变化，没有任何光环 / 回声 / 蓄力画布：
 
-/* 关掉 UA 默认的交叉淡入：两层动画全部自己控制。 */
+     new  层：radial-gradient 遮罩从触发点把圆撑开，圆外透出下面的旧主题
+     old  层：原样留在下面等着被盖住，不做淡出（两层同时半透明会发灰）
+
+   圆的大小由 mask-size 驱动（普通属性可插值，不需要 @property，也就不需要
+   JS 写 @keyframes——旧的「光波」版本是注册属性 + 满屏多停靠点渐变，这里全部去掉），
+   圆心由 mask-position 钉死：
+     mask-position-x = 圆心相对屏幕中心的偏移 + 50%
+     因为 50% 解析为 (元素宽 − mask 宽) / 2，
+     => mask 盒左边 = (W − S)/2 + (cx − W/2) = cx − S/2，中心恒为 cx，与 S 无关。
+   于是 mask-size 从 0 长到 2R 的过程中圆心不动，圆从点击处长成全屏。
+
+   --theme-reveal-dur / -r / -dx / -dy 由 themeTransition.ts 在过渡开始前写入。 */
+
 html[data-theme-reveal]::view-transition-old(root),
 html[data-theme-reveal]::view-transition-new(root) {
-    animation-duration: var(--theme-reveal-dur, 1500ms);
-}
-
-/* 旧主题层：静止铺满垫底（空关键帧压掉 UA 默认淡入淡出）。 */
-html[data-theme-reveal]::view-transition-old(root) {
-    animation-name: theme-reveal-old-still;
-    animation-fill-mode: both;
-}
-
-/* 新主题层：圆从圆心扩张到覆盖全屏。缓动先快后缓，点击后立刻有反馈。 */
-html[data-theme-reveal]::view-transition-new(root) {
-    animation-name: theme-reveal-circle;
+    animation-duration: var(--theme-reveal-dur, 480ms);
     animation-timing-function: cubic-bezier(0.3, 0.75, 0.35, 1);
     animation-fill-mode: both;
+    /* UA 默认给两层叠 plus-lighter 做交叉淡入；这里是硬边圆形揭示，必须回到正常混合，
+       否则圆内的新主题会跟下面的旧主题相加发亮。 */
+    mix-blend-mode: normal;
 }
 
+html[data-theme-reveal]::view-transition-old(root) {
+    animation-name: none;
+}
+
+html[data-theme-reveal]::view-transition-new(root) {
+    --theme-reveal-feather: 26px;
+    animation-name: theme-reveal-circle;
+    -webkit-mask-image: radial-gradient(circle closest-side at 50% 50%,
+            #000 calc(100% - var(--theme-reveal-feather)),
+            transparent 100%);
+    mask-image: radial-gradient(circle closest-side at 50% 50%,
+            #000 calc(100% - var(--theme-reveal-feather)),
+            transparent 100%);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: calc(var(--theme-reveal-dx, 0px) + 50%) calc(var(--theme-reveal-dy, 0px) + 50%);
+    mask-position: calc(var(--theme-reveal-dx, 0px) + 50%) calc(var(--theme-reveal-dy, 0px) + 50%);
+}
+
+/* mask 盒从 0 长到 2R：square 边长 2R 的内切圆就是半径 R 的揭示圆，
+   终端半径按最远视口角算，收尾时整屏都在圆里。 */
 @keyframes theme-reveal-circle {
     from {
-        clip-path: circle(0px at var(--theme-reveal-x, 50%) var(--theme-reveal-y, 50%));
+        -webkit-mask-size: 0px 0px;
+        mask-size: 0px 0px;
     }
 
     to {
-        clip-path: circle(var(--theme-reveal-r, 150vmax) at var(--theme-reveal-x, 50%) var(--theme-reveal-y, 50%));
+        -webkit-mask-size: calc(var(--theme-reveal-r, 150vmax) * 2) calc(var(--theme-reveal-r, 150vmax) * 2);
+        mask-size: calc(var(--theme-reveal-r, 150vmax) * 2) calc(var(--theme-reveal-r, 150vmax) * 2);
     }
 }
 
-@keyframes theme-reveal-old-still {
+/* 系统「减少动画」时不做扩散，直接换主题（在 1ms 内完成） */
+@media (prefers-reduced-motion: reduce) {
 
-    from,
-    to {}
-}
-
-/* rich 档：expo-out 缓动（先快后缓收尾），旧主题层轻微缩小降透明做纵深。 */
-html[data-theme-reveal='rich']::view-transition-new(root) {
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-html[data-theme-reveal='rich']::view-transition-old(root) {
-    animation-name: theme-reveal-old-depth;
-    transform-origin: center;
-}
-
-@keyframes theme-reveal-old-depth {
-    from {
-        transform: scale(1);
-        opacity: 1;
-    }
-
-    to {
-        transform: scale(0.965);
-        opacity: 0.72;
+    html[data-theme-reveal]::view-transition-old(root),
+    html[data-theme-reveal]::view-transition-new(root) {
+        animation-duration: 1ms;
     }
 }

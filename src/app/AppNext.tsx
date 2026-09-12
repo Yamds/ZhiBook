@@ -115,7 +115,7 @@ export function AppNext() {
         <SwipeProvider value={swipeContextValue}>
             <TooltipProvider>
                 <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-canvas">
-                    <div className={'ndf-canvas-glow' + (motion.enabled && motion.preset.feel.overshoot ? ' is-breathing' : '')} />
+                    <div className={'ndf-canvas-glow' + (motion.enabled && motion.preset.feel.overshoot && route === 'overview' ? ' is-breathing' : '')} />
                     <div className={motion.enabled ? 'ndf-shell-enter-titlebar' : ''}>
                         <MobileAppBar title={routeTitle(route)} onOpenDrawer={() => setDrawerOpen(true)} />
                     </div>

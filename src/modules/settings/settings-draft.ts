@@ -65,11 +65,13 @@ export async function applyClientPrefsFromDraft(draft: SettingsDraft): Promise<v
 
     const enabled = draft.motionEnabled;
     const level = draft.motionLevel;
+    // 圆形揭示的本体时长，基准取「体感 1× 下约 1.0s / 1.4s」。
+    // scaleDuration 在体感 1×（内部 speed 0.5）时会 ×2，所以字面量是目标秒数的一半。
     const duration = !enabled || level === 'elegant'
         ? 0
         : level === 'rich'
-            ? scaleDuration(0.85, draft.motionSpeed)
-            : scaleDuration(0.55, draft.motionSpeed);
+            ? scaleDuration(0.7, draft.motionSpeed)
+            : scaleDuration(0.5, draft.motionSpeed);
 
     await playThemeTransition(commit, {
         enabled,

@@ -38,6 +38,12 @@ src-tauri/gen/android/keystore.properties
 !.env.example
 *.local
 
+# ===== 样例 / 参考图 / 测试截图（不入库）=====
+temp/
+/11.png
+/22.jpg
+/33.jpg
+
 # ===== 本地调试数据根 =====
 .local-data/
 .dev-data/

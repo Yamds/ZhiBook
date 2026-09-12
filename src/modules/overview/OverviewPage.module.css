@@ -1,23 +1,38 @@
 .page {
+    /* 立绘几何：三个值只在这里定义，卡片位置与立绘伸出量自动同步。 */
+    /* 立绘下沿离卡片下沿的距离 */
+    --mascot-foot: 12px;
+    /* 立绘比卡片高出多少（见 .clockPanel > img） */
+    --mascot-lift: 49px;
+    /* 立绘头顶与滚动区上沿的间距（即顶栏下方的呼吸区） */
+    --mascot-top-gap: 12px;
     display: flex;
     min-height: 0;
     height: 100%;
     flex-direction: column;
     gap: 24px;
     overflow: auto;
-    padding: 12px 0 24px;
+    /* 顶部留白 = 立绘伸出卡片的量（下沿间距 + 高出量）+ 顶部呼吸区。
+       绝对定位的 bottom 是相对卡片 padding box 的，所以伸出量是
+       【--mascot-lift + --mascot-foot】而不是只有 --mascot-lift：
+       留白少给一个 --mascot-foot，立绘头顶就会被滚动区裁到顶栏下面。 */
+    padding: calc(var(--mascot-lift) + var(--mascot-foot) + var(--mascot-top-gap)) 0 24px;
 }
 
 .clockPanel {
     position: relative;
     display: flex;
-    min-height: 280px;
     align-items: center;
-    overflow: hidden;
+    /* 高度完全由内容决定：上内边距 + 当前时间/时间/日期 + 下内边距。 */
+    padding: 18px 20px;
+    /* 立绘要能越过上沿，所以不能裁。卡片自身的圆角背景不受影响：
+       背景裁剪走 border-radius，与 overflow 无关。 */
+    overflow: visible;
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--surface-hero);
-    padding: 38px 42px;
+    /* 与 Card variant="hero" 的 shadow-card 一致 */
+    box-shadow: var(--shadow-md);
 }
 
 .clockCopy {
@@ -53,13 +68,16 @@
     font-size: 15px;
 }
 
-/* 首页图案：全身立绘，方形透明底。按高度撑满并贴住卡片下沿，
-   比按宽度缩放更能把全身完整地“站”在右下角。 */
+/* 首页立绘：脚底离卡片下沿 --mascot-foot，头部越过上沿 --mascot-lift。
+
+   立绘高度写成 calc(100% + --mascot-lift)，bottom 定在 --mascot-foot，
+   于是【伸出量 = --mascot-lift + --mascot-foot】。卡片高度跟着字号变时
+   伸出量会自动跟随，.page 的顶部留白按同一组变量算，两边不会脱节。 */
 .clockPanel > img {
     position: absolute;
-    right: 16px;
-    bottom: 0;
-    height: min(88%, 330px);
+    right: 10px;
+    bottom: var(--mascot-foot);
+    height: calc(100% + var(--mascot-lift));
     width: auto;
     object-fit: contain;
     object-position: bottom right;
@@ -110,12 +128,16 @@
     align-items: center;
     gap: 11px;
     border: 1px solid var(--border-subtle);
-    border-radius: 7px;
+    border-radius: var(--radius-sm);
     background: var(--surface-card);
+    /* 与 Card default 的 shadow-card 一致 */
+    box-shadow: var(--shadow-md);
     padding: 0 14px;
     color: var(--text-tertiary);
     cursor: pointer;
     text-align: left;
+    transition: border-color 0.2s ease-out, background-color 0.2s ease-out,
+        color 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.15s ease-out;
 }
 
 .featureList > button:hover {
@@ -128,6 +150,8 @@
     border-color: var(--brand-500);
     background: var(--surface-elevated);
     color: var(--brand-500);
+    /* 触摸端用按压态承接桌面的 hover:shadow-popover */
+    box-shadow: var(--shadow-lg);
     transform: scale(0.985);
 }
 
@@ -137,7 +161,7 @@
     height: 36px;
     align-items: center;
     justify-content: center;
-    border-radius: 7px;
+    border-radius: var(--radius-sm);
     background: var(--brand-soft);
     color: var(--brand-500);
 }
@@ -175,7 +199,7 @@
     justify-content: center;
     gap: 6px;
     border: 1px dashed var(--border-subtle);
-    border-radius: 7px;
+    border-radius: var(--radius-sm);
     color: var(--text-disabled);
     font-size: 12px;
 }
@@ -183,22 +207,14 @@
 @media (max-width: 760px) {
     .page { gap: 20px; }
 
-    /* 竖屏：时钟在左上，立绘贴住右下沿；卡片留足高度避免两者相撞。 */
-    .clockPanel {
-        min-height: 340px;
-        padding: 24px 20px 0;
-        align-items: flex-start;
-    }
+    .clockPanel { padding: 18px 20px; }
 
     .clockCopy strong { font-size: 46px; }
 
-    .date { margin-top: 10px; font-size: 13px; }
+    .date { margin-top: 8px; font-size: 13px; }
 
-    .clockPanel > img {
-        right: 0;
-        height: auto;
-        width: min(60%, 220px);
-    }
+    /* 立绘右移一点，给左侧文字留出更长的横排空间 */
+    .clockPanel > img { right: 10px; }
 
     .featureList { grid-template-columns: minmax(0, 1fr); }
 

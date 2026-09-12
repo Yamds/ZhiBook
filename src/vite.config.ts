@@ -19,8 +19,12 @@ export default defineConfig({
   // .env 仍放在仓库根，与既有本地开发习惯一致。
   envDir: repoRoot,
   server: {
-    port: 1420,
+    // 1420 落在 Windows 保留端口范围（1340-1439）内，被 Hyper-V/WinNAT 排除后
+    // node 绑定时会 EACCES；换用普通用户端口。
+    port: 5180,
     strictPort: true,
+    // 移动端真机经局域网访问 dev server（Tauri CLI 会把 devUrl 换成局域网 IP）。
+    host: true,
     hmr: { overlay: true },
     fs: {
       allow: [repoRoot],

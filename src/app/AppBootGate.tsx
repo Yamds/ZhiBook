@@ -14,6 +14,9 @@ export const AppBootGate: React.FC = () => {
     const [prefsReady, setPrefsReady] = useState(false);
     const [shellReady, setShellReady] = useState(false);
     const [splashDone, setSplashDone] = useState(false);
+    // 主界面壳的入场动画（顶部栏/主区）押到 splash 开始揭示时才播，
+    // 否则它们在 splash 底下就播完了，用户永远看不到。
+    const [revealed, setRevealed] = useState(false);
 
     useEffect(() => {
         applySideEffects();
@@ -31,7 +34,13 @@ export const AppBootGate: React.FC = () => {
         return () => cancelAnimationFrame(id);
     }, [prefsReady]);
 
+    const handleReveal = useCallback(() => {
+        setRevealed(true);
+        perfMark('splash_reveal', { once: true });
+    }, []);
+
     const handleSplashFinished = useCallback(() => {
+        setRevealed(true);
         setSplashDone(true);
         document.getElementById('root')?.removeAttribute('aria-busy');
         perfMark('splash_exit', { once: true });
@@ -52,7 +61,10 @@ export const AppBootGate: React.FC = () => {
     return (
         <div className="relative h-full min-h-0 w-full overflow-hidden bg-canvas">
             {/* 主界面预先挂载于底层，杜绝硬切闪白与布局跳动 */}
-            <div className="relative z-0 h-full min-h-0 w-full">
+            <div
+                className="relative z-0 h-full min-h-0 w-full"
+                data-boot-reveal={revealed ? 'on' : 'off'}
+            >
                 <RouteErrorBoundary title="主界面渲染失败">
                     <AppNext />
                 </RouteErrorBoundary>
@@ -60,7 +72,11 @@ export const AppBootGate: React.FC = () => {
 
             {/* 启动层：执行完毕后平滑透明度溶图淡出 */}
             {!splashDone ? (
-                <StartupSplash shellReady={shellReady} onFinished={handleSplashFinished} />
+                <StartupSplash
+                    shellReady={shellReady}
+                    onReveal={handleReveal}
+                    onFinished={handleSplashFinished}
+                />
             ) : null}
         </div>
     );
