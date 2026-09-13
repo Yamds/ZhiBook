@@ -7,3 +7,18 @@ import '@testing-library/jest-dom/vitest';
 if (typeof Element !== 'undefined' && typeof Element.prototype.scrollTo !== 'function') {
     Element.prototype.scrollTo = () => {};
 }
+
+// jsdom 同样没有 matchMedia（`useThemeTokens` / `useMotion` 会读它）。
+// 统一返回「未命中」：不影响断言，只是让组件能正常挂载。
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+    window.matchMedia = ((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+}

@@ -4,17 +4,13 @@
 // 背景色由前景色派生（core/design/categoryColor），这里实时预览。
 
 import { useEffect, useMemo, useState } from 'react';
-import {
-    CATEGORY_COLOR_PALETTE,
-    THEME_COLOR_TOKEN,
-    categoryColors,
-    isFixedColor,
-} from '../../core/design/categoryColor';
-import { UI_ICONS, toIconName, type IconName } from '../../core/design/icons';
+import { THEME_COLOR_TOKEN, categoryColors } from '../../core/design/categoryColor';
+import { toIconName, type IconName } from '../../core/design/icons';
 import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import type { Category, EntryKind } from '../../core/ipc/types';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { BottomSheet } from '../../shared/ui/BottomSheet';
+import { ColorSwatchRow } from '../../shared/ui/ColorSwatchRow';
 import { IconPicker } from '../../shared/ui/IconPicker';
 import { cn } from '../../shared/utils/cn';
 
@@ -112,45 +108,7 @@ export function CategoryEditorSheet({
 
                 <section className="flex flex-col gap-1.5">
                     <h3 className="text-[12px] font-medium text-text">颜色</h3>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                            type="button"
-                            onClick={() => setColor(THEME_COLOR_TOKEN)}
-                            className={cn(
-                                'inline-flex h-8 items-center gap-1.5 rounded-pill px-2.5 text-[11.5px]',
-                                'active:opacity-80',
-                                color === THEME_COLOR_TOKEN
-                                    ? 'bg-brand-soft font-medium text-brand'
-                                    : 'bg-inset text-text-secondary',
-                            )}
-                        >
-                            <span
-                                className="inline-block h-4 w-4 rounded-full"
-                                style={{ background: brand }}
-                            />
-                            跟随主题
-                        </button>
-                        {CATEGORY_COLOR_PALETTE.map((swatch) => (
-                            <button
-                                key={swatch}
-                                type="button"
-                                aria-label={`使用颜色 ${swatch}`}
-                                onClick={() => setColor(swatch)}
-                                className={cn(
-                                    'inline-flex h-8 w-8 items-center justify-center rounded-full active:opacity-80',
-                                    color === swatch && 'ring-2 ring-brand ring-offset-2 ring-offset-surface',
-                                )}
-                                style={{ background: swatch }}
-                            >
-                                {color === swatch ? (
-                                    <AppIcon name={UI_ICONS.check} size={14} color="#ffffff" />
-                                ) : null}
-                            </button>
-                        ))}
-                    </div>
-                    {!isFixedColor(color) && color !== THEME_COLOR_TOKEN ? (
-                        <p className="text-[11px] text-danger">颜色值不合法，已回退为跟随主题</p>
-                    ) : null}
+                    <ColorSwatchRow value={color} onChange={setColor} />
                 </section>
 
                 <section className="flex flex-col gap-1.5">

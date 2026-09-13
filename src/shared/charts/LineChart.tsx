@@ -24,12 +24,21 @@ export interface LineChartProps {
     activeIndex?: number | null;
     onActiveIndexChange?: (index: number | null) => void;
     emptyText?: string;
+    /** 线条色调（默认品牌色）：负债走势这类「负向指标」用 danger。 */
+    tone?: 'brand' | 'danger';
     className?: string;
 }
 
 const PADDING_TOP = 22;
 const PADDING_BOTTOM = 20;
 const PADDING_X = 2;
+
+/** 色调 → 各类 SVG 节点的 class（只有这里定义配色）。 */
+const AREA_CLASS = { brand: 'fill-brand/12', danger: 'fill-danger/12' } as const;
+const LINE_CLASS = { brand: 'stroke-brand', danger: 'stroke-danger' } as const;
+const DOT_CLASS = { brand: 'fill-brand', danger: 'fill-danger' } as const;
+const DOT_DIM_CLASS = { brand: 'fill-brand/55', danger: 'fill-danger/55' } as const;
+const BUBBLE_CLASS = { brand: 'bg-brand', danger: 'bg-danger' } as const;
 
 export function LineChart({
     points,
@@ -38,6 +47,7 @@ export function LineChart({
     activeIndex = null,
     onActiveIndexChange,
     emptyText = '暂无数据',
+    tone = 'brand',
     className,
 }: LineChartProps) {
     const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -143,12 +153,12 @@ export function LineChart({
                 />
 
                 {/* 面积 */}
-                <path d={buildAreaPath(geometry, zeroY)} className="fill-brand/12" />
+                <path d={buildAreaPath(geometry, zeroY)} className={AREA_CLASS[tone]} />
                 {/* 折线 */}
                 <path
                     d={buildPolylinePath(geometry)}
                     fill="none"
-                    className="stroke-brand"
+                    className={LINE_CLASS[tone]}
                     strokeWidth={2}
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -160,7 +170,7 @@ export function LineChart({
                         cx={point.x}
                         cy={point.y}
                         r={index === activeIndex ? 3.5 : 1.8}
-                        className={index === activeIndex ? 'fill-brand' : 'fill-brand/55'}
+                        className={index === activeIndex ? DOT_CLASS[tone] : DOT_DIM_CLASS[tone]}
                     />
                 ))}
                 {/* 横轴刻度 */}
@@ -188,7 +198,12 @@ export function LineChart({
                     className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full pb-1.5"
                     style={{ left: activePoint.x, top: activePoint.y }}
                 >
-                    <div className="whitespace-nowrap rounded-sm bg-brand px-2 py-0.5 text-[11px] font-semibold text-white shadow-popover">
+                    <div
+                        className={cn(
+                            'whitespace-nowrap rounded-sm px-2 py-0.5 text-[11px] font-semibold text-white shadow-popover',
+                            BUBBLE_CLASS[tone],
+                        )}
+                    >
                         {formatValue(activeValue)}
                     </div>
                 </div>

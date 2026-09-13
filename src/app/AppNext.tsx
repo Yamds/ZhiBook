@@ -15,6 +15,7 @@ import { GlobalTitleTooltip, InfoBarStack, RouteErrorBoundary, TooltipProvider }
 import { PageTransition } from '../shared/ui/motion';
 import { useGlobalInfoBars } from '../hooks/ui/useGlobalInfoBars';
 import { useHorizontalSwipe } from '../hooks/ui/useHorizontalSwipe';
+import { useCurrentBook } from '../hooks/ledger/useLedgerBooks';
 import { useMotion } from '../hooks/preferences/useMotion';
 import { registerBackButtonHandler } from '../core/platform/androidBridge';
 import { AddPage } from '../modules/add/AddPage';
@@ -36,7 +37,7 @@ import { backActionFor, navigateTo, retapScreen, useNavigation, useRetapHandler 
 import { runPageBackHandler } from './pageBackHandler';
 import { SwipeProvider, neighborOf, type NestedSwipeHandler, type SwipeDirection } from './swipeNavigation';
 
-/** 顶部栏右侧的账本入口：P3 接入真实账本数据前先显示占位名。 */
+/** 顶部栏右侧的账本入口：数据未就绪时先显示占位名（正常一帧内就被真实名替换）。 */
 const ACTIVE_BOOK_PLACEHOLDER = '默认账本';
 
 /**
@@ -75,6 +76,7 @@ export function AppNext() {
     const [exitGateOpen, setExitGateOpen] = useState(false);
     const motion = useMotion();
     const { bars, dismiss, remove } = useGlobalInfoBars();
+    const { currentBook } = useCurrentBook();
 
     const previousScreenRef = useRef<AppScreen>(screen);
     const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -167,7 +169,7 @@ export function AppNext() {
                     <div className={motion.enabled ? 'ndf-shell-enter-titlebar' : ''}>
                         <MobileAppBar
                             title={routeTitle(screen)}
-                            bookName={ACTIVE_BOOK_PLACEHOLDER}
+                            bookName={currentBook?.name ?? ACTIVE_BOOK_PLACEHOLDER}
                             onOpenBook={() => navigateTo('assets')}
                         />
                     </div>
