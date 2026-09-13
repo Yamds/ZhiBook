@@ -10,7 +10,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 import { createStore } from '../hooks/utils/createStore';
-import { HOME_ROUTE, type AppScreen } from './navigation';
+import { HOME_ROUTE, type AppRoute, type AppScreen } from './navigation';
 
 export interface NavigationIntent {
     /** 目标日期（YYYY-MM-DD）：日历 → 添加 / 明细 携带。 */
@@ -58,6 +58,18 @@ export function navigateTo(screen: AppScreen, intent?: NavigationIntent): void {
 /** 回到首页（返回键与页面内跳转共用）。 */
 export function goHome(): void {
     navigateTo(HOME_ROUTE);
+}
+
+/**
+ * 启动时直接落位到某个页签（不产生导航意图、不触发页面过渡）。
+ *
+ * `AppBootGate` 在 UI 偏好就绪后、主壳揭示前调它：偏好存的是字符串，
+ * 合法性已在 `normalizeStartupTab` 里洗过，所以这里只做幂等落位。
+ */
+export function applyStartupScreen(screen: AppRoute): void {
+    const state = navigationStore.getSnapshot();
+    if (state.screen === screen) return;
+    navigationStore.setState({ ...state, screen, intent: null });
 }
 
 /** 重复点击已激活页签：只对当前页生效，带上 retap 意图。 */

@@ -4,7 +4,11 @@
  * 外观偏好(后端为权威存储,前端 localStorage 是镜像;
  * 属性名与前端 AppUiPreferences TS 类型由 serde rename 对齐)
  */
-export type AppUiPreferences = { theme: string, motionEnabled: boolean, motionLevel: string, motionSpeed: number, radiusStyle: string, 
+export type AppUiPreferences = { theme: string, 
+/**
+ * 启动时进入的页签（bills / details / home / add / assets）
+ */
+startupTab: string, motionEnabled: boolean, motionLevel: string, motionSpeed: number, radiusStyle: string, 
 /**
  * InfoBar info tone 自动关闭毫秒,0 = 不自动关
  */

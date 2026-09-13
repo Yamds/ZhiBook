@@ -5,7 +5,9 @@ import './index.css';
 import { StartupSplash } from './StartupSplash';
 import { AppNext } from './AppNext';
 import { hydrateAppUiPreferencesFromDisk } from '../hooks/preferences/useAppUiPreferencesBootstrap';
-import { applySideEffects } from '../hooks/preferences/preferencesStore';
+import { applySideEffects, preferencesStore } from '../hooks/preferences/preferencesStore';
+import { normalizeStartupTab } from '../core/domain/ui/startupTab';
+import { applyStartupScreen } from './navigationStore';
 import { syncRootChromeBackground } from '../core/design/surfaceCanvas';
 import { RouteErrorBoundary } from '../shared/ui/RouteErrorBoundary';
 import { perfMark, perfMeasure } from '../core/domain/performance/perfMarks';
@@ -32,6 +34,13 @@ export const AppBootGate: React.FC = () => {
         if (!prefsReady) return;
         const id = requestAnimationFrame(() => setShellReady(true));
         return () => cancelAnimationFrame(id);
+    }, [prefsReady]);
+
+    // 启动页签：偏好就绪后、主壳揭示前落位（壳此时还在 data-boot-reveal="off" 阶段，
+    // 用户看不到中间的切换）。
+    useEffect(() => {
+        if (!prefsReady) return;
+        applyStartupScreen(normalizeStartupTab(preferencesStore.get().startupTab));
     }, [prefsReady]);
 
     const handleReveal = useCallback(() => {

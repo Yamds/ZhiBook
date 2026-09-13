@@ -271,8 +271,8 @@ samp,
         radial-gradient(75% 55% at 50% 108%, color-mix(in srgb, var(--brand-500) 4%, transparent), transparent 65%);
 }
 
-/* Catppuccin 规范：纯色平面背景，禁用角落柔光渐变。 */
-:root:is([data-theme="latte"], [data-theme="frappe"], [data-theme="macchiato"], [data-theme="mocha"]) .ndf-canvas-glow {
+/* 纯色平面主题（Catppuccin / Everforest / Nord）：禁用角落柔光渐变。 */
+:root[data-theme-flat="true"] .ndf-canvas-glow {
     background: none;
 }
 
@@ -359,6 +359,8 @@ samp,
     border-radius: 9999px;
     border: 1px dashed color-mix(in srgb, var(--brand-400) 42%, transparent);
     pointer-events: none;
+    /* 整圈靠 transform 旋转：不提升图层的话，虚线圆环 + 光点每帧都要重画（实测掉帧）。 */
+    will-change: transform;
 }
 
 .ndf-splash-orbit-ring--solid {
@@ -373,34 +375,39 @@ samp,
     height: 6px;
     margin-left: -3px;
     border-radius: 9999px;
-    background: var(--brand-400);
-    box-shadow: 0 0 10px var(--brand-400), 0 0 2px var(--neutral-0);
+    background: radial-gradient(circle, var(--brand-300) 0%, var(--brand-400) 45%, transparent 72%);
+    box-shadow: 0 0 2px var(--neutral-0);
 }
 
 .ndf-splash-orbit-dot--accent {
-    background: var(--accent-400);
-    box-shadow: 0 0 10px var(--accent-400), 0 0 2px var(--neutral-0);
+    background: radial-gradient(circle, var(--accent-300) 0%, var(--accent-400) 45%, transparent 72%);
+    box-shadow: 0 0 2px var(--neutral-0);
 }
 
-/* 火种：立绘诞生前中心那一粒光 */
+/* 火种：立绘诞生前中心那一粒光。
+   光晕用径向渐变而不是 box-shadow：box-shadow 的模糊半径是元素尺寸的好几倍，
+   而它会被 scale 到 4.5 倍 —— 每帧重新栅格化大模糊就是「散发粒子」卡顿的元凶。 */
 .ndf-splash-spark {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 12px;
-    height: 12px;
-    margin: -6px;
+    width: 64px;
+    height: 64px;
+    margin: -32px;
     border-radius: 9999px;
-    background: radial-gradient(circle, var(--neutral-0) 0%, var(--brand-300) 45%, transparent 72%);
-    box-shadow:
-        0 0 18px var(--brand-400),
-        0 0 48px color-mix(in srgb, var(--brand-400) 60%, transparent),
-        0 0 90px color-mix(in srgb, var(--accent-400) 35%, transparent);
+    background: radial-gradient(circle,
+            var(--neutral-0) 0%,
+            color-mix(in srgb, var(--brand-300) 92%, transparent) 16%,
+            color-mix(in srgb, var(--brand-400) 52%, transparent) 34%,
+            color-mix(in srgb, var(--accent-400) 22%, transparent) 52%,
+            transparent 72%);
     pointer-events: none;
+    will-change: transform, opacity;
 }
 
-/* 极光底色：三团大模糊色斑缓慢游走，只动 transform，独占合成层。
-   Catppuccin 主题按规范保持纯色画布，直接关掉。 */
+/* 极光底色：三团大色斑缓慢游走，只动 transform，独占合成层。
+   不再用 filter: blur(64px) —— 渐变本身就是软的，加一层大模糊只是白白加重栅格化；
+   纯色平面主题按规范保持纯色画布，直接关掉。 */
 @keyframes splash-aurora-a {
 
     0%,
@@ -449,8 +456,17 @@ samp,
     position: absolute;
     border-radius: 9999px;
     pointer-events: none;
-    filter: blur(64px);
-    will-change: transform;
+    will-change: transform, opacity;
+}
+
+/* 立绘身后的品牌光晕：同样用径向渐变，不用 filter: blur（缩放时不再重栅格化）。 */
+.ndf-splash-brand-pulse {
+    background: radial-gradient(circle,
+            color-mix(in srgb, var(--brand-400) 20%, transparent) 0%,
+            color-mix(in srgb, var(--brand-400) 10%, transparent) 34%,
+            color-mix(in srgb, var(--accent-400) 5%, transparent) 52%,
+            transparent 70%);
+    will-change: transform, opacity;
 }
 
 .ndf-splash-aurora--a {
@@ -504,7 +520,7 @@ samp,
     }
 }
 
-:root:is([data-theme="latte"], [data-theme="frappe"], [data-theme="macchiato"], [data-theme="mocha"]) .ndf-splash-aurora {
+:root[data-theme-flat="true"] .ndf-splash-aurora {
     display: none;
 }
 
@@ -534,14 +550,21 @@ samp,
     position: absolute;
     border-radius: 9999px;
     pointer-events: none;
-    background: color-mix(in srgb, var(--brand-400) 75%, transparent);
-    box-shadow: 0 0 12px color-mix(in srgb, var(--brand-400) 55%, transparent);
+    /* 柔光核心用径向渐变（不是 box-shadow）：
+       粒子只有 2~6px，而 box-shadow 的模糊半径是它的 4~12 倍，
+       scale（散发 / 收回）时会反复重栅格化这块模糊 —— 掉帧就在这里。 */
+    background: radial-gradient(circle,
+            color-mix(in srgb, var(--brand-300) 95%, transparent) 0%,
+            color-mix(in srgb, var(--brand-400) 55%, transparent) 42%,
+            transparent 74%);
     will-change: transform, opacity;
 }
 
 .ndf-splash-particle--accent {
-    background: color-mix(in srgb, var(--accent-400) 75%, transparent);
-    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-400) 55%, transparent);
+    background: radial-gradient(circle,
+            color-mix(in srgb, var(--accent-300) 95%, transparent) 0%,
+            color-mix(in srgb, var(--accent-400) 55%, transparent) 42%,
+            transparent 74%);
 }
 
 .ndf-splash-bar-shine {

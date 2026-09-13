@@ -1,5 +1,5 @@
-// 设置页：页签结构完整保留 —— 「外观」（主题 / 圆角 / 动效）与「关于」（只读版本信息），
-// 以后新增「数据」等分类时只往 SETTINGS_TABS 里加一条，页面逻辑不用改。
+// 设置页：页签结构完整保留 —— 「外观」（主题 / 圆角 / 动效）、「行为」（启动页签）与
+// 「关于」（只读版本信息），以后新增「数据」等分类时只往 SETTINGS_TABS 里加一条。
 //
 // 入口：日历页再次点击底部「日历」页签（该槽位随后显示为「设置」）。
 // 返回：点「设置」页签或按返回键都回日历页。
@@ -11,10 +11,12 @@ import { neighborOf, useNestedSwipe } from '../../app/swipeNavigation';
 import { draftFromBackendAndPrefs } from './settings-draft';
 import { AboutTab } from './tabs/AboutTab';
 import { AppearanceTab } from './tabs/AppearanceTab';
+import { BehaviourTab } from './tabs/BehaviourTab';
 
 /** 设置页签注册表：顺序即横滑顺序。 */
 const SETTINGS_TABS = [
     { value: 'appearance', label: '外观' },
+    { value: 'behaviour', label: '行为' },
     { value: 'about', label: '关于' },
 ] as const;
 
@@ -48,6 +50,9 @@ export function SettingsPage() {
                 <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-0.5 pr-2">
                     <TabsContent value="appearance" className="pb-10 pt-7 focus-visible:outline-none">
                         <AppearanceTab draft={draft} patchDraft={patch} />
+                    </TabsContent>
+                    <TabsContent value="behaviour" className="pb-10 pt-7 focus-visible:outline-none">
+                        <BehaviourTab draft={draft} patchDraft={patch} />
                     </TabsContent>
                     <TabsContent value="about" className="pb-10 pt-7 focus-visible:outline-none">
                         <AboutTab />

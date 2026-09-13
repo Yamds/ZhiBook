@@ -1,4 +1,9 @@
 // 与 tokens --surface-canvas 对齐，供首屏 / WebView 底色同步（避免暗色主题闪白）。
+//
+// 主题 → 画布色的映射不在本文件里枚举：一律查 `themes.ts` 的注册表，
+// 新加主题不需要回来改这里（历史上这里漏掉过新主题，会闪一帧白底）。
+
+import { findTheme } from './themes';
 
 const CANVAS_FALLBACK_LIGHT = '#faf7f2';
 const CANVAS_FALLBACK_DARK = '#211f1d';
@@ -37,18 +42,17 @@ export function isDarkSurfaceCanvas(): boolean {
     return lum < 0.45;
 }
 
+/**
+ * 启动瞬间的底色兜底：首屏还没有 `--surface-canvas`（CSS 未生效 / 主题属性刚写入）时用，
+ * 避免暗色主题闪一帧白底。
+ *
+ * 显式主题走注册表里的真实画布色（含 Everforest / Nord）；`auto`（无属性）跟随系统。
+ */
 export function surfaceCanvasFallbackForBoot(): string {
     if (typeof window === 'undefined') return CANVAS_FALLBACK_LIGHT;
     const theme = document.documentElement.getAttribute('data-theme');
-    if (theme === 'light' || theme === 'latte') return CANVAS_FALLBACK_LIGHT;
-    if (
-        theme === 'dark' ||
-        theme === 'frappe' ||
-        theme === 'macchiato' ||
-        theme === 'mocha'
-    ) {
-        return theme === 'mocha' ? '#1e1e2e' : CANVAS_FALLBACK_DARK;
-    }
+    const definition = findTheme(theme);
+    if (definition) return definition.preview.canvas;
     return window.matchMedia('(prefers-color-scheme: dark)').matches
         ? CANVAS_FALLBACK_DARK
         : CANVAS_FALLBACK_LIGHT;

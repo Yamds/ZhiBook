@@ -19,6 +19,22 @@ fn default_ui_theme() -> String {
     "auto".to_string()
 }
 
+fn default_ui_startup_tab() -> String {
+    "home".to_string()
+}
+
+/// 启动页签白名单，与前端 `src/core/domain/ui/startupTab.ts` 一一对应。
+pub const STARTUP_TABS: [&str; 5] = ["bills", "details", "home", "add", "assets"];
+
+/// 非法启动页签一律落回首页（日历），别让脏配置把 App 卡在空白页。
+pub fn normalize_startup_tab(raw: &str) -> String {
+    if STARTUP_TABS.contains(&raw) {
+        raw.to_string()
+    } else {
+        default_ui_startup_tab()
+    }
+}
+
 fn default_ui_motion_level() -> String {
     "standard".to_string()
 }
@@ -60,6 +76,9 @@ pub fn clamp_infobar_dismiss_ms(raw: u64) -> u64 {
 pub struct AppUiPreferences {
     #[serde(rename = "theme", default = "default_ui_theme")]
     pub theme: String,
+    /// 启动时进入的页签（bills / details / home / add / assets）
+    #[serde(rename = "startupTab", default = "default_ui_startup_tab")]
+    pub startup_tab: String,
     #[serde(rename = "motionEnabled", default = "default_true")]
     pub motion_enabled: bool,
     #[serde(rename = "motionLevel", default = "default_ui_motion_level")]
@@ -95,6 +114,7 @@ impl Default for AppUiPreferences {
     fn default() -> Self {
         Self {
             theme: default_ui_theme(),
+            startup_tab: default_ui_startup_tab(),
             motion_enabled: true,
             motion_level: default_ui_motion_level(),
             motion_speed: default_ui_motion_speed(),
@@ -120,6 +140,7 @@ impl AppSettings {
     /// 任何设置字段进来都过一遍,保证落盘值一定合法。
     pub fn normalize(&mut self) {
         let ui = &mut self.ui_preferences;
+        ui.startup_tab = normalize_startup_tab(&ui.startup_tab);
         ui.info_bar_dismiss_info_ms = clamp_infobar_dismiss_ms(ui.info_bar_dismiss_info_ms);
         ui.info_bar_dismiss_success_ms = clamp_infobar_dismiss_ms(ui.info_bar_dismiss_success_ms);
         ui.info_bar_dismiss_warning_ms = clamp_infobar_dismiss_ms(ui.info_bar_dismiss_warning_ms);
@@ -187,6 +208,29 @@ mod tests {
         let json = serde_json::to_string(&parsed).expect("serialize 不应失败");
         assert!(!json.contains("closeAction"));
         assert!(!json.contains("allowPinchZoom"));
+    }
+
+    #[test]
+    fn startup_tab_defaults_to_home_and_rejects_unknown_values() {
+        // 缺字段时落到 home
+        let parsed: AppSettings = serde_json::from_str("{\"uiPreferences\":{}}").expect("应能读取");
+        assert_eq!(parsed.ui_preferences.startup_tab, "home");
+
+        // 合法值保留，非法值（含设置页本身）落回 home
+        assert_eq!(normalize_startup_tab("add"), "add");
+        assert_eq!(normalize_startup_tab("settings"), "home");
+        assert_eq!(normalize_startup_tab(""), "home");
+        assert_eq!(normalize_startup_tab("HOME"), "home");
+
+        // normalize() 写盘前会洗掉脏值
+        let mut cfg = AppSettings {
+            ui_preferences: AppUiPreferences {
+                startup_tab: "settings".to_string(),
+                ..AppUiPreferences::default()
+            },
+        };
+        cfg.normalize();
+        assert_eq!(cfg.ui_preferences.startup_tab, "home");
     }
 
     #[test]

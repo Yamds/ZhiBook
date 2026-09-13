@@ -9,7 +9,9 @@ import type { RadiusStyle } from '../../core/design/radius';
 import { playThemeTransition } from '../../core/design/themeTransition';
 import type { AppSettings } from '../../core/ipc/types';
 import { clientPrefsFromBackend, settingsWithPreferences } from '../../core/services/settings.service';
-import { preferencesStore, type AppPreferences, type ThemeMode } from '../../hooks/preferences/preferencesStore';
+import { preferencesStore, type AppPreferences } from '../../hooks/preferences/preferencesStore';
+import type { ThemeMode } from '../../core/design/themes';
+import type { StartupTab } from '../../core/domain/ui/startupTab';
 
 /** 设置页草稿 = 客户端外观偏好（后端 uiPreferences 的镜像）。 */
 export type SettingsDraft = AppPreferences;
@@ -29,6 +31,7 @@ export async function applyClientPrefsFromDraft(draft: SettingsDraft): Promise<v
     const commit = () => {
         preferencesStore.applySnapshot({
             theme: draft.theme,
+            startupTab: draft.startupTab,
             motionEnabled: draft.motionEnabled,
             motionLevel: draft.motionLevel,
             motionSpeed: draft.motionSpeed,
@@ -59,4 +62,4 @@ export async function applyClientPrefsFromDraft(draft: SettingsDraft): Promise<v
     });
 }
 
-export type { MotionLevel, RadiusStyle, ThemeMode };
+export type { MotionLevel, RadiusStyle, ThemeMode, StartupTab };

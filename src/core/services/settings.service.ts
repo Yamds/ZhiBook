@@ -6,14 +6,17 @@
 import { invoke, isTauri } from '../ipc/transport';
 import type { AppSettings } from '../ipc/types';
 import type { AppUiPreferences } from '../ipc/generated/domain/AppUiPreferences';
-import type { AppPreferences, ThemeMode } from '../../hooks/preferences/preferencesStore';
+import type { AppPreferences } from '../../hooks/preferences/preferencesStore';
 import { MOTION_SPEED_DEFAULT, MOTION_SPEED_MAX, MOTION_SPEED_MIN, type MotionLevel } from '../design/motion';
 import { normalizeRadiusStyle } from '../design/radius';
+import { normalizeThemeValue } from '../design/themes';
+import { DEFAULT_STARTUP_TAB, normalizeStartupTab } from '../domain/ui/startupTab';
 
 export type BackendSettings = AppSettings;
 
 export const DEFAULT_UI_PREFERENCES: AppUiPreferences = {
     theme: 'auto',
+    startupTab: DEFAULT_STARTUP_TAB,
     motionEnabled: true,
     motionLevel: 'standard',
     motionSpeed: MOTION_SPEED_DEFAULT,
@@ -27,16 +30,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     uiPreferences: DEFAULT_UI_PREFERENCES,
 };
 
-const VALID_THEMES: ReadonlySet<ThemeMode> = new Set<ThemeMode>([
-    'auto', 'light', 'dark', 'latte', 'frappe', 'macchiato', 'mocha',
-]);
-
-function normalizeTheme(value: unknown): ThemeMode {
-    return typeof value === 'string' && VALID_THEMES.has(value as ThemeMode)
-        ? value as ThemeMode
-        : 'auto';
-}
-
 function normalizeMotionLevel(value: unknown): MotionLevel {
     return value === 'elegant' || value === 'rich' ? value : 'standard';
 }
@@ -49,7 +42,8 @@ function normalizeMotionSpeed(value: unknown): number {
 export function clientPrefsFromBackend(settings: AppSettings): AppPreferences {
     const ui = settings.uiPreferences ?? DEFAULT_UI_PREFERENCES;
     return {
-        theme: normalizeTheme(ui.theme),
+        theme: normalizeThemeValue(ui.theme),
+        startupTab: normalizeStartupTab(ui.startupTab),
         motionEnabled: ui.motionEnabled !== false,
         motionLevel: normalizeMotionLevel(ui.motionLevel),
         motionSpeed: normalizeMotionSpeed(ui.motionSpeed),
@@ -75,6 +69,7 @@ export function settingsWithPreferences(settings: AppSettings, prefs: AppPrefere
         uiPreferences: {
             ...(settings.uiPreferences ?? DEFAULT_UI_PREFERENCES),
             theme: prefs.theme,
+            startupTab: prefs.startupTab,
             motionEnabled: prefs.motionEnabled,
             motionLevel: prefs.motionLevel,
             motionSpeed: prefs.motionSpeed,

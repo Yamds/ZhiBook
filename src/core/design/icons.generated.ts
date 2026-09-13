@@ -10,6 +10,7 @@ export type IconName =
     | 'mdi:account-heart-outline'
     | 'mdi:account-injury-outline'
     | 'mdi:account-multiple-outline'
+    | 'mdi:account-payment-outline'
     | 'mdi:account-supervisor-outline'
     | 'mdi:airplane'
     | 'mdi:alarm'
@@ -24,7 +25,9 @@ export type IconName =
     | 'mdi:bag-suitcase-outline'
     | 'mdi:balloon'
     | 'mdi:bandage'
+    | 'mdi:bank'
     | 'mdi:bank-outline'
+    | 'mdi:bank-transfer'
     | 'mdi:barcode'
     | 'mdi:basket-outline'
     | 'mdi:basketball'
@@ -65,8 +68,10 @@ export type IconName =
     | 'mdi:cart-outline'
     | 'mdi:cart-variant'
     | 'mdi:cash'
+    | 'mdi:cash-fast'
     | 'mdi:cash-multiple'
     | 'mdi:cash-refund'
+    | 'mdi:cash-register'
     | 'mdi:cat'
     | 'mdi:cellphone'
     | 'mdi:certificate-outline'
@@ -91,13 +96,22 @@ export type IconName =
     | 'mdi:close'
     | 'mdi:coffee'
     | 'mdi:cog-outline'
+    | 'mdi:coins-outline'
     | 'mdi:compass-outline'
+    | 'mdi:contactless-payment'
     | 'mdi:content-copy'
     | 'mdi:controller-classic-outline'
     | 'mdi:cookie'
     | 'mdi:corn'
     | 'mdi:creation'
+    | 'mdi:credit-card'
+    | 'mdi:credit-card-chip-outline'
+    | 'mdi:credit-card-clock-outline'
+    | 'mdi:credit-card-multiple-outline'
     | 'mdi:credit-card-outline'
+    | 'mdi:credit-card-plus-outline'
+    | 'mdi:credit-card-scan-outline'
+    | 'mdi:credit-card-wireless-outline'
     | 'mdi:crown-outline'
     | 'mdi:cup'
     | 'mdi:cupcake'
@@ -218,6 +232,7 @@ export type IconName =
     | 'mdi:passport'
     | 'mdi:paw'
     | 'mdi:paw-outline'
+    | 'mdi:payment'
     | 'mdi:pen'
     | 'mdi:pencil-outline'
     | 'mdi:percent-outline'
@@ -239,6 +254,7 @@ export type IconName =
     | 'mdi:projector'
     | 'mdi:puzzle-outline'
     | 'mdi:qrcode'
+    | 'mdi:qrcode-scan'
     | 'mdi:rabbit'
     | 'mdi:receipt-text-outline'
     | 'mdi:rectangle-outline'
@@ -317,7 +333,10 @@ export type IconName =
     | 'mdi:virtual-reality'
     | 'mdi:volleyball'
     | 'mdi:walk'
+    | 'mdi:wallet'
+    | 'mdi:wallet-giftcard'
     | 'mdi:wallet-outline'
+    | 'mdi:wallet-travel'
     | 'mdi:washing-machine'
     | 'mdi:watch'
     | 'mdi:watch-variant'
@@ -325,6 +344,7 @@ export type IconName =
     | 'mdi:water-outline'
     | 'mdi:weather-night'
     | 'mdi:weather-sunny'
+    | 'mdi:wechat'
     | 'mdi:weight-lifter'
     | 'mdi:wheelchair-accessibility'
     | 'mdi:whiteboard'
@@ -338,6 +358,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:account-heart-outline',
     'mdi:account-injury-outline',
     'mdi:account-multiple-outline',
+    'mdi:account-payment-outline',
     'mdi:account-supervisor-outline',
     'mdi:airplane',
     'mdi:alarm',
@@ -352,7 +373,9 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:bag-suitcase-outline',
     'mdi:balloon',
     'mdi:bandage',
+    'mdi:bank',
     'mdi:bank-outline',
+    'mdi:bank-transfer',
     'mdi:barcode',
     'mdi:basket-outline',
     'mdi:basketball',
@@ -393,8 +416,10 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:cart-outline',
     'mdi:cart-variant',
     'mdi:cash',
+    'mdi:cash-fast',
     'mdi:cash-multiple',
     'mdi:cash-refund',
+    'mdi:cash-register',
     'mdi:cat',
     'mdi:cellphone',
     'mdi:certificate-outline',
@@ -419,13 +444,22 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:close',
     'mdi:coffee',
     'mdi:cog-outline',
+    'mdi:coins-outline',
     'mdi:compass-outline',
+    'mdi:contactless-payment',
     'mdi:content-copy',
     'mdi:controller-classic-outline',
     'mdi:cookie',
     'mdi:corn',
     'mdi:creation',
+    'mdi:credit-card',
+    'mdi:credit-card-chip-outline',
+    'mdi:credit-card-clock-outline',
+    'mdi:credit-card-multiple-outline',
     'mdi:credit-card-outline',
+    'mdi:credit-card-plus-outline',
+    'mdi:credit-card-scan-outline',
+    'mdi:credit-card-wireless-outline',
     'mdi:crown-outline',
     'mdi:cup',
     'mdi:cupcake',
@@ -546,6 +580,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:passport',
     'mdi:paw',
     'mdi:paw-outline',
+    'mdi:payment',
     'mdi:pen',
     'mdi:pencil-outline',
     'mdi:percent-outline',
@@ -567,6 +602,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:projector',
     'mdi:puzzle-outline',
     'mdi:qrcode',
+    'mdi:qrcode-scan',
     'mdi:rabbit',
     'mdi:receipt-text-outline',
     'mdi:rectangle-outline',
@@ -645,7 +681,10 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:virtual-reality',
     'mdi:volleyball',
     'mdi:walk',
+    'mdi:wallet',
+    'mdi:wallet-giftcard',
     'mdi:wallet-outline',
+    'mdi:wallet-travel',
     'mdi:washing-machine',
     'mdi:watch',
     'mdi:watch-variant',
@@ -653,6 +692,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:water-outline',
     'mdi:weather-night',
     'mdi:weather-sunny',
+    'mdi:wechat',
     'mdi:weight-lifter',
     'mdi:wheelchair-accessibility',
     'mdi:whiteboard',
@@ -713,6 +753,7 @@ export const UI_ICONS = {
 
 /** 选择器分组顺序。 */
 export const ICON_GROUPS: readonly string[] = [
+    "支付与账户",
     "餐饮",
     "购物",
     "日用",
@@ -734,6 +775,41 @@ export const ICON_GROUPS: readonly string[] = [
 
 /** 选择器候选图标。 */
 export const ICON_CATALOG: readonly IconCatalogEntry[] = [
+    { name: "mdi:bank", group: "支付与账户", aliases: ["银行"] },
+    { name: "mdi:bank-outline", group: "支付与账户", aliases: ["银行","储蓄卡"] },
+    { name: "mdi:bank-transfer", group: "支付与账户", aliases: ["转账","汇款"] },
+    { name: "mdi:credit-card", group: "支付与账户", aliases: ["银行卡","信用卡"] },
+    { name: "mdi:credit-card-outline", group: "支付与账户", aliases: ["银行卡","信用卡"] },
+    { name: "mdi:credit-card-chip-outline", group: "支付与账户", aliases: ["芯片卡","储蓄卡"] },
+    { name: "mdi:credit-card-multiple-outline", group: "支付与账户", aliases: ["多张卡","卡包"] },
+    { name: "mdi:credit-card-wireless-outline", group: "支付与账户", aliases: ["闪付","云闪付"] },
+    { name: "mdi:credit-card-scan-outline", group: "支付与账户", aliases: ["刷卡机","POS"] },
+    { name: "mdi:credit-card-plus-outline", group: "支付与账户", aliases: [] },
+    { name: "mdi:credit-card-clock-outline", group: "支付与账户", aliases: [] },
+    { name: "mdi:wallet", group: "支付与账户", aliases: ["钱包"] },
+    { name: "mdi:wallet-outline", group: "支付与账户", aliases: ["钱包","零钱","余额"] },
+    { name: "mdi:wallet-giftcard", group: "支付与账户", aliases: ["储值卡","礼品卡"] },
+    { name: "mdi:wallet-travel", group: "支付与账户", aliases: ["交通卡","旅行金"] },
+    { name: "mdi:cash", group: "支付与账户", aliases: ["现金"] },
+    { name: "mdi:cash-multiple", group: "支付与账户", aliases: ["现金","备用金"] },
+    { name: "mdi:cash-fast", group: "支付与账户", aliases: ["快钱","零钱"] },
+    { name: "mdi:cash-register", group: "支付与账户", aliases: ["收银","收款"] },
+    { name: "mdi:coins-outline", group: "支付与账户", aliases: ["硬币","零钱"] },
+    { name: "mdi:piggy-bank-outline", group: "支付与账户", aliases: ["存钱罐","储蓄"] },
+    { name: "mdi:safe-square-outline", group: "支付与账户", aliases: ["保险箱","存款"] },
+    { name: "mdi:qrcode-scan", group: "支付与账户", aliases: ["支付宝","扫码支付","二维码","收款码"] },
+    { name: "mdi:contactless-payment", group: "支付与账户", aliases: ["闪付","NFC","云闪付"] },
+    { name: "mdi:account-payment-outline", group: "支付与账户", aliases: ["支付","付款","网银"] },
+    { name: "mdi:payment", group: "支付与账户", aliases: ["支付","付款"] },
+    { name: "mdi:cellphone", group: "支付与账户", aliases: ["手机","手机银行"] },
+    { name: "mdi:wechat", group: "支付与账户", aliases: ["微信","微信支付"] },
+    { name: "mdi:currency-cny", group: "支付与账户", aliases: ["人民币","钱"] },
+    { name: "mdi:hand-coin-outline", group: "支付与账户", aliases: ["借出","外借"] },
+    { name: "mdi:cash-refund", group: "支付与账户", aliases: ["还款","退款"] },
+    { name: "mdi:receipt-text-outline", group: "支付与账户", aliases: ["账单","票据"] },
+    { name: "mdi:percent-outline", group: "支付与账户", aliases: ["利率","手续费"] },
+    { name: "mdi:chart-line", group: "支付与账户", aliases: ["收益","理财"] },
+    { name: "mdi:storefront-outline", group: "支付与账户", aliases: ["商户","店铺"] },
     { name: "mdi:noodles", group: "餐饮", aliases: ["面","饭"] },
     { name: "mdi:rice", group: "餐饮", aliases: [] },
     { name: "mdi:food-apple", group: "餐饮", aliases: [] },
@@ -771,15 +847,9 @@ export const ICON_CATALOG: readonly IconCatalogEntry[] = [
     { name: "mdi:tag-outline", group: "购物", aliases: [] },
     { name: "mdi:tag-heart-outline", group: "购物", aliases: [] },
     { name: "mdi:sale-outline", group: "购物", aliases: [] },
-    { name: "mdi:storefront-outline", group: "购物", aliases: [] },
     { name: "mdi:gift-outline", group: "购物", aliases: ["礼物"] },
     { name: "mdi:gift-open-outline", group: "购物", aliases: [] },
     { name: "mdi:package-variant-closed", group: "购物", aliases: [] },
-    { name: "mdi:credit-card-outline", group: "购物", aliases: [] },
-    { name: "mdi:cash", group: "购物", aliases: [] },
-    { name: "mdi:cash-multiple", group: "购物", aliases: [] },
-    { name: "mdi:wallet-outline", group: "购物", aliases: [] },
-    { name: "mdi:piggy-bank-outline", group: "购物", aliases: [] },
     { name: "mdi:barcode", group: "购物", aliases: [] },
     { name: "mdi:qrcode", group: "购物", aliases: [] },
     { name: "mdi:paper-roll-outline", group: "日用", aliases: ["纸巾","卫生纸"] },
@@ -900,7 +970,6 @@ export const ICON_CATALOG: readonly IconCatalogEntry[] = [
     { name: "mdi:projector", group: "办公", aliases: [] },
     { name: "mdi:monitor-share", group: "办公", aliases: [] },
     { name: "mdi:laptop", group: "数码", aliases: ["电脑"] },
-    { name: "mdi:cellphone", group: "数码", aliases: ["手机"] },
     { name: "mdi:tablet", group: "数码", aliases: [] },
     { name: "mdi:watch-variant", group: "数码", aliases: [] },
     { name: "mdi:camera-outline", group: "数码", aliases: [] },
@@ -927,20 +996,12 @@ export const ICON_CATALOG: readonly IconCatalogEntry[] = [
     { name: "mdi:account-supervisor-outline", group: "人情", aliases: [] },
     { name: "mdi:phone-classic", group: "人情", aliases: [] },
     { name: "mdi:finance", group: "金融", aliases: ["理财","基金"] },
-    { name: "mdi:chart-line", group: "金融", aliases: [] },
     { name: "mdi:chart-donut", group: "金融", aliases: [] },
     { name: "mdi:chart-pie", group: "金融", aliases: [] },
     { name: "mdi:trending-up", group: "金融", aliases: [] },
     { name: "mdi:trending-down", group: "金融", aliases: [] },
-    { name: "mdi:bank-outline", group: "金融", aliases: ["银行"] },
-    { name: "mdi:cash-refund", group: "金融", aliases: [] },
-    { name: "mdi:hand-coin-outline", group: "金融", aliases: [] },
     { name: "mdi:hand-coin", group: "金融", aliases: [] },
-    { name: "mdi:percent-outline", group: "金融", aliases: [] },
-    { name: "mdi:currency-cny", group: "金融", aliases: ["人民币","钱"] },
     { name: "mdi:currency-usd", group: "金融", aliases: [] },
-    { name: "mdi:receipt-text-outline", group: "金融", aliases: [] },
-    { name: "mdi:safe-square-outline", group: "金融", aliases: [] },
     { name: "mdi:chart-box-outline", group: "金融", aliases: [] },
     { name: "mdi:home-currency-usd", group: "金融", aliases: [] },
     { name: "mdi:paw", group: "宠物", aliases: ["宠物","猫狗"] },

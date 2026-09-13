@@ -741,3 +741,465 @@
    --qr-foreground: #181825;
    --qr-background: #313244;
 }
+
+/* ── Everforest Dark · Hard（sainnhe/everforest）─────────────────────────────── */
+:root[data-theme="everforest-dark-hard"] {
+   /* 调色板：官方取值（bg* = 背景层级，其余为强调色） */
+   --ev-bg0: #272e33;
+   --ev-bg1: #2e383c;
+   --ev-bg2: #374145;
+   --ev-bg3: #414b50;
+   --ev-fg: #d3c6aa;
+   --ev-grey: #859289;
+   --ev-red: #e67e80;
+   --ev-yellow: #dbbc7f;
+   --ev-green: #a7c080;
+   --ev-aqua: #83c092;
+   --ev-blue: #7fbbb3;
+   --ev-purple: #d699b6;
+
+   /* surface */
+   --surface-canvas: var(--ev-bg0);
+   --surface-card: var(--ev-bg1);
+   --surface-elevated: var(--ev-bg2);
+   --surface-inset: var(--ev-bg2);
+   --surface-muted: var(--ev-bg3);
+   --surface-field: var(--ev-bg2);
+   --surface-sidebar: var(--ev-bg1);
+   --surface-hero: color-mix(in srgb, var(--ev-bg1) 72%, var(--ev-bg3));
+
+   /* text */
+   --text-primary: var(--ev-fg);
+   --text-secondary: color-mix(in srgb, var(--ev-fg) 84%, var(--ev-bg0));
+   --text-tertiary: var(--ev-grey);
+   --text-disabled: color-mix(in srgb, var(--ev-grey) 62%, var(--ev-bg0));
+   --text-on-brand: var(--ev-bg0);
+   --text-on-accent: var(--ev-bg0);
+   --text-hero-title: var(--ev-aqua);
+   --text-hero-accent: var(--ev-purple);
+
+   /* border */
+   --border-subtle: rgba(211, 198, 170, 0.07);
+   --border-default: rgba(211, 198, 170, 0.13);
+   --border-strong: rgba(211, 198, 170, 0.24);
+
+   /* brand → aqua */
+   --brand-50: color-mix(in srgb, var(--ev-aqua) 12%, var(--ev-bg1));
+   --brand-100: color-mix(in srgb, var(--ev-aqua) 22%, var(--ev-bg1));
+   --brand-200: color-mix(in srgb, var(--ev-aqua) 38%, var(--ev-bg1));
+   --brand-300: color-mix(in srgb, var(--ev-aqua) 60%, var(--ev-bg1));
+   --brand-400: color-mix(in srgb, var(--ev-aqua) 82%, var(--ev-bg1));
+   --brand-500: var(--ev-aqua);
+   --brand-600: color-mix(in srgb, var(--ev-aqua) 80%, var(--ev-fg));
+   --brand-700: color-mix(in srgb, var(--ev-aqua) 62%, var(--ev-fg));
+
+   /* accent → purple */
+   --accent-50: color-mix(in srgb, var(--ev-purple) 12%, var(--ev-bg1));
+   --accent-100: color-mix(in srgb, var(--ev-purple) 22%, var(--ev-bg1));
+   --accent-200: color-mix(in srgb, var(--ev-purple) 38%, var(--ev-bg1));
+   --accent-300: color-mix(in srgb, var(--ev-purple) 60%, var(--ev-bg1));
+   --accent-400: color-mix(in srgb, var(--ev-purple) 82%, var(--ev-bg1));
+   --accent-500: var(--ev-purple);
+   --accent-600: color-mix(in srgb, var(--ev-purple) 80%, var(--ev-fg));
+   --accent-700: color-mix(in srgb, var(--ev-purple) 62%, var(--ev-fg));
+
+   --action-primary: var(--brand-500);
+   --action-primary-hover: var(--brand-600);
+   --action-primary-active: var(--brand-700);
+   --action-secondary: var(--accent-500);
+   --action-secondary-hover: var(--accent-600);
+   --border-focus: var(--brand-500);
+   --brand-soft: var(--brand-100);
+   --brand-tint: var(--brand-50);
+   --accent-soft: var(--accent-100);
+   --accent-tint: var(--accent-50);
+
+   /* state */
+   --state-success: var(--ev-green);
+   --state-success-bg: color-mix(in srgb, var(--ev-green) 14%, transparent);
+   --state-warning: var(--ev-yellow);
+   --state-warning-bg: color-mix(in srgb, var(--ev-yellow) 14%, transparent);
+   --state-danger: var(--ev-red);
+   --state-danger-bg: color-mix(in srgb, var(--ev-red) 14%, transparent);
+   --state-info: var(--ev-blue);
+   --state-info-bg: color-mix(in srgb, var(--ev-blue) 14%, transparent);
+
+   /* shadow */
+   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(211, 198, 170, 0.05);
+   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(211, 198, 170, 0.07);
+   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(211, 198, 170, 0.09);
+   --shadow-glow-success: 0 0 12px color-mix(in srgb, var(--state-success) 25%, transparent);
+   --shadow-glow-brand: 0 0 16px color-mix(in srgb, var(--brand-500) 20%, transparent);
+
+   /* scrollbar */
+   --scrollbar-thumb-rest: rgba(211, 198, 170, 0.12);
+   --scrollbar-thumb-hover: rgba(211, 198, 170, 0.24);
+   --scrollbar-thumb-active: rgba(211, 198, 170, 0.36);
+
+   --qr-foreground: var(--ev-bg0);
+   --qr-background: var(--ev-bg2);
+}
+
+/* ── Everforest Dark · Soft ─────────────────────────────────────────────────── */
+:root[data-theme="everforest-dark-soft"] {
+   --ev-bg0: #333c43;
+   --ev-bg1: #3a464c;
+   --ev-bg2: #434f55;
+   --ev-bg3: #4d5960;
+   --ev-fg: #d3c6aa;
+   --ev-grey: #859289;
+   --ev-red: #e67e80;
+   --ev-yellow: #dbbc7f;
+   --ev-green: #a7c080;
+   --ev-aqua: #83c092;
+   --ev-blue: #7fbbb3;
+   --ev-purple: #d699b6;
+
+   --surface-canvas: var(--ev-bg0);
+   --surface-card: var(--ev-bg1);
+   --surface-elevated: var(--ev-bg2);
+   --surface-inset: var(--ev-bg2);
+   --surface-muted: var(--ev-bg3);
+   --surface-field: var(--ev-bg2);
+   --surface-sidebar: var(--ev-bg1);
+   --surface-hero: color-mix(in srgb, var(--ev-bg1) 72%, var(--ev-bg3));
+
+   --text-primary: var(--ev-fg);
+   --text-secondary: color-mix(in srgb, var(--ev-fg) 84%, var(--ev-bg0));
+   --text-tertiary: var(--ev-grey);
+   --text-disabled: color-mix(in srgb, var(--ev-grey) 62%, var(--ev-bg0));
+   --text-on-brand: var(--ev-bg0);
+   --text-on-accent: var(--ev-bg0);
+   --text-hero-title: var(--ev-aqua);
+   --text-hero-accent: var(--ev-purple);
+
+   --border-subtle: rgba(211, 198, 170, 0.07);
+   --border-default: rgba(211, 198, 170, 0.13);
+   --border-strong: rgba(211, 198, 170, 0.24);
+
+   --brand-50: color-mix(in srgb, var(--ev-aqua) 12%, var(--ev-bg1));
+   --brand-100: color-mix(in srgb, var(--ev-aqua) 22%, var(--ev-bg1));
+   --brand-200: color-mix(in srgb, var(--ev-aqua) 38%, var(--ev-bg1));
+   --brand-300: color-mix(in srgb, var(--ev-aqua) 60%, var(--ev-bg1));
+   --brand-400: color-mix(in srgb, var(--ev-aqua) 82%, var(--ev-bg1));
+   --brand-500: var(--ev-aqua);
+   --brand-600: color-mix(in srgb, var(--ev-aqua) 80%, var(--ev-fg));
+   --brand-700: color-mix(in srgb, var(--ev-aqua) 62%, var(--ev-fg));
+
+   --accent-50: color-mix(in srgb, var(--ev-purple) 12%, var(--ev-bg1));
+   --accent-100: color-mix(in srgb, var(--ev-purple) 22%, var(--ev-bg1));
+   --accent-200: color-mix(in srgb, var(--ev-purple) 38%, var(--ev-bg1));
+   --accent-300: color-mix(in srgb, var(--ev-purple) 60%, var(--ev-bg1));
+   --accent-400: color-mix(in srgb, var(--ev-purple) 82%, var(--ev-bg1));
+   --accent-500: var(--ev-purple);
+   --accent-600: color-mix(in srgb, var(--ev-purple) 80%, var(--ev-fg));
+   --accent-700: color-mix(in srgb, var(--ev-purple) 62%, var(--ev-fg));
+
+   --action-primary: var(--brand-500);
+   --action-primary-hover: var(--brand-600);
+   --action-primary-active: var(--brand-700);
+   --action-secondary: var(--accent-500);
+   --action-secondary-hover: var(--accent-600);
+   --border-focus: var(--brand-500);
+   --brand-soft: var(--brand-100);
+   --brand-tint: var(--brand-50);
+   --accent-soft: var(--accent-100);
+   --accent-tint: var(--accent-50);
+
+   --state-success: var(--ev-green);
+   --state-success-bg: color-mix(in srgb, var(--ev-green) 14%, transparent);
+   --state-warning: var(--ev-yellow);
+   --state-warning-bg: color-mix(in srgb, var(--ev-yellow) 14%, transparent);
+   --state-danger: var(--ev-red);
+   --state-danger-bg: color-mix(in srgb, var(--ev-red) 14%, transparent);
+   --state-info: var(--ev-blue);
+   --state-info-bg: color-mix(in srgb, var(--ev-blue) 14%, transparent);
+
+   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(211, 198, 170, 0.05);
+   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(211, 198, 170, 0.07);
+   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(211, 198, 170, 0.09);
+   --shadow-glow-success: 0 0 12px color-mix(in srgb, var(--state-success) 25%, transparent);
+   --shadow-glow-brand: 0 0 16px color-mix(in srgb, var(--brand-500) 20%, transparent);
+
+   --scrollbar-thumb-rest: rgba(211, 198, 170, 0.12);
+   --scrollbar-thumb-hover: rgba(211, 198, 170, 0.24);
+   --scrollbar-thumb-active: rgba(211, 198, 170, 0.36);
+
+   --qr-foreground: var(--ev-bg0);
+   --qr-background: var(--ev-bg2);
+}
+
+/* ── Everforest Light · Hard ────────────────────────────────────────────────── */
+:root[data-theme="everforest-light-hard"] {
+   --ev-bg0: #fffbef;
+   --ev-bg1: #f8f5e4;
+   --ev-bg2: #f2efdf;
+   --ev-bg3: #edeada;
+   --ev-fg: #5c6a72;
+   --ev-grey: #939f91;
+   --ev-red: #f85552;
+   --ev-yellow: #dfa000;
+   --ev-green: #8da101;
+   --ev-aqua: #35a77c;
+   --ev-blue: #3a94c5;
+   --ev-purple: #df69ba;
+
+   --surface-canvas: var(--ev-bg0);
+   --surface-card: #ffffff;
+   --surface-elevated: #ffffff;
+   --surface-inset: var(--ev-bg2);
+   --surface-muted: var(--ev-bg3);
+   --surface-field: var(--ev-bg2);
+   --surface-sidebar: var(--ev-bg1);
+   --surface-hero: color-mix(in srgb, var(--surface-canvas) 42%, var(--brand-50) 58%);
+
+   --text-primary: var(--ev-fg);
+   --text-secondary: color-mix(in srgb, var(--ev-fg) 88%, var(--ev-bg0));
+   --text-tertiary: var(--ev-grey);
+   --text-disabled: color-mix(in srgb, var(--ev-grey) 70%, var(--ev-bg0));
+   --text-on-brand: #ffffff;
+   --text-on-accent: #ffffff;
+   --text-hero-title: var(--ev-aqua);
+   --text-hero-accent: var(--ev-purple);
+
+   --border-subtle: rgba(92, 106, 114, 0.08);
+   --border-default: rgba(92, 106, 114, 0.14);
+   --border-strong: rgba(92, 106, 114, 0.24);
+
+   --brand-50: color-mix(in srgb, var(--ev-aqua) 10%, var(--ev-bg0));
+   --brand-100: color-mix(in srgb, var(--ev-aqua) 18%, var(--ev-bg0));
+   --brand-200: color-mix(in srgb, var(--ev-aqua) 32%, var(--ev-bg0));
+   --brand-300: color-mix(in srgb, var(--ev-aqua) 54%, var(--ev-bg0));
+   --brand-400: color-mix(in srgb, var(--ev-aqua) 78%, var(--ev-bg0));
+   --brand-500: var(--ev-aqua);
+   --brand-600: color-mix(in srgb, var(--ev-aqua) 82%, var(--ev-fg));
+   --brand-700: color-mix(in srgb, var(--ev-aqua) 62%, var(--ev-fg));
+
+   --accent-50: color-mix(in srgb, var(--ev-purple) 10%, var(--ev-bg0));
+   --accent-100: color-mix(in srgb, var(--ev-purple) 18%, var(--ev-bg0));
+   --accent-200: color-mix(in srgb, var(--ev-purple) 32%, var(--ev-bg0));
+   --accent-300: color-mix(in srgb, var(--ev-purple) 54%, var(--ev-bg0));
+   --accent-400: color-mix(in srgb, var(--ev-purple) 78%, var(--ev-bg0));
+   --accent-500: var(--ev-purple);
+   --accent-600: color-mix(in srgb, var(--ev-purple) 82%, var(--ev-fg));
+   --accent-700: color-mix(in srgb, var(--ev-purple) 62%, var(--ev-fg));
+
+   --action-primary: var(--brand-500);
+   --action-primary-hover: var(--brand-600);
+   --action-primary-active: var(--brand-700);
+   --action-secondary: var(--accent-500);
+   --action-secondary-hover: var(--accent-600);
+   --border-focus: var(--brand-500);
+   --brand-soft: var(--brand-100);
+   --brand-tint: var(--brand-50);
+   --accent-soft: var(--accent-100);
+   --accent-tint: var(--accent-50);
+
+   --state-success: var(--ev-green);
+   --state-success-bg: color-mix(in srgb, var(--ev-green) 14%, transparent);
+   --state-warning: var(--ev-yellow);
+   --state-warning-bg: color-mix(in srgb, var(--ev-yellow) 16%, transparent);
+   --state-danger: var(--ev-red);
+   --state-danger-bg: color-mix(in srgb, var(--ev-red) 12%, transparent);
+   --state-info: var(--ev-blue);
+   --state-info-bg: color-mix(in srgb, var(--ev-blue) 12%, transparent);
+
+   --shadow-sm: 0 1px 2px rgba(92, 106, 114, 0.06);
+   --shadow-md: 0 4px 12px rgba(92, 106, 114, 0.08), 0 1px 2px rgba(92, 106, 114, 0.05);
+   --shadow-lg: 0 12px 32px rgba(92, 106, 114, 0.1), 0 2px 6px rgba(92, 106, 114, 0.06);
+   --shadow-glow-success: 0 0 12px color-mix(in srgb, var(--state-success) 35%, transparent);
+   --shadow-glow-brand: 0 0 16px color-mix(in srgb, var(--brand-500) 30%, transparent);
+
+   --scrollbar-thumb-rest: rgba(92, 106, 114, 0.14);
+   --scrollbar-thumb-hover: rgba(92, 106, 114, 0.26);
+   --scrollbar-thumb-active: rgba(92, 106, 114, 0.38);
+
+   --qr-foreground: var(--ev-fg);
+   --qr-background: var(--ev-bg2);
+}
+
+/* ── Everforest Light · Soft ────────────────────────────────────────────────── */
+:root[data-theme="everforest-light-soft"] {
+   --ev-bg0: #f8f5e4;
+   --ev-bg1: #f2efdf;
+   --ev-bg2: #edeada;
+   --ev-bg3: #e8e5d5;
+   --ev-fg: #5c6a72;
+   --ev-grey: #939f91;
+   --ev-red: #f85552;
+   --ev-yellow: #dfa000;
+   --ev-green: #8da101;
+   --ev-aqua: #35a77c;
+   --ev-blue: #3a94c5;
+   --ev-purple: #df69ba;
+
+   --surface-canvas: var(--ev-bg0);
+   --surface-card: #ffffff;
+   --surface-elevated: #ffffff;
+   --surface-inset: var(--ev-bg2);
+   --surface-muted: var(--ev-bg3);
+   --surface-field: var(--ev-bg2);
+   --surface-sidebar: var(--ev-bg1);
+   --surface-hero: color-mix(in srgb, var(--surface-canvas) 42%, var(--brand-50) 58%);
+
+   --text-primary: var(--ev-fg);
+   --text-secondary: color-mix(in srgb, var(--ev-fg) 88%, var(--ev-bg0));
+   --text-tertiary: var(--ev-grey);
+   --text-disabled: color-mix(in srgb, var(--ev-grey) 70%, var(--ev-bg0));
+   --text-on-brand: #ffffff;
+   --text-on-accent: #ffffff;
+   --text-hero-title: var(--ev-aqua);
+   --text-hero-accent: var(--ev-purple);
+
+   --border-subtle: rgba(92, 106, 114, 0.08);
+   --border-default: rgba(92, 106, 114, 0.14);
+   --border-strong: rgba(92, 106, 114, 0.24);
+
+   --brand-50: color-mix(in srgb, var(--ev-aqua) 10%, var(--ev-bg0));
+   --brand-100: color-mix(in srgb, var(--ev-aqua) 18%, var(--ev-bg0));
+   --brand-200: color-mix(in srgb, var(--ev-aqua) 32%, var(--ev-bg0));
+   --brand-300: color-mix(in srgb, var(--ev-aqua) 54%, var(--ev-bg0));
+   --brand-400: color-mix(in srgb, var(--ev-aqua) 78%, var(--ev-bg0));
+   --brand-500: var(--ev-aqua);
+   --brand-600: color-mix(in srgb, var(--ev-aqua) 82%, var(--ev-fg));
+   --brand-700: color-mix(in srgb, var(--ev-aqua) 62%, var(--ev-fg));
+
+   --accent-50: color-mix(in srgb, var(--ev-purple) 10%, var(--ev-bg0));
+   --accent-100: color-mix(in srgb, var(--ev-purple) 18%, var(--ev-bg0));
+   --accent-200: color-mix(in srgb, var(--ev-purple) 32%, var(--ev-bg0));
+   --accent-300: color-mix(in srgb, var(--ev-purple) 54%, var(--ev-bg0));
+   --accent-400: color-mix(in srgb, var(--ev-purple) 78%, var(--ev-bg0));
+   --accent-500: var(--ev-purple);
+   --accent-600: color-mix(in srgb, var(--ev-purple) 82%, var(--ev-fg));
+   --accent-700: color-mix(in srgb, var(--ev-purple) 62%, var(--ev-fg));
+
+   --action-primary: var(--brand-500);
+   --action-primary-hover: var(--brand-600);
+   --action-primary-active: var(--brand-700);
+   --action-secondary: var(--accent-500);
+   --action-secondary-hover: var(--accent-600);
+   --border-focus: var(--brand-500);
+   --brand-soft: var(--brand-100);
+   --brand-tint: var(--brand-50);
+   --accent-soft: var(--accent-100);
+   --accent-tint: var(--accent-50);
+
+   --state-success: var(--ev-green);
+   --state-success-bg: color-mix(in srgb, var(--ev-green) 14%, transparent);
+   --state-warning: var(--ev-yellow);
+   --state-warning-bg: color-mix(in srgb, var(--ev-yellow) 16%, transparent);
+   --state-danger: var(--ev-red);
+   --state-danger-bg: color-mix(in srgb, var(--ev-red) 12%, transparent);
+   --state-info: var(--ev-blue);
+   --state-info-bg: color-mix(in srgb, var(--ev-blue) 12%, transparent);
+
+   --shadow-sm: 0 1px 2px rgba(92, 106, 114, 0.06);
+   --shadow-md: 0 4px 12px rgba(92, 106, 114, 0.08), 0 1px 2px rgba(92, 106, 114, 0.05);
+   --shadow-lg: 0 12px 32px rgba(92, 106, 114, 0.1), 0 2px 6px rgba(92, 106, 114, 0.06);
+   --shadow-glow-success: 0 0 12px color-mix(in srgb, var(--state-success) 35%, transparent);
+   --shadow-glow-brand: 0 0 16px color-mix(in srgb, var(--brand-500) 30%, transparent);
+
+   --scrollbar-thumb-rest: rgba(92, 106, 114, 0.14);
+   --scrollbar-thumb-hover: rgba(92, 106, 114, 0.26);
+   --scrollbar-thumb-active: rgba(92, 106, 114, 0.38);
+
+   --qr-foreground: var(--ev-fg);
+   --qr-background: var(--ev-bg2);
+}
+
+/* ── Nord（nordtheme.com）───────────────────────────────────────────────────── */
+:root[data-theme="nord"] {
+   /* 调色板：Polar Night / Snow Storm / Frost / Aurora */
+   --nord0: #2e3440;
+   --nord1: #3b4252;
+   --nord2: #434c5e;
+   --nord3: #4c566a;
+   --nord4: #d8dee9;
+   --nord8: #88c0d0;
+   --nord9: #81a1c1;
+   --nord11: #bf616a;
+   --nord13: #ebcb8b;
+   --nord14: #a3be8c;
+   --nord15: #b48ead;
+
+   /* surface */
+   --surface-canvas: var(--nord0);
+   --surface-card: var(--nord1);
+   --surface-elevated: var(--nord2);
+   --surface-inset: var(--nord2);
+   --surface-muted: var(--nord3);
+   --surface-field: var(--nord2);
+   --surface-sidebar: var(--nord1);
+   --surface-hero: color-mix(in srgb, var(--nord1) 72%, var(--nord2));
+
+   /* text */
+   --text-primary: var(--nord4);
+   --text-secondary: color-mix(in srgb, var(--nord4) 84%, var(--nord0));
+   --text-tertiary: color-mix(in srgb, var(--nord4) 58%, var(--nord0));
+   --text-disabled: color-mix(in srgb, var(--nord4) 38%, var(--nord0));
+   --text-on-brand: var(--nord0);
+   --text-on-accent: var(--nord0);
+   --text-hero-title: var(--nord8);
+   --text-hero-accent: var(--nord15);
+
+   /* border */
+   --border-subtle: rgba(216, 222, 233, 0.08);
+   --border-default: rgba(216, 222, 233, 0.14);
+   --border-strong: rgba(216, 222, 233, 0.26);
+
+   /* brand → Frost */
+   --brand-50: color-mix(in srgb, var(--nord8) 12%, var(--nord1));
+   --brand-100: color-mix(in srgb, var(--nord8) 22%, var(--nord1));
+   --brand-200: color-mix(in srgb, var(--nord8) 38%, var(--nord1));
+   --brand-300: color-mix(in srgb, var(--nord8) 60%, var(--nord1));
+   --brand-400: color-mix(in srgb, var(--nord8) 82%, var(--nord1));
+   --brand-500: var(--nord8);
+   --brand-600: color-mix(in srgb, var(--nord8) 78%, var(--nord4));
+   --brand-700: color-mix(in srgb, var(--nord8) 58%, var(--nord4));
+
+   /* accent → Aurora purple */
+   --accent-50: color-mix(in srgb, var(--nord15) 12%, var(--nord1));
+   --accent-100: color-mix(in srgb, var(--nord15) 22%, var(--nord1));
+   --accent-200: color-mix(in srgb, var(--nord15) 38%, var(--nord1));
+   --accent-300: color-mix(in srgb, var(--nord15) 60%, var(--nord1));
+   --accent-400: color-mix(in srgb, var(--nord15) 82%, var(--nord1));
+   --accent-500: var(--nord15);
+   --accent-600: color-mix(in srgb, var(--nord15) 78%, var(--nord4));
+   --accent-700: color-mix(in srgb, var(--nord15) 58%, var(--nord4));
+
+   --action-primary: var(--brand-500);
+   --action-primary-hover: var(--brand-600);
+   --action-primary-active: var(--brand-700);
+   --action-secondary: var(--accent-500);
+   --action-secondary-hover: var(--accent-600);
+   --border-focus: var(--brand-500);
+   --brand-soft: var(--brand-100);
+   --brand-tint: var(--brand-50);
+   --accent-soft: var(--accent-100);
+   --accent-tint: var(--accent-50);
+
+   /* state → Aurora */
+   --state-success: var(--nord14);
+   --state-success-bg: color-mix(in srgb, var(--nord14) 14%, transparent);
+   --state-warning: var(--nord13);
+   --state-warning-bg: color-mix(in srgb, var(--nord13) 14%, transparent);
+   --state-danger: var(--nord11);
+   --state-danger-bg: color-mix(in srgb, var(--nord11) 14%, transparent);
+   --state-info: var(--nord9);
+   --state-info-bg: color-mix(in srgb, var(--nord9) 14%, transparent);
+
+   /* shadow */
+   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(216, 222, 233, 0.05);
+   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(216, 222, 233, 0.07);
+   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(216, 222, 233, 0.09);
+   --shadow-glow-success: 0 0 12px color-mix(in srgb, var(--state-success) 25%, transparent);
+   --shadow-glow-brand: 0 0 16px color-mix(in srgb, var(--brand-500) 20%, transparent);
+
+   /* scrollbar */
+   --scrollbar-thumb-rest: rgba(216, 222, 233, 0.12);
+   --scrollbar-thumb-hover: rgba(216, 222, 233, 0.24);
+   --scrollbar-thumb-active: rgba(216, 222, 233, 0.36);
+
+   --qr-foreground: var(--nord0);
+   --qr-background: var(--nord2);
+}

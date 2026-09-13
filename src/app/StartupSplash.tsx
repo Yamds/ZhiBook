@@ -91,10 +91,14 @@ function buildParticles(count: number, seed: number): SplashParticle[] {
     return out;
 }
 
-const SPLASH_PARTICLES = buildParticles(28, 1592707838);
+const SPLASH_PARTICLES = buildParticles(18, 1592707838);
 
+/**
+ * 轨道环直径：跟立绘一起放大，并用 `clamp` 跟屏宽走（窄屏不撑破、宽屏不变小）。
+ * 尺寸写成 CSS 长度字符串，下面直接用 calc 算负半宽居中。
+ */
 const ORBIT_RINGS: ReadonlyArray<{
-    size: number;
+    size: string;
     solid: boolean;
     dotAtTop: boolean;
     accentDot: boolean;
@@ -102,8 +106,8 @@ const ORBIT_RINGS: ReadonlyArray<{
     /// 转一圈的基准秒。
     dur: number;
 }> = [
-    { size: 168, solid: false, dotAtTop: true, accentDot: false, spin: 1, dur: 7 },
-    { size: 208, solid: true, dotAtTop: false, accentDot: true, spin: -1, dur: 10 },
+    { size: 'clamp(190px, 53vw, 230px)', solid: false, dotAtTop: true, accentDot: false, spin: 1, dur: 7 },
+    { size: 'clamp(234px, 65vw, 282px)', solid: true, dotAtTop: false, accentDot: true, spin: -1, dur: 10 },
 ];
 
 const SPARKLES: ReadonlyArray<{
@@ -121,7 +125,7 @@ const SPARKLES: ReadonlyArray<{
     { bottom: '-10px', left: '-12px', size: 18, color: 'var(--green-400, #10b981)', char: '✦' },
 ];
 
-const BRAND_PULSE_SIZE = 360;
+const BRAND_PULSE_SIZE = 'clamp(392px, 112vw, 520px)';
 
 export interface StartupSplashProps {
     shellReady: boolean;
@@ -339,7 +343,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
         // 第二幕 诞生：火种炸开成星点，立绘从火星里长出来翻正，星点顺势迸向四周
         if (flourish) {
             if (spark) {
-                tl.to(spark, { scale: 4.5, autoAlpha: 0, duration: s(0.12), ease: 'power2.out' }, birthAt);
+                tl.to(spark, { scale: 3.4, autoAlpha: 0, duration: s(0.12), ease: 'power2.out' }, birthAt);
             }
         }
         if (particles.length > 0) {
@@ -682,17 +686,22 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
             );
         }
         if (particles.length > 0) {
+            // 落点**提前一次性量好**，不要写成 tween 的函数值：
+            // 那样 GSAP 会在每个元素上逐个 getBoundingClientRect（读 / 写交错 → 强制同步布局 ×N），
+            // 正好卡在「收回粒子」那一刻。这里把多次读连在一起（只触发一次布局），
+            // 且发生在 timeline 开播前。
+            const gatherOffsets = particles.map((p) => {
+                const r = p.getBoundingClientRect();
+                return {
+                    x: Number(gsap.getProperty(p, 'x')) + (cx - (r.left + r.width / 2)),
+                    y: Number(gsap.getProperty(p, 'y')) + (cy - (r.top + r.height / 2)),
+                };
+            });
             exitTl.to(
                 particles,
                 {
-                    x: (_i: number, el: Element) => {
-                        const r = el.getBoundingClientRect();
-                        return Number(gsap.getProperty(el, 'x')) + (cx - (r.left + r.width / 2));
-                    },
-                    y: (_i: number, el: Element) => {
-                        const r = el.getBoundingClientRect();
-                        return Number(gsap.getProperty(el, 'y')) + (cy - (r.top + r.height / 2));
-                    },
+                    x: (index: number) => gatherOffsets[index]?.x ?? 0,
+                    y: (index: number) => gatherOffsets[index]?.y ?? 0,
                     scale: 0.15,
                     autoAlpha: 0,
                     duration: s(0.18),
@@ -836,15 +845,12 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
                 <div ref={logoWrapRef} className="relative flex shrink-0 items-center justify-center opacity-0">
                     <div
                         ref={brandPulseRef}
-                        className="pointer-events-none absolute left-1/2 top-1/2 rounded-full opacity-0"
+                        className="ndf-splash-brand-pulse pointer-events-none absolute left-1/2 top-1/2 rounded-full opacity-0"
                         style={{
                             width: BRAND_PULSE_SIZE,
                             height: BRAND_PULSE_SIZE,
-                            marginLeft: -BRAND_PULSE_SIZE / 2,
-                            marginTop: -BRAND_PULSE_SIZE / 2,
-                            background:
-                                'radial-gradient(circle, color-mix(in srgb, var(--brand-400) 18%, transparent) 0%, color-mix(in srgb, var(--accent-400) 8%, transparent) 42%, transparent 70%)',
-                            filter: 'blur(32px)',
+                            marginLeft: `calc(${BRAND_PULSE_SIZE} / -2)`,
+                            marginTop: `calc(${BRAND_PULSE_SIZE} / -2)`,
                         }}
                         aria-hidden
                     />
@@ -862,8 +868,8 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
                             style={{
                                 width: ring.size,
                                 height: ring.size,
-                                marginLeft: -ring.size / 2,
-                                marginTop: -ring.size / 2,
+                                marginLeft: `calc(${ring.size} / -2)`,
+                                marginTop: `calc(${ring.size} / -2)`,
                             }}
                             aria-hidden
                         >
@@ -905,9 +911,9 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
                             ref={logoRef}
                             src={mascotSplash}
                             alt=""
-                            width={102}
-                            height={132}
-                            className="block h-[132px] w-auto drop-shadow-[0_10px_22px_rgba(0,0,0,0.28)]"
+                            width={966}
+                            height={1254}
+                            className="block h-[clamp(158px,44vw,198px)] w-auto drop-shadow-[0_10px_22px_rgba(0,0,0,0.28)]"
                             draggable={false}
                         />
                     </div>

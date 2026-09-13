@@ -8,7 +8,30 @@
     <meta name="theme-color" content="#211f1d" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>制账</title>
-    <!-- JS/CSS 到达前避免 WebView 闪屏；暗色系统用深底，与 tokens surface-canvas 对齐 -->
+    <!-- JS/CSS 到达前避免 WebView 闪屏：
+         ① 默认底色 + 系统深色兜底（还没跑过任何 JS 时只能看系统偏好）；
+         ② 引导脚本读 localStorage 里镜像的画布色与主题，把用户选的主题提前落到位 ——
+            否则「系统浅色 + 选了暗色主题」的机器开机必然闪一帧白底。
+            只读色值与主题名，新主题不需要回来改这里。 -->
+    <script>
+      (function () {
+        try {
+          var canvas = localStorage.getItem('yamds-bill:canvas');
+          if (canvas) {
+            document.documentElement.style.backgroundColor = canvas;
+            var rootEl = document.getElementById('root');
+            if (rootEl) rootEl.style.backgroundColor = canvas;
+          }
+          var raw = localStorage.getItem('yamds-bill:preferences:v1');
+          var theme = raw ? JSON.parse(raw).theme : null;
+          if (theme && theme !== 'auto') {
+            document.documentElement.setAttribute('data-theme', theme);
+          }
+        } catch (e) {
+          /* 隐私模式 / 脏数据：保持系统兜底即可 */
+        }
+      })();
+    </script>
     <style>
       html,
       body,
@@ -19,35 +42,11 @@
       }
 
       @media (prefers-color-scheme: dark) {
-        html:not([data-theme="light"]):not([data-theme="latte"]),
-        html:not([data-theme="light"]):not([data-theme="latte"]) body,
-        html:not([data-theme="light"]):not([data-theme="latte"]) #root {
+        html:not([data-theme]),
+        html:not([data-theme]) body,
+        html:not([data-theme]) #root {
           background: #211f1d !important;
         }
-      }
-
-      html[data-theme="dark"],
-      html[data-theme="frappe"],
-      html[data-theme="macchiato"] {
-        background: #211f1d;
-      }
-
-      html[data-theme="dark"] body,
-      html[data-theme="frappe"] body,
-      html[data-theme="macchiato"] body,
-      html[data-theme="dark"] #root,
-      html[data-theme="frappe"] #root,
-      html[data-theme="macchiato"] #root {
-        background: #211f1d !important;
-      }
-
-      html[data-theme="mocha"] {
-        background: #1e1e2e;
-      }
-
-      html[data-theme="mocha"] body,
-      html[data-theme="mocha"] #root {
-        background: #1e1e2e !important;
       }
     </style>
   </head>

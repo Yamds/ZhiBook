@@ -7,7 +7,9 @@ import { AppIcon } from '../../shared/ui/AppIcon';
 import { useMotion } from '../../hooks/preferences/useMotion';
 import { UI_ICONS, type IconName } from '../../core/design/icons';
 import { SegmentMotionIcon } from '../../shared/ui/motion';
-import type { ThemeMode } from '../../hooks/preferences/preferencesStore';
+import type { ThemeMode } from '../../core/design/themes';
+import { THEME_GROUPS as THEME_GROUPS_FROM_REGISTRY } from '../../core/design/themes';
+import { STARTUP_TABS, type StartupTab } from '../../core/domain/ui/startupTab';
 import type { MotionLevel } from '../../core/design/motion';
 import { MOTION_SPEED_DEFAULT, MOTION_SPEED_MAX, MOTION_SPEED_MIN, motionSpeedDisplayMultiplier } from '../../core/design/motion';
 import type { RadiusStyle } from '../../core/design/radius';
@@ -32,19 +34,24 @@ export function FieldRow({ label, description, isLast: _isLast, layout = 'inline
 
 interface ThemeItem { value: ThemeMode; label: string; canvas: string; sidebar: string; text: string; subtext: string; brand: string; accent: string; }
 interface ThemeGroup { label: string; items: ReadonlyArray<ThemeItem>; }
-const THEME_GROUPS: ReadonlyArray<ThemeGroup> = [
-    { label: '基础', items: [
-        { value: 'auto', label: '系统', canvas: '#faf7f2', sidebar: '#ffe3ee', text: '#2c1f18', subtext: '#8a7d76', brand: '#ff6b3d', accent: '#f58fb6' },
-        { value: 'light', label: '浅色', canvas: '#faf7f2', sidebar: '#ffe3ee', text: '#2c1f18', subtext: '#8a7d76', brand: '#ff6b3d', accent: '#f58fb6' },
-        { value: 'dark', label: '暗色', canvas: '#211f1d', sidebar: '#292725', text: '#f5f1ed', subtext: '#9e9890', brand: '#ff8a57', accent: '#f58fb6' },
-    ] },
-    { label: 'Catppuccin', items: [
-        { value: 'latte', label: 'Latte', canvas: '#eff1f5', sidebar: '#e6e9ef', text: '#4c4f69', subtext: '#6c6f85', brand: '#8839ef', accent: '#1e66f5' },
-        { value: 'frappe', label: 'Frappé', canvas: '#303446', sidebar: '#292c3c', text: '#c6d0f5', subtext: '#949cbb', brand: '#ca9ee6', accent: '#8caaee' },
-        { value: 'macchiato', label: 'Macchiato', canvas: '#24273a', sidebar: '#1e2030', text: '#cad3f5', subtext: '#939ab7', brand: '#c6a0f6', accent: '#8aadf4' },
-        { value: 'mocha', label: 'Mocha', canvas: '#1e1e2e', sidebar: '#181825', text: '#cdd6f4', subtext: '#9399b2', brand: '#cba6f7', accent: '#89b4fa' },
-    ] },
-];
+
+/**
+ * 主题预览表直接由注册表（`core/design/themes.ts`）推导：
+ * 新主题只需在注册表里加一行 + 在 `tokens.css` 里加一个块，设置页自动出现。
+ */
+const THEME_GROUPS: ReadonlyArray<ThemeGroup> = THEME_GROUPS_FROM_REGISTRY.map((group) => ({
+    label: group.label,
+    items: group.items.map((theme) => ({
+        value: theme.value,
+        label: theme.label,
+        canvas: theme.preview.canvas,
+        sidebar: theme.preview.sidebar,
+        text: theme.preview.text,
+        subtext: theme.preview.subtext,
+        brand: theme.preview.brand,
+        accent: theme.preview.accent,
+    })),
+}));
 
 function findThemeItem(value: ThemeMode): ThemeItem | undefined {
     for (const group of THEME_GROUPS) { const found = group.items.find((item) => item.value === value); if (found) return found; }
@@ -58,7 +65,7 @@ export function ThemePicker({ value, onChange }: { value: ThemeMode; onChange: (
     const cardRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
     const setCardRef = useCallback((key: string) => (element: HTMLButtonElement | null) => { if (element) cardRefs.current.set(key, element); else cardRefs.current.delete(key); }, []);
     useEffect(() => { const cleanups: Array<() => void> = []; cardRefs.current.forEach((element) => { cleanups.push(motion.bindHover(element)); cleanups.push(motion.bindPress(element)); }); return () => cleanups.forEach((cleanup) => cleanup()); }, [motion.bindHover, motion.bindPress, open]);
-    return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><button type="button" className="flex h-7 items-center gap-2 rounded-md bg-inset px-2.5 text-[12px] font-medium text-text transition-colors hover:bg-muted/50">{current && <span className="h-3.5 w-3.5 shrink-0 rounded-sm" style={{ background: current.brand, boxShadow: 'inset 0 0 0 0.5px rgba(128,128,128,0.15)' }} />}<span>{current?.label ?? value}</span><AppIcon name={UI_ICONS.chevronDown} size={12} className="text-text-tertiary" /></button></PopoverTrigger><PopoverContent side="bottom" align="start" sideOffset={6}><div className="flex flex-col gap-3">{THEME_GROUPS.map((group) => <div key={group.label} className="space-y-1.5"><span className="text-[11px] font-medium tracking-wide text-text-tertiary">{group.label}</span><div className="grid grid-cols-4 gap-1.5">{group.items.map((item) => { const selected = value === item.value; return <button key={item.value} ref={setCardRef(item.value)} type="button" onClick={() => onChange(item.value)} className={'relative flex flex-col items-stretch gap-1 rounded-md p-1 transition-colors ' + (selected ? 'bg-surface' : 'hover:bg-muted/40')} style={selected ? { boxShadow: `inset 0 0 0 1px ${item.brand}44` } : undefined}><div className="relative h-9 w-full overflow-hidden rounded-[3px]" style={{ background: item.canvas, boxShadow: 'inset 0 0 0 0.5px rgba(128,128,128,0.1)' }}><div className="absolute inset-y-0 left-0 w-[30%]" style={{ background: item.sidebar }} /><div className="absolute inset-y-0 right-0 left-[30%] flex flex-col justify-center gap-[3px] px-1.5"><div className="h-[2.5px] w-[60%] rounded-full" style={{ background: item.text, opacity: 0.5 }} /><div className="h-[2.5px] w-[40%] rounded-full" style={{ background: item.subtext, opacity: 0.4 }} /><div className="mt-[1px] h-[4px] w-[32%] rounded-full" style={{ background: item.brand }} /></div><div className="absolute right-1 top-1 h-[4px] w-[4px] rounded-full" style={{ background: item.accent }} /></div><span className={'text-center text-[11px] font-semibold leading-tight ' + (selected ? 'text-text' : 'text-text-tertiary')}>{item.label}</span></button>; })}</div></div>)}</div></PopoverContent></Popover>;
+    return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><button type="button" className="flex h-7 items-center gap-2 rounded-md bg-inset px-2.5 text-[12px] font-medium text-text transition-colors hover:bg-muted/50">{current && <span className="h-3.5 w-3.5 shrink-0 rounded-sm" style={{ background: current.brand, boxShadow: 'inset 0 0 0 0.5px rgba(128,128,128,0.15)' }} />}<span>{current?.label ?? value}</span><AppIcon name={UI_ICONS.chevronDown} size={12} className="text-text-tertiary" /></button></PopoverTrigger><PopoverContent side="bottom" align="start" sideOffset={6}><div className="flex max-h-[min(58vh,420px)] flex-col gap-3 overflow-y-auto overscroll-contain pr-0.5">{THEME_GROUPS.map((group) => <div key={group.label} className="space-y-1.5"><span className="text-[11px] font-medium tracking-wide text-text-tertiary">{group.label}</span><div className="grid grid-cols-4 gap-1.5">{group.items.map((item) => { const selected = value === item.value; return <button key={item.value} ref={setCardRef(item.value)} type="button" onClick={() => onChange(item.value)} className={'relative flex flex-col items-stretch gap-1 rounded-md p-1 transition-colors ' + (selected ? 'bg-surface' : 'hover:bg-muted/40')} style={selected ? { boxShadow: `inset 0 0 0 1px ${item.brand}44` } : undefined}><div className="relative h-9 w-full overflow-hidden rounded-[3px]" style={{ background: item.canvas, boxShadow: 'inset 0 0 0 0.5px rgba(128,128,128,0.1)' }}><div className="absolute inset-y-0 left-0 w-[30%]" style={{ background: item.sidebar }} /><div className="absolute inset-y-0 right-0 left-[30%] flex flex-col justify-center gap-[3px] px-1.5"><div className="h-[2.5px] w-[60%] rounded-full" style={{ background: item.text, opacity: 0.5 }} /><div className="h-[2.5px] w-[40%] rounded-full" style={{ background: item.subtext, opacity: 0.4 }} /><div className="mt-[1px] h-[4px] w-[32%] rounded-full" style={{ background: item.brand }} /></div><div className="absolute right-1 top-1 h-[4px] w-[4px] rounded-full" style={{ background: item.accent }} /></div><span className={'text-center text-[11px] font-semibold leading-tight ' + (selected ? 'text-text' : 'text-text-tertiary')}>{item.label}</span></button>; })}</div></div>)}</div></PopoverContent></Popover>;
 }
 
 export function MotionLevelSegment({ value, onChange, disabled }: { value: MotionLevel; onChange: (next: MotionLevel) => void; disabled?: boolean }) {
@@ -73,4 +80,32 @@ export function MotionSpeedSlider({ value, onChange, disabled }: { value: number
 export function RadiusStyleSegment({ value, onChange }: { value: RadiusStyle; onChange: (next: RadiusStyle) => void }) {
     const items: ReadonlyArray<{ value: RadiusStyle; label: string; icon: IconName }> = [{ value: 'square', label: RADIUS_LABELS.square, icon: UI_ICONS.radiusSquare }, { value: 'standard', label: RADIUS_LABELS.standard, icon: UI_ICONS.radiusStandard }, { value: 'round', label: RADIUS_LABELS.round, icon: UI_ICONS.radiusRound }];
     return <div className="flex h-7 items-center rounded-md bg-inset p-0.5">{items.map((item) => { const selected = value === item.value; return <button key={item.value} type="button" onClick={() => onChange(item.value)} className={'flex h-6 items-center gap-1 rounded-sm px-2.5 text-[12px] font-medium transition-all ' + (selected ? 'border border-border/50 bg-surface text-text shadow-sm' : 'border border-transparent text-text-tertiary hover:text-text')}><SegmentMotionIcon icon={item.icon} selected={selected} segmentKey={`radius-${item.value}`} /><span>{item.label}</span></button>; })}</div>;
+}
+
+/** 启动页签选择：底部 5 个页签一字排开（值集合见 `core/domain/ui/startupTab.ts`）。 */
+export function StartupTabSegment({ value, onChange }: { value: StartupTab; onChange: (next: StartupTab) => void }) {
+    const items = STARTUP_TABS.map((tab) => ({ value: tab.value, label: tab.label }));
+    return (
+        <div className="flex h-9 w-full items-center rounded-md bg-inset p-0.5">
+            {items.map((item) => {
+                const selected = value === item.value;
+                return (
+                    <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => onChange(item.value)}
+                        aria-pressed={selected}
+                        className={
+                            'flex h-8 flex-1 items-center justify-center rounded-sm text-[12px] font-medium transition-all ' +
+                            (selected
+                                ? 'border border-border/50 bg-surface text-text shadow-sm'
+                                : 'border border-transparent text-text-tertiary')
+                        }
+                    >
+                        {item.label}
+                    </button>
+                );
+            })}
+        </div>
+    );
 }

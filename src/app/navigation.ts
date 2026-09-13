@@ -10,9 +10,16 @@
 // 页签顺序固定：账单 → 明细 → 日历 → 添加 → 资产（日历为首页）。
 
 import { UI_ICONS, type IconName } from '../core/design/icons';
+import type { StartupTab } from '../core/domain/ui/startupTab';
 
-/** 底部页签路由。 */
-export type AppRoute = 'bills' | 'details' | 'home' | 'add' | 'assets';
+/**
+ * 底部页签路由。
+ *
+ * 值集合与「启动页签」设置共用同一份定义（`core/domain/ui/startupTab.ts`）——
+ * 偏好存的是同一个字符串，用类型别名把两边钉在一起，不一致就编译不过，
+ * 页面侧也不需要任何 `as AppRoute` 强转。
+ */
+export type AppRoute = StartupTab;
 
 /** 全部可导航页面 = 页签 + 设置。 */
 export type AppScreen = AppRoute | 'settings';

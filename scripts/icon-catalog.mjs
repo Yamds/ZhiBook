@@ -138,6 +138,59 @@ export const DEFAULT_CATEGORIES = {
  */
 export const PICKER_GROUPS = [
     {
+        label: '支付与账户',
+        icons: [
+            // 银行 / 卡
+            'bank', 'bank-outline', 'bank-transfer', 'credit-card', 'credit-card-outline',
+            'credit-card-chip-outline', 'credit-card-multiple-outline', 'credit-card-wireless-outline',
+            'credit-card-scan-outline', 'credit-card-plus-outline', 'credit-card-clock-outline',
+            // 钱包 / 现金 / 储蓄
+            'wallet', 'wallet-outline', 'wallet-giftcard', 'wallet-travel', 'cash', 'cash-multiple',
+            'cash-fast', 'cash-register', 'coins-outline', 'piggy-bank-outline', 'safe-square-outline',
+            // 手机支付 / 扫码
+            'qrcode-scan', 'contactless-payment', 'account-payment-outline', 'payment', 'cellphone',
+            'wechat',
+            // 币种 / 借贷 / 票据
+            'currency-cny', 'hand-coin-outline', 'cash-refund', 'receipt-text-outline',
+            'percent-outline', 'chart-line', 'storefront-outline',
+        ],
+        aliases: {
+            bank: ['银行'],
+            'bank-outline': ['银行', '储蓄卡'],
+            'bank-transfer': ['转账', '汇款'],
+            'credit-card': ['银行卡', '信用卡'],
+            'credit-card-outline': ['银行卡', '信用卡'],
+            'credit-card-chip-outline': ['芯片卡', '储蓄卡'],
+            'credit-card-multiple-outline': ['多张卡', '卡包'],
+            'credit-card-wireless-outline': ['闪付', '云闪付'],
+            'credit-card-scan-outline': ['刷卡机', 'POS'],
+            wallet: ['钱包'],
+            'wallet-outline': ['钱包', '零钱', '余额'],
+            'wallet-giftcard': ['储值卡', '礼品卡'],
+            'wallet-travel': ['交通卡', '旅行金'],
+            cash: ['现金'],
+            'cash-multiple': ['现金', '备用金'],
+            'cash-fast': ['快钱', '零钱'],
+            'cash-register': ['收银', '收款'],
+            'coins-outline': ['硬币', '零钱'],
+            'piggy-bank-outline': ['存钱罐', '储蓄'],
+            'safe-square-outline': ['保险箱', '存款'],
+            'qrcode-scan': ['支付宝', '扫码支付', '二维码', '收款码'],
+            'contactless-payment': ['闪付', 'NFC', '云闪付'],
+            'account-payment-outline': ['支付', '付款', '网银'],
+            payment: ['支付', '付款'],
+            cellphone: ['手机', '手机银行'],
+            wechat: ['微信', '微信支付'],
+            'currency-cny': ['人民币', '钱'],
+            'hand-coin-outline': ['借出', '外借'],
+            'cash-refund': ['还款', '退款'],
+            'receipt-text-outline': ['账单', '票据'],
+            'percent-outline': ['利率', '手续费'],
+            'chart-line': ['收益', '理财'],
+            'storefront-outline': ['商户', '店铺'],
+        },
+    },
+    {
         label: '餐饮',
         icons: [
             'noodles', 'rice', 'food-apple', 'food-croissant', 'pizza', 'hamburger',
