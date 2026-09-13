@@ -626,6 +626,13 @@ samp,
     animation-play-state: paused;
 }
 
+/* 圆形揭示（View Transition）路径：新快照必须是终态，壳的入场动画让位给揭示本身。 */
+[data-boot-reveal="iris"] .ndf-shell-enter-sidebar,
+[data-boot-reveal="iris"] .ndf-shell-enter-titlebar,
+[data-boot-reveal="iris"] .ndf-shell-enter-main {
+    animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .ndf-shell-enter-sidebar,
     .ndf-shell-enter-titlebar,

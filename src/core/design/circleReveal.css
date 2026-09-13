@@ -1,0 +1,65 @@
+/* 圆形揭示 — View Transitions 伪元素动画。
+   只有一次 mask 变化，没有任何光环 / 回声 / 蓄力画布：
+
+     new  层：radial-gradient 遮罩从圆心把圆撑开，圆外透出下面的旧层
+     old  层：原样留在下面等着被盖住（两层同时半透明会发灰）
+
+   圆的大小由 mask-size 驱动（普通属性可插值，不需要 @property，也就不需要
+   JS 写 @keyframes），圆心由 mask-position 钉死：
+     mask-position-x = 圆心相对屏幕中心的偏移 + 50%
+     因为 50% 解析为 (元素宽 − mask 宽) / 2，
+     => mask 盒左边 = (W − S)/2 + (cx − W/2) = cx − S/2，中心恒为 cx，与 S 无关。
+   于是 mask-size 从 0 长到 2R 的过程中圆心不动，圆从圆心处长成全屏。
+
+   --circle-reveal-* 由 circleReveal.ts 在过渡开始前写入。 */
+
+html[data-circle-reveal]::view-transition-old(root),
+html[data-circle-reveal]::view-transition-new(root) {
+    animation-duration: var(--circle-reveal-dur, 480ms);
+    animation-timing-function: var(--circle-reveal-ease, cubic-bezier(0.3, 0.75, 0.35, 1));
+    animation-fill-mode: both;
+    /* UA 默认给两层叠 plus-lighter 做交叉淡入；这里是硬边圆形揭示，必须回到正常混合，
+       否则圆内的新层会跟下面的旧层相加发亮。 */
+    mix-blend-mode: normal;
+}
+
+html[data-circle-reveal]::view-transition-old(root) {
+    animation-name: none;
+}
+
+html[data-circle-reveal]::view-transition-new(root) {
+    animation-name: circle-reveal;
+    -webkit-mask-image: radial-gradient(circle closest-side at 50% 50%,
+            #000 calc(100% - var(--circle-reveal-feather, 26px)),
+            transparent 100%);
+    mask-image: radial-gradient(circle closest-side at 50% 50%,
+            #000 calc(100% - var(--circle-reveal-feather, 26px)),
+            transparent 100%);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: calc(var(--circle-reveal-dx, 0px) + 50%) calc(var(--circle-reveal-dy, 0px) + 50%);
+    mask-position: calc(var(--circle-reveal-dx, 0px) + 50%) calc(var(--circle-reveal-dy, 0px) + 50%);
+}
+
+/* mask 盒从 0 长到 2R：square 边长 2R 的内切圆就是半径 R 的揭示圆，
+   终端半径按最远视口角算，收尾时整屏都在圆里。 */
+@keyframes circle-reveal {
+    from {
+        -webkit-mask-size: 0px 0px;
+        mask-size: 0px 0px;
+    }
+
+    to {
+        -webkit-mask-size: calc(var(--circle-reveal-r, 150vmax) * 2) calc(var(--circle-reveal-r, 150vmax) * 2);
+        mask-size: calc(var(--circle-reveal-r, 150vmax) * 2) calc(var(--circle-reveal-r, 150vmax) * 2);
+    }
+}
+
+/* 系统「减少动画」时不做扩散，直接切换（在 1ms 内完成） */
+@media (prefers-reduced-motion: reduce) {
+
+    html[data-circle-reveal]::view-transition-old(root),
+    html[data-circle-reveal]::view-transition-new(root) {
+        animation-duration: 1ms;
+    }
+}

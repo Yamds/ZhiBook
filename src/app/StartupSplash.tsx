@@ -6,8 +6,10 @@
 // 立绘直接用 mascot.png，不再套图卡底板。
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import gsap from 'gsap';
 import { useMotion } from '../hooks/preferences/useMotion';
+import { playCircleReveal } from '../core/design/circleReveal';
 import { APP_PRODUCT_NAME, APP_VERSION_LABEL } from '../core/domain/app-meta';
 import mascotSplash from '../assets/mascot.png';
 import { bindVisibilityPause } from '../shared/ui/motion/visibilityPause';
@@ -27,20 +29,6 @@ const SUB_TEXT = {
 const BAR_ENTER = 0.45;
 const BAR_IDLE = 0.8;
 const BAR_IDLE_BREATH = 0.84;
-
-/// 退场用 clip-path 光圈揭示主界面；WebView2 支持 path(evenodd)，不支持则退回整层淡出。
-const IRIS_SUPPORTED =
-    typeof CSS !== 'undefined' &&
-    typeof CSS.supports === 'function' &&
-    CSS.supports('clip-path', 'path(evenodd, "M0 0H1V1H0Z")');
-
-/// 外矩形 + 内圆（evenodd）= 挖洞；洞越大露出的主界面越多。
-function irisClipPath(w: number, h: number, cx: number, cy: number, r: number): string {
-    const rr = Math.max(0.5, r);
-    const radius = rr.toFixed(1);
-    const diameter = (rr * 2).toFixed(1);
-    return `path(evenodd, "M0 0H${w}V${h}H0Z M${(cx - rr).toFixed(1)} ${cy.toFixed(1)}a${radius} ${radius} 0 1 0 ${diameter} 0a${radius} ${radius} 0 1 0 -${diameter} 0Z")`;
-}
 
 /// 副标题换词：旧词上飘淡出，新词从下方浮入；同词不重播。
 function swapText(el: HTMLElement, next: string, k: number): gsap.core.Timeline | null {
@@ -127,14 +115,31 @@ const SPARKLES: ReadonlyArray<{
 
 const BRAND_PULSE_SIZE = 'clamp(392px, 112vw, 520px)';
 
+/// 逐字渐变拼成整条：父级 `bg-clip-text` 在子元素被 transform 时会整字不画（Chrome 实测），
+/// 所以渐变落到每个字身上，再按最终布局（offsetLeft，不受动画 transform 影响）把每字的
+/// background 偏移拼成连续的一条。h1 必须 `relative` 才是字的 offsetParent。
+function syncTitleCharGradients(title: HTMLHeadingElement | null, chars: HTMLSpanElement[]): void {
+    if (!title || chars.length === 0) return;
+    const width = title.offsetWidth;
+    if (width <= 0) return;
+    for (const char of chars) {
+        if (char.offsetParent !== title) continue;
+        char.style.backgroundSize = `${width}px 100%`;
+        char.style.backgroundPositionX = `${-char.offsetLeft}px`;
+    }
+}
+
 export interface StartupSplashProps {
     shellReady: boolean;
+    /// 是否用 View Transition 圆形揭示主界面（宿主按动效开关 / 支持情况决定）。
+    /// false 时退场走整层淡出，主界面壳自己播入场动画。
+    irisReveal: boolean;
     /// 退场开始揭示主界面的那一刻（比 onFinished 早），宿主用它起播主界面入场动画。
     onReveal?: () => void;
     onFinished: () => void;
 }
 
-export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReveal, onFinished }) => {
+export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisReveal, onReveal, onFinished }) => {
     const rootRef = useRef<HTMLDivElement>(null);
     const stageRef = useRef<HTMLDivElement>(null);
     const logoRef = useRef<HTMLImageElement>(null);
@@ -143,6 +148,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
     const brandPulseRef = useRef<HTMLDivElement>(null);
     const sparkRef = useRef<HTMLDivElement>(null);
     const titleRef = useRef<HTMLHeadingElement>(null);
+    const titleCharRefs = useRef<(HTMLSpanElement | null)[]>([]);
     const subRef = useRef<HTMLDivElement>(null);
     const subTextRef = useRef<HTMLSpanElement>(null);
     const barRef = useRef<HTMLDivElement>(null);
@@ -184,6 +190,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
         const logoWrap = logoWrapRef.current;
         const logoBox = logoBoxRef.current;
         const title = titleRef.current;
+        const titleChars = titleCharRefs.current.filter(Boolean) as HTMLSpanElement[];
         const sub = subRef.current;
         const subText = subTextRef.current;
         const bar = barRef.current;
@@ -207,8 +214,9 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
                 y: 0,
                 scale: 1,
                 scaleX: 1,
-                clearProps: 'filter,letterSpacing',
+                clearProps: 'filter',
             });
+            if (titleChars.length > 0) gsap.set(titleChars, { x: 0, clearProps: 'transform' });
             if (subText) subText.textContent = SUB_TEXT.prepare;
             if (glow) gsap.set(glow, { autoAlpha: 0.35 });
             if (aurora) gsap.set(aurora, { autoAlpha: 0.7 });
@@ -232,7 +240,17 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
         const richBoost = isRich ? 1 : flourish ? 0.65 : 0.35;
 
         // 迸发原点取 logo 的纯布局中心；effect 重跑时元素上可能残留上一轮 transform，先清掉再量
-        gsap.set([stage, logoWrap, logoBox, ...particles].filter(Boolean), { clearProps: 'transform' });
+        gsap.set([stage, logoWrap, logoBox, title, ...titleChars, ...particles].filter(Boolean), { clearProps: 'transform' });
+        syncTitleCharGradients(title, titleChars);
+        // 字体异步加载完成后字宽会变，偏移要重算一次（offsetLeft 是布局值，不受动画 transform 影响）
+        if (typeof document !== 'undefined' && document.fonts) {
+            void document.fonts.ready.then(() => {
+                syncTitleCharGradients(
+                    titleRef.current,
+                    titleCharRefs.current.filter(Boolean) as HTMLSpanElement[],
+                );
+            });
+        }
         const logoRect = logoBox.getBoundingClientRect();
         const cx = logoRect.left + logoRect.width / 2;
         const cy = logoRect.top + logoRect.height / 2;
@@ -241,7 +259,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
             return { dx: cx - (r.left + r.width / 2), dy: cy - (r.top + r.height / 2) };
         });
 
-        gsap.set(root, { autoAlpha: 1, clearProps: 'clipPath' });
+        gsap.set(root, { autoAlpha: 1 });
         if (stage) gsap.set(stage, { scale: flourish ? 1.05 : 1, transformOrigin: '50% 45%' });
         gsap.set(rootFx, { left: cx, top: cy, autoAlpha: 0 });
         if (spark) gsap.set(spark, { scale: 0 });
@@ -261,8 +279,15 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
         gsap.set(title, {
             autoAlpha: 0,
             y: 12,
-            ...(flourish ? { letterSpacing: '0.32em', filter: 'blur(10px)' } : {}),
+            ...(flourish ? { filter: 'blur(10px)' } : {}),
         });
+        if (flourish && titleChars.length > 0) {
+            // 收字距改用逐字 transform：0.32em 是原来的起始字距
+            const spread = parseFloat(getComputedStyle(title).fontSize) * 0.32;
+            gsap.set(titleChars, {
+                x: (index: number) => (index - (titleChars.length - 1) / 2) * spread,
+            });
+        }
         if (subText) {
             subText.textContent = SUB_TEXT.wake;
             gsap.set(subText, { autoAlpha: 1, y: 0 });
@@ -409,15 +434,26 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
             {
                 autoAlpha: 1,
                 y: 0,
-                ...(flourish
-                    ? { letterSpacing: '-0.025em', filter: 'blur(0px)', clearProps: 'filter,letterSpacing' }
-                    : {}),
+                ...(flourish ? { filter: 'blur(0px)', clearProps: 'filter' } : {}),
                 duration: flourish ? s(0.36) : baseDur,
                 ease: isRich ? 'expo.out' : t.ease.enter,
             },
             birthAt + s(0.1),
-        )
-            .to(sub, { autoAlpha: 1, y: 0, duration: fast, ease: t.ease.enterMicro }, birthAt + s(0.15))
+        );
+        if (flourish && titleChars.length > 0) {
+            // 收字距：逐字 transform 平移（原来的 letter-spacing 动画每帧都会触发文本重排）
+            tl.to(
+                titleChars,
+                {
+                    x: 0,
+                    duration: s(0.36),
+                    ease: isRich ? 'expo.out' : t.ease.enter,
+                    clearProps: 'transform',
+                },
+                birthAt + s(0.1),
+            );
+        }
+        tl.to(sub, { autoAlpha: 1, y: 0, duration: fast, ease: t.ease.enterMicro }, birthAt + s(0.15))
             .to(
                 bar,
                 { autoAlpha: 1, scaleX: BAR_ENTER, duration: s(0.25), ease: t.ease.damped },
@@ -452,6 +488,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
                     logoBox,
                     logoWrap,
                     title,
+                    ...titleChars,
                     sub,
                     subText,
                     bar,
@@ -673,8 +710,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
         const anchorRect = anchor.getBoundingClientRect();
         const cx = anchorRect.left + anchorRect.width / 2;
         const cy = anchorRect.top + anchorRect.height / 2;
-        const W = root.clientWidth;
-        const H = root.clientHeight;
 
         // 收束：轨道环加速塌缩，星点被吸回立绘
         const gatherAt = s(0.06);
@@ -760,7 +795,25 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
 
         // 揭示：文字与底色收走，镜头继续推近，以立绘为圆心开洞，主界面从洞里长出来
         const revealAt = burstAt + s(0.08);
-        exitTl.call(notifyReveal, undefined, revealAt);
+        if (irisReveal) {
+            // 圆形揭示走 View Transition（与主题切换同一套快照 + mask 机制）：
+            // 先让立绘 / 文字收走（0.16s），再开洞 —— 旧快照是一张干净的底色快照，
+            // 新快照是终点态的首页，揭示期间不再逐帧裁剪 / 重绘整屏内容。
+            exitTl.call(
+                () => {
+                    void playCircleReveal(
+                        () => {
+                            flushSync(finish);
+                        },
+                        { cx, cy, durMs: Math.round(s(0.24) * 1000), featherPx: 24 },
+                    );
+                },
+                undefined,
+                revealAt + s(0.16),
+            );
+        } else {
+            exitTl.call(notifyReveal, undefined, revealAt);
+        }
         if (stage) exitTl.to(stage, { scale: 1.1, duration: s(0.3), ease: 'power2.in' }, revealAt);
         if (logoWrap) {
             exitTl.to(logoWrap, { scale: 1.45, autoAlpha: 0, duration: s(0.14), ease: 'power2.in' }, revealAt);
@@ -773,25 +826,10 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
         if (glow) exitTl.to(glow, { autoAlpha: 0, duration: s(0.2), ease: 'power2.out' }, revealAt);
         if (aurora) exitTl.to(aurora, { autoAlpha: 0, duration: s(0.2), ease: 'power2.out' }, revealAt);
 
-        if (IRIS_SUPPORTED) {
-            const maxR = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) + 8;
-            const iris = { r: 1 };
-            exitTl.to(
-                iris,
-                {
-                    r: maxR,
-                    duration: s(0.24),
-                    ease: 'power3.inOut',
-                    onUpdate: () => {
-                        root.style.clipPath = irisClipPath(W, H, cx, cy, iris.r);
-                    },
-                },
-                revealAt,
-            );
-        } else {
+        if (!irisReveal) {
             exitTl.to(root, { autoAlpha: 0, duration: s(0.2), ease: 'power2.inOut' }, revealAt + s(0.06));
         }
-    }, [exiting, motion.enabled, motion.speed, motion.preset.timing, finish, notifyReveal, isRich, flourish]);
+    }, [exiting, motion.enabled, motion.speed, motion.preset.timing, finish, notifyReveal, isRich, flourish, irisReveal]);
 
     return (
         <div
@@ -921,9 +959,19 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, onReve
                 <div className="flex flex-col items-center gap-1.5 text-center">
                     <h1
                         ref={titleRef}
-                        className="bg-gradient-to-r from-text via-brand-200 to-text bg-clip-text text-xl font-semibold tracking-tight text-transparent drop-shadow-sm"
+                        className="relative text-xl font-semibold tracking-tight drop-shadow-sm"
                     >
-                        {APP_PRODUCT_NAME}
+                        {Array.from(APP_PRODUCT_NAME).map((char, index) => (
+                            <span
+                                key={`${char}-${index}`}
+                                ref={(element) => {
+                                    titleCharRefs.current[index] = element;
+                                }}
+                                className="inline-block bg-gradient-to-r from-text via-brand-200 to-text bg-clip-text text-transparent will-change-transform"
+                            >
+                                {char}
+                            </span>
+                        ))}
                     </h1>
                     <div ref={subRef} className="flex items-center gap-2 text-sm text-text-secondary">
                         <span className="ndf-splash-pulse-dot" aria-hidden />

@@ -6,6 +6,8 @@ import { StartupSplash } from './StartupSplash';
 import { AppNext } from './AppNext';
 import { hydrateAppUiPreferencesFromDisk } from '../hooks/preferences/useAppUiPreferencesBootstrap';
 import { applySideEffects, preferencesStore } from '../hooks/preferences/preferencesStore';
+import { useMotion } from '../hooks/preferences/useMotion';
+import { supportsCircleReveal } from '../core/design/circleReveal';
 import { normalizeStartupTab } from '../core/domain/ui/startupTab';
 import { applyStartupScreen } from './navigationStore';
 import { syncRootChromeBackground } from '../core/design/surfaceCanvas';
@@ -19,6 +21,10 @@ export const AppBootGate: React.FC = () => {
     // 主界面壳的入场动画（顶部栏/主区）押到 splash 开始揭示时才播，
     // 否则它们在 splash 底下就播完了，用户永远看不到。
     const [revealed, setRevealed] = useState(false);
+    const motion = useMotion();
+    // 圆形揭示 = 主题切换同一套 View Transition（快照 + mask-size）。
+    // 能用它时壳的入场动画让位（新快照必须是终态，不能拍在动画首帧）。
+    const irisReveal = supportsCircleReveal() && motion.enabled && motion.level !== 'elegant';
 
     useEffect(() => {
         applySideEffects();
@@ -72,7 +78,7 @@ export const AppBootGate: React.FC = () => {
             {/* 主界面预先挂载于底层，杜绝硬切闪白与布局跳动 */}
             <div
                 className="relative z-0 h-full min-h-0 w-full"
-                data-boot-reveal={revealed ? 'on' : 'off'}
+                data-boot-reveal={revealed ? (irisReveal ? 'iris' : 'on') : 'off'}
             >
                 <RouteErrorBoundary title="主界面渲染失败">
                     <AppNext />
@@ -83,6 +89,7 @@ export const AppBootGate: React.FC = () => {
             {!splashDone ? (
                 <StartupSplash
                     shellReady={shellReady}
+                    irisReveal={irisReveal}
                     onReveal={handleReveal}
                     onFinished={handleSplashFinished}
                 />
