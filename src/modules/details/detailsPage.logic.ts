@@ -6,7 +6,7 @@
 //   - 合并多个窗口时按 id 去重、按时间倒序。
 
 import { shiftDayKey } from '../../core/domain/date';
-import { formatMoney } from '../../core/domain/money';
+import { formatSignedBalance } from '../../core/domain/money';
 import type { Transaction } from '../../core/ipc/types';
 import { TRANSACTION_BATCH_LIMIT } from '../../core/services/ledger.service';
 
@@ -137,8 +137,7 @@ export function groupByDayWithTotals(items: ReadonlyArray<Transaction>): DayGrou
 
 /** 分组头总计文案：`+ ¥ 1,000.00` / `- ¥ 146.00` / `¥ 0.00`。 */
 export function formatDayTotal(cents: number): string {
-    if (cents === 0) return formatMoney(0);
-    return `${cents > 0 ? '+' : '-'} ${formatMoney(Math.abs(cents))}`;
+    return formatSignedBalance(cents);
 }
 
 // ---------------------------------------------------------------------------

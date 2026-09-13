@@ -36,6 +36,7 @@ export {
     usePeriodShares,
     useTransactionRanks,
     useYearSummary,
+    useYearTransactionRanks,
 } from './useLedgerStats';
 export {
     useAccountGroups,

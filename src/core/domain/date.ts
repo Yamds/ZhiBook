@@ -16,6 +16,15 @@ export interface CalendarDate {
 
 export const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'] as const;
 
+/** 年月选择器的年候选数量（含今年在内往前共 10 年）。 */
+export const YEAR_SELECTOR_SPAN = 10;
+
+/** 月份选择器候选值 1~12（明细页 / 账单页共用）。 */
+export const MONTH_SELECTOR_VALUES: readonly number[] = Array.from(
+    { length: 12 },
+    (_, index) => index + 1,
+);
+
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
 
 export function isLeapYear(year: number): boolean {
@@ -69,6 +78,16 @@ export function toMonthKey(year: number, month: number): string {
     return `${String(year).padStart(4, '0')}-${pad2(month)}`;
 }
 
+/** 'YYYY-MM' → {year, month}；非法返回 null。 */
+export function parseMonthKey(key: string): { year: number; month: number } | null {
+    const match = /^(\d{4})-(\d{2})$/.exec(key);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (month < 1 || month > 12) return null;
+    return { year, month };
+}
+
 /** 月份偏移，自动处理跨年（delta 可正可负）。 */
 export function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
     const zeroBased = year * 12 + (month - 1) + delta;
@@ -117,7 +136,7 @@ export function yearRange(from: number, to: number): number[] {
  *
  * BRD FR-BILL-1 / FR-DET-1：年份上限为今年（不允许选未来年份）。
  */
-export function yearOptions(now?: Date, span = 10): number[] {
+export function yearOptions(now?: Date, span = YEAR_SELECTOR_SPAN): number[] {
     const current = todayDate(now).year;
     const years = Math.max(1, Math.round(span));
     return yearRange(current - years + 1, current);

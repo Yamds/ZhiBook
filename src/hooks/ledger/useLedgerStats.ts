@@ -25,11 +25,11 @@ export function useYearSummary(bookId: string | undefined, year: number) {
 }
 
 /** 单月占比 / 排行（三种口径一次返回）。 */
-export function useMonthShares(bookId: string | undefined, month: string) {
+export function useMonthShares(bookId: string | undefined, month: string, enabled = true) {
     return useQuery({
         queryKey: ledgerKeys.monthShares(bookId ?? '', month),
         queryFn: () => ledgerService.getMonthShares(bookId ?? '', month),
-        enabled: Boolean(bookId),
+        enabled: Boolean(bookId) && enabled,
     });
 }
 
@@ -38,11 +38,12 @@ export function usePeriodShares(
     bookId: string | undefined,
     endMonth: string,
     months = DEFAULT_TREND_MONTHS,
+    enabled = true,
 ) {
     return useQuery({
         queryKey: ledgerKeys.periodShares(bookId ?? '', endMonth, months),
         queryFn: () => ledgerService.getPeriodShares(bookId ?? '', endMonth, months),
-        enabled: Boolean(bookId),
+        enabled: Boolean(bookId) && enabled,
     });
 }
 
@@ -51,11 +52,27 @@ export function useTransactionRanks(
     month: string,
     kind: StatsKind,
     limit = 10,
+    enabled = true,
 ) {
     return useQuery({
         queryKey: ledgerKeys.transactionRanks(bookId ?? '', month, kind, limit),
         queryFn: () => ledgerService.getTransactionRanks(bookId ?? '', month, kind, limit),
-        enabled: Boolean(bookId),
+        enabled: Boolean(bookId) && enabled,
+    });
+}
+
+/** 一整年的单笔排行（年度视图）。 */
+export function useYearTransactionRanks(
+    bookId: string | undefined,
+    year: number,
+    kind: StatsKind,
+    limit = 10,
+    enabled = true,
+) {
+    return useQuery({
+        queryKey: ledgerKeys.yearTransactionRanks(bookId ?? '', year, kind, limit),
+        queryFn: () => ledgerService.getYearTransactionRanks(bookId ?? '', year, kind, limit),
+        enabled: Boolean(bookId) && enabled,
     });
 }
 

@@ -29,17 +29,17 @@ interface InfoBarStackProps {
 }
 
 /// enter 工厂按 tone 分:danger/warning 进场更急(fast 替代 base) + 落位 shake;
-/// success/info 走标准 release。生成函数返回 EnterFn 闭包。
+/// success/info 走标准 release。**从下往上滑入**，因为消息条现在贴在底部导航上方。
 function makeEnter(tone: InfoBarStackItem['tone']): EnterFn {
     return (el, env) => {
         const urgent = tone === 'danger' || tone === 'warning';
         const tl = gsap.timeline();
         tl.fromTo(
             el,
-            { autoAlpha: 0, x: 16, scale: 0.985 },
+            { autoAlpha: 0, y: 16, scale: 0.98 },
             {
                 autoAlpha: 1,
-                x: 0,
+                y: 0,
                 scale: 1,
                 duration: urgent ? env.duration('fast') : env.duration('base'),
                 ease: env.ease.release,
@@ -58,7 +58,7 @@ function makeEnter(tone: InfoBarStackItem['tone']): EnterFn {
 const exit: ExitFn = (el, env) =>
     gsap.to(el, {
         autoAlpha: 0,
-        x: 12,
+        y: 10,
         duration: env.duration('fast'),
         ease: env.ease.exit,
     });
@@ -122,7 +122,9 @@ export function InfoBarStack({
     const node = (
         <div
             className={cn(
-                'pointer-events-none fixed right-6 top-[calc(var(--titlebar-height)+1.5rem)] z-50 flex w-[min(420px,calc(100vw-3rem))] flex-col gap-4',
+                // 底部居中、贴在底部导航上方：系统 Toast 的位置
+                'pointer-events-none fixed inset-x-0 bottom-[calc(var(--safe-bottom)+var(--bottom-nav-height)+0.5rem)] z-[60]',
+                'flex flex-col items-center gap-2 px-4',
                 className,
             )}
         >

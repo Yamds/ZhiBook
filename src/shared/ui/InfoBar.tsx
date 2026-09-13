@@ -1,15 +1,16 @@
-// 顶层消息条原子件。GSAP 版。
-//   - tone 决定颜色 + 图标(info / success / warning / danger)
-//   - 标题 + 内容(content 可选)
-//   - 右上角 close 按钮 + 可选 autoDismissMs 自动消失
-//   - 进退场动画走 GSAP,由 InfoBarStack 通过 GsapPresence 管 mount/unmount
+// 顶层消息条原子件（Toast 式）。
 //
-// 视觉对齐 Fluent InfoBar：不透明分色调底 + 左侧图标井，正文统一主色，避免毛玻璃叠在暖色画布上发糊。
+// 形态：**底部居中的白色小窗**（`InfoBarStack` 负责定位与堆叠），一条消息一行标题、
+// 可选一行补充说明；tone 只体现在图标颜色与边框（warning / danger 略微加深边框），
+// 不再用大块分色调面板 —— 手机上那更像"弹窗"，而不是系统提示。
 //
-// 这一层只管展示,不管"何时该出现"。出现时机由上层 hook 推到
-// InfoBarStack(通常监听 store 终态事件)。
+// 行为：
+//   - 自动消失时长由 `resolveInfoBarAutoDismissMs` 决定（danger 永不自动关）；
+//   - 自动消失的消息**不给关闭按钮**（一次性提示，安卓 Toast 也没有）；
+//     常驻消息（如 danger）才给，用户能手动关掉。
 //
-// 注意:本组件 forwardRef 把 root div 暴露给外部,GsapPresence 才能拿到节点。
+// 这一层只管展示，不管"何时该出现"；进退场动画由 InfoBarStack 的 GsapPresence 驱动。
+// forwardRef 把 root div 暴露给外部，GsapPresence 才能拿到节点。
 
 import { forwardRef, useEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
 import { cva } from 'class-variance-authority';
@@ -18,18 +19,12 @@ import { cn } from '../utils/cn';
 import { AppIcon } from './AppIcon';
 import { MotionIcon, infoToneMotion } from './motion';
 
-const toneClass = {
-    info: 'ndf-infobar--info',
-    success: 'ndf-infobar--success',
-    warning: 'ndf-infobar--warning',
-    danger: 'ndf-infobar--danger',
-} as const;
-
-const iconWellClass = {
-    info: 'ndf-infobar-icon-well--info',
-    success: 'ndf-infobar-icon-well--success',
-    warning: 'ndf-infobar-icon-well--warning',
-    danger: 'ndf-infobar-icon-well--danger',
+/** 底色统一走 elevated（浅色主题就是白色）；tone 只体现在边框与图标。 */
+const surfaceClass = {
+    info: 'border-border-subtle',
+    success: 'border-border-subtle',
+    warning: 'border-warning/40',
+    danger: 'border-danger/45',
 } as const;
 
 const iconVariants = cva('shrink-0', {
@@ -60,8 +55,7 @@ function defaultIconFor(tone: 'info' | 'success' | 'warning' | 'danger'): IconNa
 
 export type InfoBarTone = 'info' | 'success' | 'warning' | 'danger';
 
-export interface InfoBarProps
-    extends Omit<HTMLAttributes<HTMLDivElement>, 'title' | 'content'> {
+export interface InfoBarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title' | 'content'> {
     tone?: InfoBarTone;
     title: ReactNode;
     content?: ReactNode;
@@ -102,6 +96,8 @@ export const InfoBar = forwardRef<HTMLDivElement, InfoBarProps>(
 
         const toneKey = tone ?? 'info';
         const Icon = defaultIconFor(toneKey);
+        // 会自动消失的提示不给关闭按钮：一闪而过的 Toast 上加 × 只会让人误点
+        const showClose = closable && !(autoDismissMs && autoDismissMs > 0);
 
         return (
             <div
@@ -109,45 +105,42 @@ export const InfoBar = forwardRef<HTMLDivElement, InfoBarProps>(
                 role="alert"
                 style={{ visibility: 'hidden', opacity: 0 }}
                 className={cn(
-                    'ndf-infobar pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden px-3.5 py-3',
-                    toneClass[toneKey],
+                    'pointer-events-auto relative flex w-full max-w-[440px] items-center gap-2 rounded-lg border px-3 py-2.5',
+                    'bg-elevated shadow-popover',
+                    surfaceClass[toneKey],
                     className,
                 )}
                 {...rest}
             >
-                <div className={cn('ndf-infobar-icon-well', iconWellClass[toneKey])}>
-                    <MotionIcon
-                        icon={Icon}
-                        motion={infoToneMotion(toneKey)}
-                        playEnter={false}
-                        size={18}
-                        className={iconVariants({ tone: toneKey })}
-                    />
-                </div>
-                <div className="min-w-0 flex-1 pt-0.5">
-                    <div className="text-sm font-semibold leading-tight text-text">{title}</div>
-                    {content && (
-                        <div className="mt-1 break-words text-[12.5px] leading-relaxed text-text-secondary">
+                <MotionIcon
+                    icon={Icon}
+                    motion={infoToneMotion(toneKey)}
+                    playEnter={false}
+                    size={16}
+                    className={iconVariants({ tone: toneKey })}
+                />
+                <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-medium leading-snug text-text">{title}</div>
+                    {content ? (
+                        <div className="mt-0.5 break-words text-[11.5px] leading-snug text-text-secondary">
                             {content}
                         </div>
-                    )}
+                    ) : null}
                     {children}
                 </div>
-                {closable && (
+                {showClose ? (
                     <button
                         type="button"
                         aria-label="关闭"
                         onClick={() => onDismiss?.()}
                         className={cn(
-                            '-mr-1 -mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm',
-                            'text-text-tertiary transition-colors',
-                            'hover:bg-inset hover:text-text',
-                            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand',
+                            '-mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm',
+                            'text-text-tertiary active:bg-inset',
                         )}
                     >
                         <AppIcon name={UI_ICONS.close} size={13} />
                     </button>
-                )}
+                ) : null}
             </div>
         );
     },

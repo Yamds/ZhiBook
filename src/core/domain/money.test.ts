@@ -3,12 +3,21 @@ import {
     MAX_AMOUNT_CENTS,
     formatCents,
     formatMoney,
+    formatSignedBalance,
     formatSignedMoney,
     isSubmittableAmount,
     parseAmountExpression,
     tryAppendKeypadKey,
     type KeypadKey,
 } from './money';
+
+describe('结余金额（formatSignedBalance）', () => {
+    it('正负都有符号，零不带符号', () => {
+        expect(formatSignedBalance(-89600)).toBe('- ¥ 896.00');
+        expect(formatSignedBalance(100000)).toBe('+ ¥ 1,000.00');
+        expect(formatSignedBalance(0)).toBe('¥ 0.00');
+    });
+});
 
 describe('金额格式化', () => {
     it('固定两位小数 + 千分位', () => {

@@ -92,59 +92,8 @@
     }
 }
 
-/* InfoBar：不透明分色调面板（Fluent 式可读性，无 backdrop-blur） */
-.ndf-infobar {
-    border-radius: var(--radius-sm);
-    border-width: 1px;
-    border-style: solid;
-    box-shadow: var(--shadow-md);
-}
-
-.ndf-infobar--info {
-    background: var(--infobar-info-bg);
-    border-color: var(--infobar-info-border);
-}
-
-.ndf-infobar--success {
-    background: var(--infobar-success-bg);
-    border-color: var(--infobar-success-border);
-}
-
-.ndf-infobar--warning {
-    background: var(--infobar-warning-bg);
-    border-color: var(--infobar-warning-border);
-}
-
-.ndf-infobar--danger {
-    background: var(--infobar-danger-bg);
-    border-color: var(--infobar-danger-border);
-}
-
-.ndf-infobar-icon-well {
-    display: flex;
-    height: 2.25rem;
-    width: 2.25rem;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-}
-
-.ndf-infobar-icon-well--info {
-    background: var(--infobar-icon-well-info);
-}
-
-.ndf-infobar-icon-well--success {
-    background: var(--infobar-icon-well-success);
-}
-
-.ndf-infobar-icon-well--warning {
-    background: var(--infobar-icon-well-warning);
-}
-
-.ndf-infobar-icon-well--danger {
-    background: var(--infobar-icon-well-danger);
-}
+/* InfoBar 已改成底部 Toast 式小窗：底色与边框直接走 Tailwind 语义色 / token（见 shared/ui/InfoBar.tsx），
+   原来那套 .ndf-infobar / icon-well 分色调面板规则已删除。 */
 
 /* InfoBar 进场动画已迁移到 framer-motion + useMotion(),原 @keyframes infobar-in
    不再使用,删除避免误用。
@@ -190,6 +139,9 @@ body,
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
+    /* 底部导航实测高度（图标 20 + 间距 4 + 文字 11 + 上下 padding 16 + 上边框 1），
+       底部 Toast 靠它把自己抬到导航上方。 */
+    --bottom-nav-height: 52px;
 }
 
 html {

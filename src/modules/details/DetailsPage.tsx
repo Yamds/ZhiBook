@@ -14,10 +14,12 @@ import {
     clampDay,
     daysOfMonth,
     formatShortDay,
+    MONTH_SELECTOR_VALUES,
     parseDayKey,
     toDayKey,
     todayDate,
     weekdayLabel,
+    YEAR_SELECTOR_SPAN,
     yearOptions,
 } from '../../core/domain/date';
 import { UI_ICONS } from '../../core/design/icons';
@@ -56,9 +58,6 @@ import {
     windowsToCover,
     type DayWindow,
 } from './detailsPage.logic';
-
-const YEAR_SPAN = 10;
-const MONTH_VALUES = Array.from({ length: 12 }, (_, index) => index + 1);
 
 export function DetailsPage() {
     const navigation = useNavigation();
@@ -112,7 +111,7 @@ export function DetailsPage() {
     const [viewer, setViewer] = useState<{ items: Attachment[]; index: number } | null>(null);
 
     const anchorKey = toDayKey({ year, month, day });
-    const yearValues = useMemo(() => yearOptions(undefined, YEAR_SPAN), []);
+    const yearValues = useMemo(() => yearOptions(undefined, YEAR_SELECTOR_SPAN), []);
     const dayValues = useMemo(() => daysOfMonth(year, month), [year, month]);
 
     // 换年 / 换月：把「日」夹到当月合法范围（含闰年 2 月、月末 30/31 天）
@@ -334,7 +333,7 @@ export function DetailsPage() {
                             ariaLabel="选择年份"
                         />
                         <PeriodSelector
-                            values={MONTH_VALUES}
+                            values={MONTH_SELECTOR_VALUES}
                             value={month}
                             onChange={setMonth}
                             unit="月"

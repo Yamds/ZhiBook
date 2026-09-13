@@ -325,13 +325,17 @@ pub fn year_summary(conn: &Connection, book_id: &str, year: i32) -> LedgerResult
             expense_cents: 0,
             income_cents: 0,
             balance_cents: 0,
+            expense_count: 0,
+            income_count: 0,
         })
         .collect();
 
     let mut statement = conn.prepare(
         "SELECT month,
                 COALESCE(SUM(CASE WHEN kind = 'expense' THEN amount_cents ELSE 0 END), 0),
-                COALESCE(SUM(CASE WHEN kind = 'income'  THEN amount_cents ELSE 0 END), 0)
+                COALESCE(SUM(CASE WHEN kind = 'income'  THEN amount_cents ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN kind = 'expense' THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN kind = 'income'  THEN 1 ELSE 0 END), 0)
          FROM transactions
          WHERE book_id = ?1 AND month >= ?2 AND month <= ?3
          GROUP BY month",
@@ -341,10 +345,12 @@ pub fn year_summary(conn: &Connection, book_id: &str, year: i32) -> LedgerResult
             row.get::<_, String>(0)?,
             row.get::<_, i64>(1)?,
             row.get::<_, i64>(2)?,
+            row.get::<_, i64>(3)?,
+            row.get::<_, i64>(4)?,
         ))
     })?;
     for row in rows {
-        let (month, expense_cents, income_cents) = row?;
+        let (month, expense_cents, income_cents, expense_count, income_count) = row?;
         let Some((_, month_number)) = dates::parse_month_key(&month) else {
             return Err(LedgerError::corrupt(format!("账单月份非法：{month}")));
         };
@@ -352,6 +358,8 @@ pub fn year_summary(conn: &Connection, book_id: &str, year: i32) -> LedgerResult
         point.expense_cents = expense_cents;
         point.income_cents = income_cents;
         point.balance_cents = income_cents - expense_cents;
+        point.expense_count = expense_count;
+        point.income_count = income_count;
     }
 
     let expense_cents = months.iter().map(|point| point.expense_cents).sum();
@@ -395,21 +403,45 @@ pub fn transaction_ranks(
     if !dates::is_valid_month_key(month) {
         return Err(LedgerError::validation(format!("月份格式不合法：{month}")));
     }
+    transaction_ranks_in_range(conn, book_id, month, month, kind, limit)
+}
+
+/// 一整年的单笔排行（年度视图，与月度排行同一套排序与口径）。
+pub fn year_transaction_ranks(
+    conn: &Connection,
+    book_id: &str,
+    year: i32,
+    kind: StatsKind,
+    limit: i64,
+) -> LedgerResult<Vec<TransactionRank>> {
+    let from = dates::month_key(year, 1);
+    let to = dates::month_key(year, 12);
+    transaction_ranks_in_range(conn, book_id, &from, &to, kind, limit)
+}
+
+fn transaction_ranks_in_range(
+    conn: &Connection,
+    book_id: &str,
+    from_month: &str,
+    to_month: &str,
+    kind: StatsKind,
+    limit: i64,
+) -> LedgerResult<Vec<TransactionRank>> {
     let limit = limit.clamp(1, 100);
     let meta = category_meta(conn)?;
     let mut statement = conn.prepare(
         "SELECT id, kind, category_id, amount_cents, day, occurred_at_ms, note
          FROM transactions
-         WHERE book_id = ?1 AND month = ?2 AND (?3 IS NULL OR kind = ?3)
+         WHERE book_id = ?1 AND month >= ?2 AND month <= ?3 AND (?4 IS NULL OR kind = ?4)
          ORDER BY amount_cents DESC, occurred_at_ms DESC, id
-         LIMIT ?4",
+         LIMIT ?5",
     )?;
     let kind_filter = match kind {
         StatsKind::Expense => Some("expense"),
         StatsKind::Income => Some("income"),
         StatsKind::Balance => None,
     };
-    let rows = statement.query_map(params![book_id, month, kind_filter, limit], |row| {
+    let rows = statement.query_map(params![book_id, from_month, to_month, kind_filter, limit], |row| {
         Ok((
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,

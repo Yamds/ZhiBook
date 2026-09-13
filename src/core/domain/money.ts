@@ -51,6 +51,18 @@ export function formatSignedMoney(cents: number, kind?: 'expense' | 'income' | n
     return formatMoney(cents);
 }
 
+/**
+ * 结余类金额（正负都有意义）：正数 `+ ¥ 1,000.00`、负数 `- ¥ 896.00`、零 `¥ 0.00`。
+ *
+ * 与 `formatSignedMoney` 的区别：后者的符号由「收支方向」决定，这里的符号就是数值本身。
+ * 用于结余、当日合计、净资产这类可正可负的口径。
+ */
+export function formatSignedBalance(cents: number): string {
+    const value = Number.isFinite(cents) ? Math.trunc(cents) : 0;
+    if (value === 0) return formatMoney(0);
+    return `${value > 0 ? '+' : '-'} ${formatMoney(Math.abs(value))}`;
+}
+
 /** 金额是否可提交：正数且不超过上限。 */
 export function isSubmittableAmount(cents: number): boolean {
     return Number.isInteger(cents) && cents > 0 && cents <= MAX_AMOUNT_CENTS;

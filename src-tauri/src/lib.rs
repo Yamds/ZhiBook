@@ -107,6 +107,7 @@ pub fn run() {
             commands::ledger::get_month_shares,
             commands::ledger::get_period_shares,
             commands::ledger::get_transaction_ranks,
+            commands::ledger::get_year_transaction_ranks,
             commands::ledger::list_day_summaries,
             commands::ledger::get_assets_overview,
             commands::ledger::list_attachments,

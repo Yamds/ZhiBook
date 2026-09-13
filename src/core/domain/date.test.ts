@@ -7,7 +7,9 @@ import {
     formatDateLabel,
     formatShortDay,
     isLeapYear,
+    MONTH_SELECTOR_VALUES,
     parseDayKey,
+    parseMonthKey,
     shiftDayKey,
     shiftMonth,
     toDayKey,
@@ -126,5 +128,18 @@ describe('其它工具', () => {
         expect(formatDateLabel(ms)).toBe('2025年9月8日 星期一');
         expect(formatShortDay('2025-09-08')).toBe('09.08');
         expect(formatShortDay('bad')).toBe('bad');
+    });
+
+    it('parseMonthKey 校验月份范围', () => {
+        expect(parseMonthKey('2025-09')).toEqual({ year: 2025, month: 9 });
+        expect(parseMonthKey('2025-13')).toBeNull();
+        expect(parseMonthKey('2025-1')).toBeNull();
+        expect(parseMonthKey('bad')).toBeNull();
+    });
+
+    it('MONTH_SELECTOR_VALUES 是 1~12', () => {
+        expect(MONTH_SELECTOR_VALUES).toHaveLength(12);
+        expect(MONTH_SELECTOR_VALUES[0]).toBe(1);
+        expect(MONTH_SELECTOR_VALUES[11]).toBe(12);
     });
 });

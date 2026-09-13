@@ -150,6 +150,12 @@ describe('ledgerService 命令契约', () => {
             { bookId: 'book_1', month: '2025-09', kind: 'expense', limit: 5 },
         ]);
 
+        await ledgerService.getYearTransactionRanks('book_1', 2025, 'balance', 5);
+        expect(lastCall()).toEqual([
+            'get_year_transaction_ranks',
+            { bookId: 'book_1', year: 2025, kind: 'balance', limit: 5 },
+        ]);
+
         await ledgerService.listDaySummaries('book_1', '2025-09');
         expect(lastCall()).toEqual(['list_day_summaries', { bookId: 'book_1', month: '2025-09' }]);
 

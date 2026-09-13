@@ -31,6 +31,12 @@ export interface PeriodSelectorProps {
     className?: string;
     /** 需要打标记的取值（如「今天」）：在数字下方画一个小圆点。 */
     isMarked?: (value: number) => boolean;
+    /**
+     * 用户与该选择器发生过交互（点击任意格 / 滑动吸附）时触发，**即使取值没变**。
+     *
+     * 账单页用它区分「用户在看年」还是「看月」：点一下已选中的年份也要切到年视图。
+     */
+    onInteract?: () => void;
 }
 
 /** 滚动停止判定：触摸端 momentum 结束后 140ms 内没有新的 scroll 事件。 */
@@ -49,9 +55,13 @@ export function PeriodSelector({
     ariaLabel,
     className,
     isMarked,
+    onInteract,
 }: PeriodSelectorProps) {
     const trackRef = useRef<HTMLDivElement | null>(null);
     const programmaticRef = useRef(false);
+    /** 这一轮手势是用户发起的（pointerdown 过）——只有它才触发 onInteract，
+        避免「程序化滚动的迟到 scroll 事件」被误当成用户操作。 */
+    const userGestureRef = useRef(false);
     const settleTimerRef = useRef<number | null>(null);
     const [dragging, setDragging] = useState(false);
 
@@ -80,6 +90,10 @@ export function PeriodSelector({
     const commitFromScroll = useCallback(() => {
         const track = trackRef.current;
         if (!track) return;
+        if (userGestureRef.current) {
+            userGestureRef.current = false;
+            onInteract?.();
+        }
         const centers = Array.from(track.children).map(
             (child) => (child as HTMLElement).offsetLeft + (child as HTMLElement).offsetWidth / 2,
         );
@@ -87,7 +101,7 @@ export function PeriodSelector({
         const next = values[index];
         if (next === undefined || next === clamped) return;
         onChange(next);
-    }, [clamped, half, onChange, values]);
+    }, [clamped, half, onInteract, onChange, values]);
 
     const handleScroll = useCallback(() => {
         if (!dragging) setDragging(true);
@@ -111,6 +125,9 @@ export function PeriodSelector({
             aria-label={ariaLabel}
             data-no-swipe
             data-swipe-scroll
+            onPointerDown={() => {
+                userGestureRef.current = true;
+            }}
             onScroll={handleScroll}
             className={cn(
                 'scrollbar-hide relative flex h-9 select-none snap-x snap-mandatory overflow-x-auto overscroll-x-contain',
@@ -128,6 +145,7 @@ export function PeriodSelector({
                         key={item}
                         type="button"
                         onClick={() => {
+                            onInteract?.();
                             if (item === clamped) scrollToItem(index + half, 'smooth');
                             else onChange(item);
                         }}

@@ -2,6 +2,6 @@
 import type { MonthPoint } from "./MonthPoint";
 
 /**
- * 年度汇总：本年结余 / 支出 / 收入 + 12 个月序列。
+ * 年度汇总：本年结余 / 支出 / 收入 + 12 个月序列（含每月笔数）。
  */
 export type YearSummary = { year: number, expenseCents: number, incomeCents: number, balanceCents: number, months: Array<MonthPoint>, };

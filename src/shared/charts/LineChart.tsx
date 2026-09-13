@@ -111,14 +111,15 @@ export function LineChart({
     }
 
     return (
-        <div ref={wrapRef} className={cn('relative w-full', className)} style={{ height }}>
+        <div ref={wrapRef} className={cn('relative w-full', className)} style={{ height }} data-no-swipe>
             <svg
                 width={width}
                 height={height}
                 viewBox={`0 0 ${width} ${height}`}
                 role="img"
                 aria-label="趋势折线图"
-                className="touch-none"
+                // 手机端：横向拖动选点、纵向拖动仍交给页面滚动
+                className="touch-pan-y"
                 onPointerDown={handlePointer}
                 onPointerMove={handlePointer}
             >

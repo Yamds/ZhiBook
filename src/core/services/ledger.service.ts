@@ -101,6 +101,8 @@ export const ledgerService = {
         call<ShareBreakdown>('get_period_shares', { bookId, endMonth, months }),
     getTransactionRanks: (bookId: string, month: string, kind: StatsKind, limit = 10) =>
         call<TransactionRank[]>('get_transaction_ranks', { bookId, month, kind, limit }),
+    getYearTransactionRanks: (bookId: string, year: number, kind: StatsKind, limit = 10) =>
+        call<TransactionRank[]>('get_year_transaction_ranks', { bookId, year, kind, limit }),
     listDaySummaries: (bookId: string, month: string) =>
         call<DaySummary[]>('list_day_summaries', { bookId, month }),
     getAssetsOverview: (bookId: string, untilDay: string, months = DEFAULT_TREND_MONTHS) =>

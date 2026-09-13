@@ -152,6 +152,37 @@ fn year_summary_groups_twelve_months_of_the_same_year() {
     assert_eq!(year.balance_cents, yuan(700));
     assert_eq!(year.months[0].balance_cents, yuan(700));
     assert_eq!(year.months[11].balance_cents, 0);
+    // 每月笔数（年度概览的「累计笔数」由前端求和）
+    assert_eq!(year.months[0].expense_count, 1);
+    assert_eq!(year.months[0].income_count, 1);
+    assert_eq!(year.months[11].expense_count, 0);
+    assert_eq!(year.months.iter().map(|p| p.expense_count).sum::<i64>(), 1);
+}
+
+#[test]
+fn year_ranks_stay_inside_the_selected_year() {
+    let f = Fixture::new();
+    f.add(EntryKind::Expense, "expense_food", None, yuan(300), "2025-02-10", "本年");
+    f.add(EntryKind::Expense, "expense_food", None, yuan(900), "2024-12-31", "上一年更大的那笔");
+    f.add(EntryKind::Expense, "expense_food", None, yuan(100), "2026-01-02", "下一年");
+
+    let ranks = f
+        .ledger
+        .year_transaction_ranks(&f.book(), 2025, StatsKind::Expense, 10)
+        .expect("year ranks");
+    assert_eq!(ranks.len(), 1);
+    assert_eq!(ranks[0].note, "本年");
+    assert_eq!(ranks[0].day, "2025-02-10");
+
+    // 结余口径：同一年里收入 + / 支出 −，排序仍按金额（绝对值）
+    f.add(EntryKind::Income, "income_salary", None, yuan(200), "2025-03-01", "奖金");
+    let balance = f
+        .ledger
+        .year_transaction_ranks(&f.book(), 2025, StatsKind::Balance, 10)
+        .expect("balance ranks");
+    assert_eq!(balance.len(), 2);
+    assert_eq!(balance[0].signed_cents, -yuan(300));
+    assert_eq!(balance[1].signed_cents, yuan(200));
 }
 
 #[test]

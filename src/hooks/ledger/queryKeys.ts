@@ -43,6 +43,8 @@ export const ledgerKeys = {
         kind: StatsKind,
         limit: number,
     ) => [...ledgerKeys.transactionsRoot(), 'ranks', bookId, month, kind, limit] as const,
+    yearTransactionRanks: (bookId: string, year: number, kind: StatsKind, limit: number) =>
+        [...ledgerKeys.transactionsRoot(), 'year-ranks', bookId, year, kind, limit] as const,
 
     // 统计
     statsRoot: () => [...ledgerKeys.all, 'stats'] as const,

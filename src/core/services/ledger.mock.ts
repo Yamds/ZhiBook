@@ -61,6 +61,7 @@ export function ledgerMockCall<T>(command: string, args: Record<string, unknown>
         case 'list_attachments':
         case 'list_day_summaries':
         case 'get_transaction_ranks':
+        case 'get_year_transaction_ranks':
             return [] as unknown as T;
         case 'get_transaction':
             return null as unknown as T;

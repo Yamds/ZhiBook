@@ -376,7 +376,7 @@ pub struct DaySummary {
     pub count: i64,
 }
 
-/// 单个月份的收支合计（年度卡片 / 环形图用）。
+/// 单个月份的收支合计与笔数（年度卡片 / 年度概览 / 趋势图用）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]
@@ -389,9 +389,15 @@ pub struct MonthPoint {
     pub income_cents: i64,
     #[ts(type = "number")]
     pub balance_cents: i64,
+    /// 当月支出笔数。
+    #[ts(type = "number")]
+    pub expense_count: i64,
+    /// 当月收入笔数。
+    #[ts(type = "number")]
+    pub income_count: i64,
 }
 
-/// 年度汇总：本年结余 / 支出 / 收入 + 12 个月序列。
+/// 年度汇总：本年结余 / 支出 / 收入 + 12 个月序列（含每月笔数）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]

@@ -22,6 +22,7 @@ describe('ledgerKeys', () => {
             ledgerKeys.transaction('tx_1'),
             ledgerKeys.searchTransactions('book_a', '早餐'),
             ledgerKeys.transactionRanks('book_a', '2025-09', 'expense', 10),
+            ledgerKeys.yearTransactionRanks('book_a', 2025, 'balance', 10),
             ledgerKeys.monthStats('book_a', '2025-09'),
             ledgerKeys.yearSummary('book_a', 2025),
             ledgerKeys.monthShares('book_a', '2025-09'),
@@ -67,6 +68,9 @@ describe('ledgerInvalidation', () => {
             true,
         );
         expect(startsWith(ledgerKeys.searchTransactions('book_a', '早餐'), prefixes[0])).toBe(true);
+        expect(startsWith(ledgerKeys.yearTransactionRanks('book_a', 2025, 'expense', 10), prefixes[0])).toBe(
+            true,
+        );
         expect(startsWith(ledgerKeys.accounts('book_a', '2025-09-08'), prefixes[2])).toBe(true);
         expect(startsWith(ledgerKeys.assets('book_a', '2025-09-08', 12), prefixes[3])).toBe(true);
     });

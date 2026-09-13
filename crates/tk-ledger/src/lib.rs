@@ -513,6 +513,17 @@ impl Ledger {
         self.with_conn(|conn| query::transaction_ranks(conn, book_id, month, kind, limit))
     }
 
+    /// 一整年的单笔排行（年度视图，与月度排行同一套口径）。
+    pub fn year_transaction_ranks(
+        &self,
+        book_id: &str,
+        year: i32,
+        kind: StatsKind,
+        limit: i64,
+    ) -> LedgerResult<Vec<TransactionRank>> {
+        self.with_conn(|conn| query::year_transaction_ranks(conn, book_id, year, kind, limit))
+    }
+
     pub fn day_summaries(&self, book_id: &str, month: &str) -> LedgerResult<Vec<DaySummary>> {
         self.with_conn(|conn| query::day_summaries(conn, book_id, month))
     }

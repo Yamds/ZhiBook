@@ -307,6 +307,20 @@ pub async fn get_transaction_ranks(
 }
 
 #[tauri::command]
+pub async fn get_year_transaction_ranks(
+    state: State<'_, AppState>,
+    book_id: String,
+    year: i32,
+    kind: StatsKind,
+    limit: i64,
+) -> CommandResult<Vec<TransactionRank>> {
+    run(handle(&state)?, move |ledger| {
+        ledger.year_transaction_ranks(&book_id, year, kind, limit)
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn list_day_summaries(
     state: State<'_, AppState>,
     book_id: String,
