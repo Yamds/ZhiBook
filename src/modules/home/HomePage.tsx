@@ -1,19 +1,18 @@
 // 日历首页（BRD FR-HOME，P7）。
 //
-// 结构：时间卡片（立绘 + 实时时钟 + 日期，P1 就位）+ 日历面板（本阶段接入）。
+// 结构：时间卡片（立绘 + 实时时钟 + 日期，P1 就位）+ 日历面板（P7 接入，可上下滑翻月）。
 // 交互：点某天 → 添加页（带日期）；长按某天 → 明细页（定位该天）；
 //       已在日历页再点「日历」页签 → 设置页（壳层处理，见 FR-HOME-7）。
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import mascot from '../../assets/mascot.png';
-import { toDayKey, todayDate, todayKey, toMonthKey } from '../../core/domain/date';
+import { shiftMonth, toMonthKey, todayDate, todayKey } from '../../core/domain/date';
 import { useDaySummaries } from '../../hooks/ledger';
 import { useCurrentBook } from '../../hooks/ledger/useLedgerBooks';
 import { navigateTo } from '../../app/navigationStore';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { UI_ICONS } from '../../core/design/icons';
-import { CalendarPanel } from './CalendarPanel';
-import { clampDayKeyToMonth, defaultSelectedDayKey } from './homePage.logic';
+import { CalendarPanel, type CalendarPeriod } from './CalendarPanel';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
@@ -24,13 +23,22 @@ export function HomePage() {
     const { currentBook } = useCurrentBook();
     const bookId = currentBook?.id;
 
-    const [year, setYear] = useState(today.year);
-    const [month, setMonth] = useState(today.month);
-    const [selectedDayKey, setSelectedDayKey] = useState(() =>
-        defaultSelectedDayKey(today.year, today.month, todayKeyValue),
-    );
+    const [period, setPeriod] = useState<CalendarPeriod>(() => ({
+        year: today.year,
+        month: today.month,
+    }));
 
-    const days = useDaySummaries(bookId, toMonthKey(year, month));
+    // 竖向翻月要即时看到相邻月的收支，所以三个月一起拉；
+    // 查询按「账本 + 月份」缓存，来回翻月命中缓存不重复请求。
+    const previousMonth = shiftMonth(period.year, period.month, -1);
+    const nextMonth = shiftMonth(period.year, period.month, 1);
+    const previousDays = useDaySummaries(bookId, toMonthKey(previousMonth.year, previousMonth.month));
+    const currentDays = useDaySummaries(bookId, toMonthKey(period.year, period.month));
+    const nextDays = useDaySummaries(bookId, toMonthKey(nextMonth.year, nextMonth.month));
+    const days = useMemo(
+        () => [previousDays.data, currentDays.data, nextDays.data] as const,
+        [currentDays.data, nextDays.data, previousDays.data],
+    );
 
     useEffect(() => {
         const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -50,16 +58,7 @@ export function HomePage() {
         weekday: 'long',
     }).format(now);
 
-    // 换年 / 换月把「高亮日」夹到该月内（保留日号，超界取月末）
-    const handleYearChange = (nextYear: number) => {
-        setYear(nextYear);
-        setSelectedDayKey((current) => clampDayKeyToMonth(nextYear, month, current));
-    };
-    const handleMonthChange = (nextMonth: number) => {
-        setMonth(nextMonth);
-        setSelectedDayKey((current) => clampDayKeyToMonth(year, nextMonth, current));
-    };
-    const handleDayChange = (day: number) => setSelectedDayKey(toDayKey({ year, month, day }));
+    const handlePeriodChange = useCallback((next: CalendarPeriod) => setPeriod(next), []);
 
     return (
         <section className={styles.page}>
@@ -73,15 +72,12 @@ export function HomePage() {
             </div>
 
             <CalendarPanel
-                year={year}
-                month={month}
+                year={period.year}
+                month={period.month}
                 todayKey={todayKeyValue}
-                selectedDayKey={selectedDayKey}
-                days={days.data}
-                isLoading={days.isLoading}
-                onYearChange={handleYearChange}
-                onMonthChange={handleMonthChange}
-                onDayChange={handleDayChange}
+                days={days}
+                isLoading={currentDays.isLoading}
+                onPeriodChange={handlePeriodChange}
                 onPickDay={(dayKey) => navigateTo('add', { date: dayKey })}
                 onOpenDayDetails={(dayKey) => navigateTo('details', { date: dayKey })}
             />

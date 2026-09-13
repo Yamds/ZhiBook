@@ -104,12 +104,14 @@ describe('其它工具', () => {
         expect(yearRange(2026, 2024)).toEqual([2024, 2025, 2026]);
     });
 
-    it('yearOptions 以今年结尾（不允许未来年份）', () => {
+    it('yearOptions 以「今年 + 未来余量」结尾（允许记未来年份）', () => {
         const now = new Date(2026, 8, 13);
         const years = yearOptions(now, 10);
-        expect(years).toHaveLength(10);
-        expect(years.at(-1)).toBe(2026);
+        expect(years).toHaveLength(12);
+        expect(years.at(-1)).toBe(2028);
         expect(years[0]).toBe(2017);
+        // 显式不要未来余量时回到「以今年结尾」
+        expect(yearOptions(now, 10, 0).at(-1)).toBe(2026);
     });
 
     it('shiftDayKey 处理跨月 / 跨年 / 闰日', () => {

@@ -280,34 +280,10 @@ export function DetailsPage() {
 
     return (
         <section ref={sectionRef} className="flex min-h-full flex-col">
+            {/* 吸附头部：上排是周期（非搜索态）/ 搜索状态摘要，下排才是搜索输入框 */}
             <div className="sticky top-0 z-10 -mx-4 bg-canvas px-4 pt-5 pb-2">
-                <div
-                    data-no-swipe
-                    className="flex h-9 items-center gap-1.5 rounded-pill bg-inset px-3"
-                >
-                    <AppIcon name={UI_ICONS.search} size={15} className="shrink-0 text-text-tertiary" />
-                    <input
-                        value={searchInput}
-                        onChange={(event) => setSearchInput(event.target.value)}
-                        maxLength={32}
-                        placeholder="搜索备注 / 分类"
-                        aria-label="搜索账单"
-                        className="min-w-0 flex-1 bg-transparent text-[13px] text-text placeholder:text-text-disabled focus:outline-none"
-                    />
-                    {searchInput.length > 0 ? (
-                        <button
-                            type="button"
-                            onClick={handleSearchClear}
-                            aria-label="清空搜索"
-                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-text-tertiary active:bg-muted"
-                        >
-                            <AppIcon name={UI_ICONS.close} size={13} />
-                        </button>
-                    ) : null}
-                </div>
-
                 {searchActive ? (
-                    <div className="flex items-center gap-2 px-1 pt-2.5 pb-0.5">
+                    <div className="flex items-center gap-2 px-1 pb-0.5">
                         <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">
                             搜索「{searchKeyword.trim()}」
                             <span className="ml-1 text-text-tertiary tabular-nums">
@@ -323,7 +299,7 @@ export function DetailsPage() {
                         </button>
                     </div>
                 ) : (
-                    <div className="flex flex-col pt-4">
+                    <div className="flex flex-col">
                         <PeriodSelector
                             values={yearValues}
                             value={year}
@@ -351,6 +327,31 @@ export function DetailsPage() {
                         />
                     </div>
                 )}
+
+                <div
+                    data-no-swipe
+                    className="mt-4 flex h-9 items-center gap-1.5 rounded-pill bg-inset px-3"
+                >
+                    <AppIcon name={UI_ICONS.search} size={15} className="shrink-0 text-text-tertiary" />
+                    <input
+                        value={searchInput}
+                        onChange={(event) => setSearchInput(event.target.value)}
+                        maxLength={32}
+                        placeholder="搜索备注 / 分类"
+                        aria-label="搜索账单"
+                        className="min-w-0 flex-1 bg-transparent text-[13px] text-text placeholder:text-text-disabled focus:outline-none"
+                    />
+                    {searchInput.length > 0 ? (
+                        <button
+                            type="button"
+                            onClick={handleSearchClear}
+                            aria-label="清空搜索"
+                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-text-tertiary active:bg-muted"
+                        >
+                            <AppIcon name={UI_ICONS.close} size={13} />
+                        </button>
+                    ) : null}
+                </div>
             </div>
 
             <div className="flex flex-col gap-1.5 pt-3">

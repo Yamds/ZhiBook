@@ -15,6 +15,7 @@ import type { Category, EntryKind } from '../../core/ipc/types';
 import { categoryColors } from '../../core/design/categoryColor';
 import { UI_ICONS, toIconName } from '../../core/design/icons';
 import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
+import { useMotion } from '../../hooks/preferences/useMotion';
 import { LONG_PRESS_DELAY_MS, LONG_PRESS_MOVE_TOLERANCE_PX } from '../../hooks/ui/useLongPress';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { BodyPortal } from '../../shared/ui/BodyPortal';
@@ -581,14 +582,23 @@ function CategoryCell({
     onClick,
     onDelete,
 }: CategoryCellProps) {
+    // 按压反馈只给图标本身（圆底弹一下）：整格加灰色底会变成一个方块，
+    // 与圆形图标 + 名称的造型不搭。
+    const motion = useMotion();
+    const iconRef = useRef<HTMLSpanElement | null>(null);
+
     return (
         <button
             type="button"
-            onClick={onClick}
+            onClick={() => {
+                if (iconRef.current) motion.pop(iconRef.current);
+                onClick();
+            }}
             aria-pressed={selected}
-            className="group flex w-full flex-col items-center gap-1.5 rounded-md py-1 active:bg-inset"
+            className="flex w-full flex-col items-center gap-1.5 rounded-md py-1"
         >
             <span
+                ref={iconRef}
                 className={cn(
                     'relative inline-flex h-13 w-13 items-center justify-center rounded-full',
                     'transition-shadow duration-150',
@@ -625,14 +635,22 @@ function CategoryCell({
 }
 
 function AddCard({ onClick }: { onClick: () => void }) {
+    const motion = useMotion();
+    const iconRef = useRef<HTMLSpanElement | null>(null);
     return (
         <button
             type="button"
-            onClick={onClick}
+            onClick={() => {
+                if (iconRef.current) motion.pop(iconRef.current);
+                onClick();
+            }}
             aria-label="新增自定义分类"
-            className="flex w-full flex-col items-center gap-1.5 rounded-md py-1 active:bg-inset"
+            className="flex w-full flex-col items-center gap-1.5 rounded-md py-1"
         >
-            <span className="inline-flex h-13 w-13 items-center justify-center rounded-full border border-dashed border-border-strong text-text-tertiary">
+            <span
+                ref={iconRef}
+                className="inline-flex h-13 w-13 items-center justify-center rounded-full border border-dashed border-border-strong text-text-tertiary"
+            >
                 <AppIcon name={UI_ICONS.plus} size={26} />
             </span>
             <span className="text-[12.5px] leading-tight text-text-tertiary">新增</span>

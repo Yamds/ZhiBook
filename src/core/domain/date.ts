@@ -18,6 +18,8 @@ export const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'] 
 
 /** 年月选择器的年候选数量（含今年在内往前共 10 年）。 */
 export const YEAR_SELECTOR_SPAN = 10;
+/** 年份选择器向**未来**留的余量（BRD 3.3：允许记录未来日期，所以年份不能封在今年）。 */
+export const FUTURE_YEAR_SPAN = 2;
 
 /** 月份选择器候选值 1~12（明细页 / 账单页共用）。 */
 export const MONTH_SELECTOR_VALUES: readonly number[] = Array.from(
@@ -132,14 +134,20 @@ export function yearRange(from: number, to: number): number[] {
 }
 
 /**
- * 年选择器候选值：以今年结尾、往前 `span` 年（含今年）。
+ * 年选择器候选值：以今年 + `future` 年结尾、往前 `span` 年。
  *
- * BRD FR-BILL-1 / FR-DET-1：年份上限为今年（不允许选未来年份）。
+ * BRD 3.3：**允许选择未来日期**（默认今天，不做未来限制；统计里未来月份允许为空），
+ * 所以年份上限是「今年 + `FUTURE_YEAR_SPAN`」，不是今年。
  */
-export function yearOptions(now?: Date, span = YEAR_SELECTOR_SPAN): number[] {
+export function yearOptions(
+    now?: Date,
+    span = YEAR_SELECTOR_SPAN,
+    future = FUTURE_YEAR_SPAN,
+): number[] {
     const current = todayDate(now).year;
     const years = Math.max(1, Math.round(span));
-    return yearRange(current - years + 1, current);
+    const ahead = Math.max(0, Math.round(future));
+    return yearRange(current - years + 1, current + ahead);
 }
 
 /** 日期键按天偏移（跨月 / 跨年安全）；非法输入原样返回。 */

@@ -1,8 +1,11 @@
 // 顶层消息条原子件（Toast 式）。
 //
 // 形态：**底部居中的白色小窗**（`InfoBarStack` 负责定位与堆叠），一条消息一行标题、
-// 可选一行补充说明；tone 只体现在图标颜色与边框（warning / danger 略微加深边框），
-// 不再用大块分色调面板 —— 手机上那更像"弹窗"，而不是系统提示。
+// 可选一行补充说明；tone 只体现在图标颜色与边框（warning / danger 略微加深边框）。
+//
+// 样式上刻意保持「不挡内容」：宽度随内容收缩（不占满屏宽）、底色微透 + 轻模糊，
+// 且**自动消失的提示整块点击穿透**（pointer-events-none）——手机上的 Toast 不该
+// 拦住它下面那层（添加页的数字键盘就在正下方）。
 //
 // 行为：
 //   - 自动消失时长由 `resolveInfoBarAutoDismissMs` 决定（danger 永不自动关）；
@@ -105,8 +108,12 @@ export const InfoBar = forwardRef<HTMLDivElement, InfoBarProps>(
                 role="alert"
                 style={{ visibility: 'hidden', opacity: 0 }}
                 className={cn(
-                    'pointer-events-auto relative flex w-full max-w-[440px] items-center gap-2 rounded-lg border px-3 py-2.5',
-                    'bg-elevated shadow-popover',
+                    // 宽度随内容收缩（不再占满屏宽）；底色略透 + 轻模糊，减少遮挡感。
+                    // 可点击性：会自动消失的提示**整块点击穿透**，手指能直接点到下面的键盘；
+                    // 常驻提示（danger）才接收指针事件，否则关闭按钮点不到。
+                    'relative flex w-fit max-w-[85%] items-center gap-2 rounded-lg border px-3 py-2.5',
+                    'bg-elevated/90 shadow-popover backdrop-blur-sm',
+                    showClose ? 'pointer-events-auto' : 'pointer-events-none',
                     surfaceClass[toneKey],
                     className,
                 )}

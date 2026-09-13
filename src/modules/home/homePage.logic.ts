@@ -1,14 +1,15 @@
-// 日历首页纯逻辑（FR-HOME，BRD v1.4）。
+// 日历首页纯逻辑（FR-HOME，BRD v1.5）。
 //
-// 页面只负责状态与接线，网格生成 / 换月夹取 / 格子文案这些可测的部分都放这里：
+// 页面只负责状态与接线，网格生成 / 竖向翻月判定 / 格子文案这些可测的部分都放这里：
 //   - 固定 **6 行 × 7 列 = 42 格**：无论大小月、无论 1 号是星期几，网格高度恒定，
-//     切月时下面的内容不会上下跳动（验收标准：切月无整页重排跳动）。
+//     翻月时下面的内容不会上下跳动（验收标准：切月无整页重排跳动）。
 //   - 每格只显示「有数据的那一侧」：收入 `+1.2万`、支出 `-500`，无数据留空。
 //     金额省略 `¥` 与符号间距：格子宽约 42px，`+ ¥ 1,000` 放不下。
+//   - 上下滑翻月：网格是「上月 / 本月 / 下月」三页竖向 snap 分页器，
+//     松手落点用 `monthDeltaForScroll()` 换算成月份增量（一次只翻一个月）。
 
 import {
     WEEKDAY_LABELS,
-    clampDay,
     parseDayKey,
     shiftDayKey,
     toDayKey,
@@ -18,23 +19,29 @@ import {
 import { formatCompactAmount, formatSignedMoney } from '../../core/domain/money';
 import type { DaySummary } from '../../core/ipc/types';
 
-/** 周标题（日 → 六），与 `PeriodSelector` 的日选择器口径一致。 */
+/** 周标题（日 → 六）。 */
 export const CALENDAR_WEEKDAYS = WEEKDAY_LABELS;
 
 /** 固定 6 行：日历高度恒定，切月不跳动。 */
 export const CALENDAR_ROWS = 6;
 export const CALENDAR_COLUMNS = 7;
 export const CALENDAR_CELL_COUNT = CALENDAR_ROWS * CALENDAR_COLUMNS;
+/** 单个日期格子的高度（px）：竖向分页器的一页高度 = 行数 × 此值。 */
+export const CALENDAR_CELL_HEIGHT_PX = 52;
+
+/** 竖向分页器一页（= 一个整月网格）的高度。 */
+export function calendarPaneHeightPx(): number {
+    return CALENDAR_ROWS * CALENDAR_CELL_HEIGHT_PX;
+}
 
 export interface CalendarCell {
     /** `YYYY-MM-DD`。 */
     readonly dayKey: string;
     /** 日号（1~31），相邻月的格子显示各自月份里的日号。 */
     readonly day: number;
-    /** 是否属于当前展示的月份：相邻月的格子弱化且不可交互。 */
+    /** 是否属于当前展示的月份：相邻月的格子弱化显示（但仍可点，未来日期也能记）。 */
     readonly inMonth: boolean;
     readonly isToday: boolean;
-    readonly isSelected: boolean;
     readonly incomeCents: number;
     readonly expenseCents: number;
 }
@@ -46,7 +53,7 @@ export interface CalendarCellAmounts {
     readonly expense: string | null;
 }
 
-/** 日历标题：`2025年9月`（点它展开年 / 月 / 日选择器）。 */
+/** 日历标题：`2025年9月`（点它展开年 / 月选择器）。 */
 export function monthTitle(year: number, month: number): string {
     return `${year}年${month}月`;
 }
@@ -71,10 +78,9 @@ export function buildCalendarCells(params: {
     year: number;
     month: number;
     todayKey: string;
-    selectedDayKey: string | null;
     summaries?: readonly DaySummary[];
 }): CalendarCell[] {
-    const { year, month, todayKey, selectedDayKey } = params;
+    const { year, month, todayKey } = params;
     const byDay = indexDaySummaries(params.summaries);
     const firstKey = toDayKey({ year, month, day: 1 });
     const leading = weekdayIndex({ year, month, day: 1 });
@@ -90,7 +96,6 @@ export function buildCalendarCells(params: {
             day: parts?.day ?? 0,
             inMonth,
             isToday: inMonth && dayKey === todayKey,
-            isSelected: inMonth && dayKey === selectedDayKey,
             incomeCents: inMonth ? summary?.incomeCents ?? 0 : 0,
             expenseCents: inMonth ? summary?.expenseCents ?? 0 : 0,
         });
@@ -98,25 +103,20 @@ export function buildCalendarCells(params: {
     return cells;
 }
 
-/** 换月时把「选中日」夹到该月内（保留日号，超界取月末）。 */
-export function clampDayKeyToMonth(
-    year: number,
-    month: number,
-    preferredDayKey: string | null | undefined,
-): string {
-    const day = preferredDayKey ? parseDayKey(preferredDayKey)?.day ?? 1 : 1;
-    return toDayKey({ year, month, day: clampDay(year, month, day) });
-}
-
-/** 某月的选中日默认值：在当月就用今天，否则用 1 号。 */
-export function defaultSelectedDayKey(
-    year: number,
-    month: number,
-    todayKey: string,
-): string {
-    const today = parseDayKey(todayKey);
-    if (today && today.year === year && today.month === month) return todayKey;
-    return toDayKey({ year, month, day: 1 });
+/**
+ * 竖向分页器落点 → 月份增量。
+ *
+ * 分页器固定三页（0 = 上月、1 = 本月、2 = 下月），`snap-mandatory` 保证松手后停在
+ * 整页位置，所以这里只看落点是不是**贴在上页 / 下页**（允许 1/4 页误差）：
+ * 贴上页 → 翻上一月，贴下页 → 翻下一月，其余（含回弹到中页、异常值）不翻月。
+ * **一次手势最多翻一个月**。
+ */
+export function monthDeltaForScroll(scrollTop: number, paneHeight: number): -1 | 0 | 1 {
+    if (!Number.isFinite(scrollTop) || paneHeight <= 0) return 0;
+    const tolerance = paneHeight / 4;
+    if (Math.abs(scrollTop) <= tolerance) return -1;
+    if (Math.abs(scrollTop - paneHeight * 2) <= tolerance) return 1;
+    return 0;
 }
 
 /** 格子里的收支两行（无数据留空，只显示有数据的那一侧）。 */
