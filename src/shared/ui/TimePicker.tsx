@@ -24,6 +24,8 @@ export interface TimePickerProps {
     minuteStep?: number;
     /** 弹层相对触发器的对齐；默认 end（图标按钮靠右的场景） */
     align?: 'start' | 'center' | 'end';
+    /** 弹层展开方向；添加页的时间按钮靠底部，用 top 向上展开避免压住键盘 */
+    side?: 'top' | 'bottom';
     'aria-label'?: string;
 }
 
@@ -179,6 +181,7 @@ export function TimePicker({
     className,
     minuteStep = 1,
     align = 'end',
+    side = 'bottom',
     'aria-label': ariaLabel = '选择时刻',
 }: TimePickerProps) {
     const [open, setOpen] = useState(false);
@@ -210,7 +213,7 @@ export function TimePicker({
                     className,
                 )}
             >
-                <AppIcon name={UI_ICONS.calendarToday} size={13} className="text-text-tertiary" />
+                <AppIcon name={UI_ICONS.clock} size={13} className="text-text-tertiary" />
                 <span>
                     {pad2(h)}:{pad2(m)}
                 </span>
@@ -227,7 +230,7 @@ export function TimePicker({
                     className,
                 )}
             >
-                <AppIcon name={UI_ICONS.calendarToday} size={13} />
+                <AppIcon name={UI_ICONS.clock} size={13} />
             </button>
         );
 
@@ -235,7 +238,7 @@ export function TimePicker({
         <Popover open={open} onOpenChange={setOpen} modal={false}>
             <PopoverTrigger asChild>{trigger}</PopoverTrigger>
             <PopoverContent
-                side="bottom"
+                side={side}
                 align={align}
                 sideOffset={6}
                 className="w-auto p-2"

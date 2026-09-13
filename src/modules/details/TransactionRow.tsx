@@ -15,20 +15,35 @@ export interface TransactionRowProps {
     /** 主题解析后的品牌色 / 卡片面色（由页面统一读一次，避免每行做 DOM 探针）。 */
     brand: string;
     surface: string;
+    /**
+     * 编辑返回后的强调：`flash` = 交替闪烁两次（动效开启），
+     * `ring` = 静态高亮环（动效关闭时也要看得出是哪一条）。
+     */
+    highlight?: 'flash' | 'ring';
     onOpen: () => void;
 }
 
-export function TransactionRow({ transaction, category, brand, surface, onOpen }: TransactionRowProps) {
+export function TransactionRow({
+    transaction,
+    category,
+    brand,
+    surface,
+    highlight,
+    onOpen,
+}: TransactionRowProps) {
     const colors = categoryColors(category?.color ?? 'theme', brand, surface);
     const isIncome = transaction.kind === 'income';
 
     return (
         <button
             type="button"
+            data-transaction-id={transaction.id}
             onClick={onOpen}
             className={cn(
                 'flex w-full items-center gap-3 rounded-lg bg-surface px-3 py-2.5 text-left shadow-card',
                 'active:bg-muted',
+                highlight === 'flash' && 'ndf-row-flash',
+                highlight === 'ring' && 'ring-2 ring-brand',
             )}
         >
             <span

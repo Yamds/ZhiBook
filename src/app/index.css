@@ -828,3 +828,26 @@ samp,
         animation: none !important;
     }
 }
+
+/* 明细页：编辑返回后高亮刚改的那条账单（交替闪烁两次）。
+   动效关闭时页面改用静态 ring，不依赖这段动画。 */
+@keyframes ndf-row-flash {
+    0%,
+    100% {
+        background-color: var(--surface-card);
+    }
+
+    50% {
+        background-color: var(--brand-soft);
+    }
+}
+
+.ndf-row-flash {
+    animation: ndf-row-flash 460ms ease-in-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ndf-row-flash {
+        animation: none !important;
+    }
+}

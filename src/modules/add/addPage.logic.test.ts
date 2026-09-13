@@ -10,15 +10,15 @@ import {
     avoidanceOffset,
     centsToExpression,
     clampPageDrag,
+    clockFromMs,
     dayDiff,
     editingFormValues,
     isSamePage,
     oneSlotOffset,
-    occurredAtMsOnDate,
+    occurredAtMsWithTime,
     resolvePageAfterRelease,
     dropIndexAt,
     moveItem,
-    occurredAtMs,
     shortDateLabel,
     paginate,
     type GridMetrics,
@@ -156,16 +156,33 @@ describe('categoryIdsOf', () => {
     });
 });
 
-describe('occurredAtMs', () => {
-    it('用选中日期 + 当前时钟组成时间戳', () => {
-        const now = new Date(2025, 8, 13, 14, 32, 5, 0); // 2025-09-13 14:32:05
-        const ms = occurredAtMs({ year: 2025, month: 9, day: 8 }, now);
+describe('occurredAtMsWithTime', () => {
+    it('用选中日期 + 用户选择的时分，秒 / 毫秒固定为 0', () => {
+        const ms = occurredAtMsWithTime({ year: 2025, month: 9, day: 8 }, { hours: 14, minutes: 32 });
         const date = new Date(ms);
         expect(date.getFullYear()).toBe(2025);
         expect(date.getMonth() + 1).toBe(9);
         expect(date.getDate()).toBe(8);
         expect(date.getHours()).toBe(14);
         expect(date.getMinutes()).toBe(32);
+        expect(date.getSeconds()).toBe(0);
+        expect(date.getMilliseconds()).toBe(0);
+    });
+
+    it('闰日与越界时分都能处理', () => {
+        const leap = new Date(
+            occurredAtMsWithTime({ year: 2024, month: 2, day: 29 }, { hours: 30, minutes: 90 }),
+        );
+        expect(leap.getDate()).toBe(29);
+        expect(leap.getHours()).toBe(23);
+        expect(leap.getMinutes()).toBe(59);
+    });
+
+    it('clockFromMs 取本地时分', () => {
+        expect(clockFromMs(new Date(2025, 8, 8, 9, 5).getTime())).toEqual({
+            hours: 9,
+            minutes: 5,
+        });
     });
 });
 
@@ -291,15 +308,16 @@ describe('编辑回填', () => {
         expect(centsToExpression(-1)).toBe('');
     });
 
-    it('occurredAtMsOnDate 只换日期、保留原时刻', () => {
-        const clock = new Date(2025, 8, 8, 14, 32, 5, 123);
-        const next = new Date(occurredAtMsOnDate({ year: 2024, month: 2, day: 29 }, clock));
+    it('occurredAtMsWithTime 只换日期、保留原时刻（编辑回填走 time 字段）', () => {
+        const original = new Date(2025, 8, 8, 14, 32, 5, 123).getTime();
+        const time = clockFromMs(original);
+        expect(time).toEqual({ hours: 14, minutes: 32 });
+        const next = new Date(occurredAtMsWithTime({ year: 2024, month: 2, day: 29 }, time));
         expect(next.getFullYear()).toBe(2024);
         expect(next.getMonth() + 1).toBe(2);
         expect(next.getDate()).toBe(29);
         expect(next.getHours()).toBe(14);
         expect(next.getMinutes()).toBe(32);
-        expect(next.getSeconds()).toBe(5);
     });
 
     it('editingFormValues 把账单拆成表单初始值', () => {
@@ -311,7 +329,7 @@ describe('编辑回填', () => {
                 amountCents: 123456,
                 note: '九月工资',
                 day: '2025-09-08',
-
+                occurredAtMs: new Date(2025, 8, 8, 9, 5).getTime(),
             },
             { year: 2000, month: 1, day: 1 },
         );
@@ -321,6 +339,7 @@ describe('编辑回填', () => {
         expect(values.expression).toBe('1234.56');
         expect(values.note).toBe('九月工资');
         expect(values.date).toEqual({ year: 2025, month: 9, day: 8 });
+        expect(values.time).toEqual({ hours: 9, minutes: 5 });
     });
 
     it('editingFormValues 日期非法时退回 fallback', () => {
@@ -332,7 +351,7 @@ describe('编辑回填', () => {
                 amountCents: 100,
                 note: '',
                 day: 'bad',
-
+                occurredAtMs: 0,
             },
             { year: 2025, month: 9, day: 13 },
         );

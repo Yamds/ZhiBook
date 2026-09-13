@@ -248,31 +248,26 @@ export function isSamePage(a: number, b: number, pageSize = GRID_PAGE_SIZE): boo
 }
 
 /**
- * 账单时间戳：选中日期 + 当前时钟（本地时区）。
+ * 账单时间戳：选中日期 + 用户选择的时分（本地时区）。
  *
- * BRD 3.3：账单同时保存日期与时间；日期是用户选的日历日，
- * 时间是记账当下的时分秒。
+ * BRD 3.3：账单同时保存日期与时间。秒 / 毫秒固定为 0——界面上只到分钟，
+ * 存一个界面看不到的秒值反而会让排序变得不可预期。
  */
-export function occurredAtMs(date: CalendarDate, now: Date = new Date()): number {
-    return occurredAtMsOnDate(date, now);
+export function occurredAtMsWithTime(
+    date: CalendarDate,
+    time: { hours: number; minutes: number },
+): number {
+    const hours = Number.isFinite(time.hours) ? Math.min(23, Math.max(0, Math.round(time.hours))) : 0;
+    const minutes = Number.isFinite(time.minutes)
+        ? Math.min(59, Math.max(0, Math.round(time.minutes)))
+        : 0;
+    return new Date(date.year, date.month - 1, date.day, hours, minutes, 0, 0).getTime();
 }
 
-/**
- * 保留「时分秒」、只换日期的时间戳（编辑账单用）。
- *
- * 用户只改日期时，原账单的记账时刻应当保留（否则一条 09:15 的账单
- * 会因为改日期而变成“编辑当下的时间”）。
- */
-export function occurredAtMsOnDate(date: CalendarDate, clockSource: Date): number {
-    return new Date(
-        date.year,
-        date.month - 1,
-        date.day,
-        clockSource.getHours(),
-        clockSource.getMinutes(),
-        clockSource.getSeconds(),
-        clockSource.getMilliseconds(),
-    ).getTime();
+/** 时间戳 → 本地时分（表单回填 / 时间按钮展示）。 */
+export function clockFromMs(ms: number): { hours: number; minutes: number } {
+    const date = new Date(ms);
+    return { hours: date.getHours(), minutes: date.getMinutes() };
 }
 
 /**
@@ -320,7 +315,10 @@ export function categoryIdsOf(entries: ReadonlyArray<GridEntry>): string[] {
  * 纯函数，单独可测：解析失败时退回原来的值，不让页面崩。
  */
 export function editingFormValues(
-    transaction: Pick<Transaction, 'kind' | 'categoryId' | 'accountId' | 'amountCents' | 'note' | 'day'>,
+    transaction: Pick<
+        Transaction,
+        'kind' | 'categoryId' | 'accountId' | 'amountCents' | 'note' | 'day' | 'occurredAtMs'
+    >,
     fallbackDate: CalendarDate = todayDate(),
 ): {
     kind: EntryKind;
@@ -329,6 +327,7 @@ export function editingFormValues(
     expression: string;
     note: string;
     date: CalendarDate;
+    time: { hours: number; minutes: number };
 } {
     return {
         kind: transaction.kind,
@@ -337,5 +336,6 @@ export function editingFormValues(
         expression: centsToExpression(transaction.amountCents),
         note: transaction.note,
         date: parseDayKey(transaction.day) ?? fallbackDate,
+        time: clockFromMs(transaction.occurredAtMs),
     };
 }

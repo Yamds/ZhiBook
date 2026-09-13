@@ -35,6 +35,34 @@ export function isBatchTruncated(batch: ReadonlyArray<unknown>, limit = TRANSACT
 }
 
 /**
+ * 覆盖「锚定日 → 焦点日」所需的窗口列表（编辑返回时一次把窗口铺到位）。
+ *
+ * 不这么做的话，焦点账单可能在已加载窗口之外（用户可能在搜索里改了一条很旧的账单），
+ * 就需逐窗懒加载，滚动定位会先跳到空处再跳回来。
+ *
+ * 最多铺 `maxWindows` 个窗口（默认 26 个 ≈ 半年）；超过则不再铺，焦点账单这次就不高亮
+ * （宁可少一个提示，也不要在手机上一次发几十个查询）。
+ */
+export function windowsToCover(
+    anchorDay: string,
+    focusDay: string,
+    options: { days?: number; maxWindows?: number } = {},
+): DayWindow[] {
+    const days = Math.max(1, options.days ?? DETAILS_BATCH_DAYS);
+    const maxWindows = Math.max(1, options.maxWindows ?? 26);
+    const windows: DayWindow[] = [initialWindow(anchorDay, days)];
+    if (focusDay >= anchorDay) return windows;
+
+    while (windows.length < maxWindows) {
+        const previous = windows[windows.length - 1] as DayWindow;
+        if (previous.fromDay <= focusDay) break;
+        const toDay = shiftDayKey(previous.fromDay, -1);
+        windows.push({ fromDay: shiftDayKey(toDay, -(days - 1)), toDay });
+    }
+    return windows;
+}
+
+/**
  * 下一批窗口；返回 `null` 表示「没有更早的账单了」。
  *
  * - 正常情况：从上一批最旧那天再往前 `days` 天；

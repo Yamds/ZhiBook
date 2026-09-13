@@ -12,6 +12,7 @@ import {
     mergeTransactions,
     nextWindow,
     viewerIndexAfterRelease,
+    windowsToCover,
 } from './detailsPage.logic';
 
 function tx(
@@ -114,6 +115,37 @@ describe('合并与分组', () => {
         expect(formatDayTotal(-14600)).toBe('- ¥ 146.00');
         expect(formatDayTotal(100000)).toBe('+ ¥ 1,000.00');
         expect(formatDayTotal(0)).toBe('¥ 0.00');
+    });
+});
+
+describe('windowsToCover', () => {
+    it('焦点日在初始窗口内：只给一个窗口', () => {
+        expect(windowsToCover('2025-09-13', '2025-09-09')).toEqual([
+            { fromDay: '2025-09-07', toDay: '2025-09-13' },
+        ]);
+        expect(windowsToCover('2025-09-13', '2025-09-13')).toHaveLength(1);
+        expect(windowsToCover('2025-09-13', '2025-09-20')).toHaveLength(1);
+    });
+
+    it('焦点日更早：铺到覆盖那天为止', () => {
+        const windows = windowsToCover('2025-09-13', '2025-09-01');
+        expect(windows).toEqual([
+            { fromDay: '2025-09-07', toDay: '2025-09-13' },
+            { fromDay: '2025-08-31', toDay: '2025-09-06' },
+        ]);
+        expect((windows.at(-1) as { fromDay: string }).fromDay <= '2025-09-01').toBe(true);
+    });
+
+    it('跨年与窗口上限都安全', () => {
+        // 焦点日 2024-12-20 落在第 3 个窗口里（第 2 个从 12-21 开始，还不包含它）
+        const windows = windowsToCover('2025-01-03', '2024-12-20');
+        expect(windows).toEqual([
+            { fromDay: '2024-12-28', toDay: '2025-01-03' },
+            { fromDay: '2024-12-21', toDay: '2024-12-27' },
+            { fromDay: '2024-12-14', toDay: '2024-12-20' },
+        ]);
+        expect((windows.at(-1) as { fromDay: string }).fromDay <= '2024-12-20').toBe(true);
+        expect(windowsToCover('2025-09-13', '2000-01-01', { maxWindows: 3 })).toHaveLength(3);
     });
 });
 

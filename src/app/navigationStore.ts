@@ -19,6 +19,17 @@ export interface NavigationIntent {
     bookId?: string;
     /** 要编辑的账单 id（明细详情 →「编辑」→ 添加页表单，Q3）。 */
     editTransactionId?: string;
+    /**
+     * 编辑返回明细时用的锚定日（明细页当时选中的那天）。
+     *
+     * 编辑一条更早日期的账单不能把用户的选择器位置带回那一天，所以要把锚定日
+     * 原样带回；`focusDay` / `focusTransactionId` 则告诉明细页滚到哪一条并高亮。
+     */
+    restoreAnchorDay?: string;
+    /** 返回明细后要定位并高亮的账单 id。 */
+    focusTransactionId?: string;
+    /** 该账单所在的日期（用于一次性把窗口加载到那一天）。 */
+    focusDay?: string;
     /** 重复点击已激活页签：页面收到后回到顶部 / 重置到默认视图。 */
     retap?: boolean;
 }

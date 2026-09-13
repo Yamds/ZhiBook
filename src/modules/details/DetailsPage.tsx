@@ -31,6 +31,7 @@ import {
 } from '../../hooks/ledger';
 import { useCurrentBook } from '../../hooks/ledger/useLedgerBooks';
 import { useDebouncedValue } from '../../hooks/ui/useDebouncedValue';
+import { useMotion } from '../../hooks/preferences/useMotion';
 import { pushInfoBar } from '../../hooks/ui/globalInfoBarStore';
 import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import { clearNavigationIntent, navigateTo, useNavigation, useRetapHandler } from '../../app/navigationStore';
@@ -52,6 +53,7 @@ import {
     isBatchTruncated,
     mergeTransactions,
     nextWindow,
+    windowsToCover,
     type DayWindow,
 } from './detailsPage.logic';
 
@@ -70,13 +72,35 @@ export function DetailsPage() {
     });
 
     const today = useMemo(() => todayDate(), []);
-    const [year, setYear] = useState(today.year);
-    const [month, setMonth] = useState(today.month);
-    const [day, setDay] = useState(today.day);
 
-    const [windows, setWindows] = useState<DayWindow[]>(() => [initialWindow(toDayKey(today))]);
+    // 挂载时的一次性意图（页面切换会重建本页，所以意图只会在挂载时到达）：
+    //   restoreAnchorDay 编辑返回 → 保留用户原来的选择器位置
+    //   focusDay / focusTransactionId 编辑返回 → 一次把窗口铺到那天，并定位高亮
+    //   date 日历跳转（P7）→ 直接定位到该日
+    const mountIntentRef = useRef(navigation.intent);
+    const mountIntent = mountIntentRef.current;
+    const restoreAnchor = mountIntent?.restoreAnchorDay
+        ? parseDayKey(mountIntent.restoreAnchorDay)
+        : null;
+    const jumpDate = !restoreAnchor && mountIntent?.date ? parseDayKey(mountIntent.date) : null;
+    const initialDate = restoreAnchor ?? jumpDate ?? today;
+
+    const [year, setYear] = useState(initialDate.year);
+    const [month, setMonth] = useState(initialDate.month);
+    const [day, setDay] = useState(initialDate.day);
+
+    const [windows, setWindows] = useState<DayWindow[]>(() =>
+        mountIntent?.restoreAnchorDay && mountIntent.focusDay
+            ? windowsToCover(mountIntent.restoreAnchorDay, mountIntent.focusDay)
+            : [initialWindow(toDayKey(initialDate))],
+    );
     const [atEnd, setAtEnd] = useState(false);
     const [overflowed, setOverflowed] = useState(false);
+    /** 编辑返回后要定位并高亮的账单 id。 */
+    const [focusId, setFocusId] = useState<string | null>(() =>
+        restoreAnchor && mountIntent?.focusTransactionId ? mountIntent.focusTransactionId : null,
+    );
+    const [flashOn, setFlashOn] = useState(false);
 
     const [searchInput, setSearchInput] = useState('');
     const searchKeyword = useDebouncedValue(searchInput, 250);
@@ -103,18 +127,11 @@ export function DetailsPage() {
         setOverflowed(false);
     }, [anchorKey]);
 
-    // 日历长按某天进入（FR-DET-8）：定位到该日，选择器同步；一次性意图
-    const intentDate = navigation.intent?.date;
+    // 挂载意图消费完毕就清掉（避免下次进入被旧参数污染）
     useEffect(() => {
-        if (!intentDate) return;
-        const parsed = parseDayKey(intentDate);
-        if (parsed) {
-            setYear(parsed.year);
-            setMonth(parsed.month);
-            setDay(parsed.day);
-        }
-        clearNavigationIntent('details');
-    }, [intentDate, navigation.seq]);
+        if (mountIntent) clearNavigationIntent('details');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // 重复点「明细」页签：回到最新（窗口重置；滚动到顶部由壳负责）
     useRetapHandler('details', () => {
@@ -146,6 +163,7 @@ export function DetailsPage() {
     const searchTruncated = searchResults.length >= SEARCH_RESULT_LIMIT;
 
     const deleteTransaction = useDeleteTransaction();
+    const motion = useMotion();
 
     // 继续加载更早的窗口。用 ref 让 IntersectionObserver 始终调用最新闭包。
     const loadMoreRef = useRef<() => void>(() => undefined);
@@ -183,6 +201,28 @@ export function DetailsPage() {
 
     const handleSearchClear = useCallback(() => setSearchInput(''), []);
 
+    // 编辑返回：滚到刚改的那条账单并闪烁两次（动效关闭时用静态高亮环）
+    const sectionRef = useRef<HTMLElement | null>(null);
+    const focusHandledRef = useRef(false);
+    useEffect(() => {
+        if (!focusId || focusHandledRef.current) return;
+        if (!merged.some((item) => item.id === focusId)) return;
+        const node = sectionRef.current?.querySelector(`[data-transaction-id="${focusId}"]`);
+        if (!node) return;
+        focusHandledRef.current = true;
+        setFlashOn(true);
+        node.scrollIntoView({ block: 'center', behavior: motion.enabled ? 'smooth' : 'auto' });
+    }, [focusId, merged, motion.enabled]);
+
+    useEffect(() => {
+        if (!flashOn) return;
+        const timer = window.setTimeout(() => {
+            setFlashOn(false);
+            setFocusId(null);
+        }, 1500);
+        return () => window.clearTimeout(timer);
+    }, [flashOn]);
+
     const handleDelete = useCallback(async () => {
         if (!pendingDelete) return;
         setDeleting(true);
@@ -207,10 +247,14 @@ export function DetailsPage() {
         }
     }, [deleteTransaction, pendingDelete]);
 
-    const handleEdit = useCallback((transaction: Transaction) => {
-        setDetail(null);
-        navigateTo('add', { editTransactionId: transaction.id });
-    }, []);
+    const handleEdit = useCallback(
+        (transaction: Transaction) => {
+            setDetail(null);
+            // 带上当前锚定日：回程保留用户的选择器位置（不跳到被编辑账单那天）
+            navigateTo('add', { editTransactionId: transaction.id, restoreAnchorDay: anchorKey });
+        },
+        [anchorKey],
+    );
 
     // 返回键：全屏图片 → 删除确认 → 详情弹层 → 壳
     usePageBackHandler(() => {
@@ -236,7 +280,7 @@ export function DetailsPage() {
     const shownGroups = searchActive ? searchGroups : groups;
 
     return (
-        <section className="flex min-h-full flex-col">
+        <section ref={sectionRef} className="flex min-h-full flex-col">
             <div className="sticky top-0 z-10 -mx-4 bg-canvas px-4 pt-5 pb-2">
                 <div
                     data-no-swipe
@@ -280,7 +324,7 @@ export function DetailsPage() {
                         </button>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-0.5 pt-1">
+                    <div className="flex flex-col pt-4">
                         <PeriodSelector
                             values={yearValues}
                             value={year}
@@ -347,6 +391,9 @@ export function DetailsPage() {
                             categoryById={categoryById}
                             brand={brand}
                             surface={surface}
+                            focusId={focusId}
+                            flashOn={flashOn}
+                            flashMode={motion.enabled ? 'flash' : 'ring'}
                             onOpen={setDetail}
                         />
                     ))
@@ -427,6 +474,9 @@ function DayGroupBlock({
     categoryById,
     brand,
     surface,
+    focusId,
+    flashOn,
+    flashMode,
     onOpen,
 }: {
     day: string;
@@ -435,6 +485,10 @@ function DayGroupBlock({
     categoryById: Map<string, Category>;
     brand: string;
     surface: string;
+    /** 编辑返回后要高亮的账单 id。 */
+    focusId: string | null;
+    flashOn: boolean;
+    flashMode: 'flash' | 'ring';
     onOpen: (transaction: Transaction) => void;
 }) {
     const date = parseDayKey(day);
@@ -459,6 +513,7 @@ function DayGroupBlock({
                     category={categoryById.get(item.categoryId)}
                     brand={brand}
                     surface={surface}
+                    highlight={flashOn && focusId === item.id ? flashMode : undefined}
                     onOpen={() => onOpen(item)}
                 />
             ))}

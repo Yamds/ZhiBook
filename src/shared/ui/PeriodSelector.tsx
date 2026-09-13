@@ -113,7 +113,7 @@ export function PeriodSelector({
             data-swipe-scroll
             onScroll={handleScroll}
             className={cn(
-                'scrollbar-hide relative flex h-10 select-none snap-x snap-mandatory overflow-x-auto overscroll-x-contain',
+                'scrollbar-hide relative flex h-9 select-none snap-x snap-mandatory overflow-x-auto overscroll-x-contain',
                 className,
             )}
             style={{ maskImage: FADE_MASK, WebkitMaskImage: FADE_MASK }}

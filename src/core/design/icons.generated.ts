@@ -689,6 +689,7 @@ export const UI_ICONS = {
     dot: 'mdi:circle',
     backspace: 'mdi:backspace-outline',
     calendarToday: 'mdi:calendar-today',
+    clock: 'mdi:clock-outline',
     edit: 'mdi:pencil-outline',
     trash: 'mdi:trash-can-outline',
     copy: 'mdi:content-copy',

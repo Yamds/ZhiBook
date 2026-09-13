@@ -1,11 +1,14 @@
 // 输入面板顶部（BRD FR-ADD-10 ~ 12）：
-// 左侧备注输入 + 附图按钮 + 账户入口，右侧金额显示（含表达式）。
+// 左侧备注输入 + 时间按钮 + 附图按钮 + 账户入口，右侧金额显示（含表达式）。
 //
 // 备注是真实 <input>：聚焦后直接用系统输入法打字，自定义数字键盘**照常保留**在下方。
+// 时间按钮在附图按钮与备注之间（FR-ADD-10b）：拍开是时 / 分双列滚轮，可精确到分钟；
+// 不选时就是打开页面那一刻的当前时间。
 
 import { UI_ICONS } from '../../core/design/icons';
 import { formatMoney } from '../../core/domain/money';
 import { AppIcon } from '../../shared/ui/AppIcon';
+import { TimePicker, type TimeValue } from '../../shared/ui/TimePicker';
 import { cn } from '../../shared/utils/cn';
 
 export interface AmountPanelProps {
@@ -13,6 +16,9 @@ export interface AmountPanelProps {
     onNoteChange: (value: string) => void;
     attachmentCount: number;
     onPickAttachments: () => void;
+    /** 该笔账单的时分（默认当前时间）。 */
+    time: TimeValue;
+    onTimeChange: (next: TimeValue) => void;
     /** 键盘表达式原文（空 = 还没输入）。 */
     expression: string;
     /** 表达式求值结果（分）；非法时为 0。 */
@@ -27,6 +33,8 @@ export function AmountPanel({
     onNoteChange,
     attachmentCount,
     onPickAttachments,
+    time,
+    onTimeChange,
     expression,
     amountCents,
     amountValid,
@@ -50,6 +58,18 @@ export function AmountPanel({
                             </span>
                         ) : null}
                     </button>
+
+                    <TimePicker
+                        hours={time.hours}
+                        minutes={time.minutes}
+                        onChange={onTimeChange}
+                        variant="field"
+                        side="top"
+                        align="start"
+                        aria-label="选择账单时间"
+                        className="h-8 shrink-0 gap-1 rounded-md border-0 bg-inset px-1.5 text-[11.5px] text-text-secondary"
+                    />
+
                     <div className="relative min-w-0 flex-1">
                         <input
                             value={note}

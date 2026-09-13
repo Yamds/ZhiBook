@@ -37,6 +37,7 @@ export const UI_ICONS = {
     dot: 'circle',
     backspace: 'backspace-outline',
     calendarToday: 'calendar-today',
+    clock: 'clock-outline',
 
     // 通用操作
     edit: 'pencil-outline',

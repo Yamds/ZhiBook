@@ -41,6 +41,7 @@ import { pushInfoBar } from '../../hooks/ui/globalInfoBarStore';
 import { usePageBackHandler } from '../../app/pageBackHandler';
 import { useRetapHandler } from '../../app/navigationStore';
 import { SegmentedControl } from '../../shared/ui';
+import type { TimeValue } from '../../shared/ui/TimePicker';
 import { AccountSheet } from './AccountSheet';
 import { AmountPanel } from './AmountPanel';
 import { AttachmentsRow, type AttachmentStripItem } from './AttachmentsRow';
@@ -50,9 +51,9 @@ import { ConfirmSheet } from '../../shared/ui/ConfirmSheet';
 import { DateSheet } from './DateSheet';
 import { Keypad } from './Keypad';
 import {
+    clockFromMs,
     editingFormValues,
-    occurredAtMs,
-    occurredAtMsOnDate,
+    occurredAtMsWithTime,
     shortDateLabel,
 } from './addPage.logic';
 import { describeError } from '../../core/domain/errors';
@@ -60,11 +61,16 @@ import { MAX_ATTACHMENTS, prepareImage, remainingAttachmentSlots, type PendingAt
 
 type SheetKind = 'date' | 'account' | 'category';
 
+export interface AddFormExit {
+    /** 保存成功时带上账单 id：明细页返回后要滚动定位并高亮它。 */
+    focusTransactionId?: string;
+}
+
 export interface AddFormProps {
     /** 编辑目标；null = 新增。 */
     editing: Transaction | null;
     /** 编辑模式的退出（保存成功或取消）：由路由层决定回哪一页。 */
-    onExit?: () => void;
+    onExit?: (exit?: AddFormExit) => void;
     /** 路由一次性意图：日历点某天进入时的目标日期（YYYY-MM-DD，仅新增模式）。 */
     intentDate?: string;
 }
@@ -99,6 +105,8 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
     const [expression, setExpression] = useState(initial?.expression ?? '');
     const [note, setNote] = useState(initial?.note ?? '');
     const [date, setDate] = useState<CalendarDate>(initial?.date ?? todayDate());
+    /** 账单时分：编辑时回填原时刻，新增时默认「打开页面那一刻」。 */
+    const [time, setTime] = useState<TimeValue>(() => initial?.time ?? clockFromMs(Date.now()));
     const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
     const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
     const [submitting, setSubmitting] = useState(false);
@@ -321,8 +329,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                     note,
                     day: dayKey,
                     month: dayKey.slice(0, 7),
-                    // 只改日期时保留原来的记账时刻
-                    occurredAtMs: occurredAtMsOnDate(date, new Date(editing.occurredAtMs)),
+                    occurredAtMs: occurredAtMsWithTime(date, time),
                 });
                 transactionId = editing.id;
             } else {
@@ -335,7 +342,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                     note,
                     day: dayKey,
                     month: dayKey.slice(0, 7),
-                    occurredAtMs: occurredAtMs(date),
+                    occurredAtMs: occurredAtMsWithTime(date, time),
                 });
                 transactionId = created.id;
             }
@@ -372,14 +379,16 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                           }
                         : { key: 'edit-entry', tone: 'success', title: '已保存修改' },
                 );
-                onExit?.();
+                onExit?.({ focusTransactionId: editing.id });
                 return;
             }
 
-            // 新增：保留分类 / 日期 / 账户，清空金额与备注（FR-ADD-17）
+            // 新增：保留分类 / 日期 / 账户，清空金额与备注（FR-ADD-17）；
+            // 时间重置为保存那一刻（连记下一笔时不该沿用上一笔的时刻）
             setExpression('');
             setNote('');
             setAttachments([]);
+            setTime(clockFromMs(Date.now()));
             if (failed.length > 0) {
                 pushInfoBar({
                     key: 'add-entry',
@@ -422,6 +431,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
         removedAttachmentIds,
         saveAttachment,
         submitting,
+        time,
         updateTransaction,
     ]);
 
@@ -506,7 +516,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                 {isEditing ? (
                     <button
                         type="button"
-                        onClick={onExit}
+                        onClick={() => onExit?.()}
                         className="shrink-0 rounded-pill bg-inset px-3 py-1 text-[12px] font-medium text-text-secondary active:bg-muted"
                     >
                         取消
@@ -550,6 +560,8 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                 onNoteChange={setNote}
                 attachmentCount={attachmentCount}
                 onPickAttachments={handlePickFiles}
+                time={time}
+                onTimeChange={setTime}
                 expression={expression}
                 amountCents={amountCents}
                 amountValid={amountValid}

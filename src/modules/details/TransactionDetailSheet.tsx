@@ -130,6 +130,11 @@ function DetailBody({
                     valueClassName={transaction.note ? undefined : 'text-text-disabled'}
                 />
                 <InfoRow label="金额" value={formatMoney(transaction.amountCents)} />
+                <InfoRow
+                    label="创建"
+                    value={`${formatDateLabel(transaction.createdAtMs)} ${formatClockTime(transaction.createdAtMs)}`}
+                    valueClassName="text-text-tertiary"
+                />
             </div>
 
             {attachments.length > 0 ? (
