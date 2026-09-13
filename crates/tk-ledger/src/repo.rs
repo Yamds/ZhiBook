@@ -6,7 +6,10 @@
 
 use rusqlite::types::Type;
 use rusqlite::{Connection, OptionalExtension, Row, params};
-use tk_domain::{Account, AccountKind, Attachment, Book, Category, EntryKind, Transaction};
+use tk_domain::{
+    Account, AccountKind, Attachment, Book, Category, EntryKind, RecurringRule, RecurringRun,
+    Transaction,
+};
 
 use crate::error::{LedgerError, LedgerResult};
 
@@ -43,6 +46,8 @@ const TRANSACTION_COLUMNS: &str = "id, book_id, kind, category_id, account_id, a
 /// 与 `categories` 联表时用（`id` 等同名列必须带表前缀，否则 SQLite 报 ambiguous）。
 const TRANSACTION_COLUMNS_T: &str = "t.id, t.book_id, t.kind, t.category_id, t.account_id, t.amount_cents, t.note, t.day, t.month, t.occurred_at_ms, t.created_at_ms, t.updated_at_ms";
 const ATTACHMENT_COLUMNS: &str = "id, transaction_id, path, mime, byte_size, sort_order, created_at_ms";
+const RECURRING_RULE_COLUMNS: &str = "id, book_id, kind, amount_cents, note, category_id, account_id, enabled, start_day, last_run_day, created_at_ms, updated_at_ms";
+const RECURRING_RUN_COLUMNS: &str = "rule_id, day, transaction_id, created_at_ms";
 
 fn map_book(row: &Row<'_>) -> rusqlite::Result<Book> {
     Ok(Book {
@@ -119,6 +124,26 @@ fn map_attachment(row: &Row<'_>) -> rusqlite::Result<Attachment> {
         byte_size: row.get(4)?,
         sort_order: row.get(5)?,
         created_at_ms: row.get(6)?,
+    })
+}
+
+fn map_recurring_rule(row: &Row<'_>) -> rusqlite::Result<RecurringRule> {
+    let kind_value: String = row.get(2)?;
+    let kind = EntryKind::from_db(&kind_value)
+        .ok_or_else(|| unknown_enum("固定收支类型", &kind_value))?;
+    Ok(RecurringRule {
+        id: row.get(0)?,
+        book_id: row.get(1)?,
+        kind,
+        amount_cents: row.get(3)?,
+        note: row.get(4)?,
+        category_id: row.get(5)?,
+        account_id: row.get(6)?,
+        enabled: row.get::<_, i64>(7)? != 0,
+        start_day: row.get(8)?,
+        last_run_day: row.get(9)?,
+        created_at_ms: row.get(10)?,
+        updated_at_ms: row.get(11)?,
     })
 }
 
@@ -474,6 +499,19 @@ pub fn get_transaction(conn: &Connection, id: &str) -> LedgerResult<Option<Trans
     Ok(statement.query_row([id], map_transaction).optional()?)
 }
 
+/// 某账本的全部账单（导出备份用；按天与时间正序，便于人工查看）。
+pub fn list_transactions_for_book(
+    conn: &Connection,
+    book_id: &str,
+) -> LedgerResult<Vec<Transaction>> {
+    let mut statement = conn.prepare(&format!(
+        "SELECT {TRANSACTION_COLUMNS} FROM transactions
+         WHERE book_id = ?1
+         ORDER BY day, occurred_at_ms, id"
+    ))?;
+    collect(&mut statement, [book_id], map_transaction)
+}
+
 pub fn insert_transaction(conn: &Connection, transaction: &Transaction) -> LedgerResult<()> {
     conn.execute(
         "INSERT INTO transactions
@@ -610,6 +648,147 @@ pub fn attachment_paths_for_book(conn: &Connection, book_id: &str) -> LedgerResu
     Ok(paths)
 }
 
+// ---------------------------------------------------------------------------
+// 固定收支（每日）
+// ---------------------------------------------------------------------------
+
+pub fn list_recurring_rules(conn: &Connection) -> LedgerResult<Vec<RecurringRule>> {
+    let mut statement = conn.prepare(&format!(
+        "SELECT {RECURRING_RULE_COLUMNS} FROM recurring_rules ORDER BY created_at_ms, id"
+    ))?;
+    collect(&mut statement, [], map_recurring_rule)
+}
+
+pub fn get_recurring_rule(conn: &Connection, id: &str) -> LedgerResult<Option<RecurringRule>> {
+    let mut statement = conn.prepare(&format!(
+        "SELECT {RECURRING_RULE_COLUMNS} FROM recurring_rules WHERE id = ?1"
+    ))?;
+    Ok(statement.query_row([id], map_recurring_rule).optional()?)
+}
+
+pub fn insert_recurring_rule(conn: &Connection, rule: &RecurringRule) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT INTO recurring_rules
+            (id, book_id, kind, amount_cents, note, category_id, account_id, enabled, start_day, last_run_day, created_at_ms, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        params![
+            rule.id,
+            rule.book_id,
+            rule.kind.as_str(),
+            rule.amount_cents,
+            rule.note,
+            rule.category_id,
+            rule.account_id,
+            i64::from(rule.enabled),
+            rule.start_day,
+            rule.last_run_day,
+            rule.created_at_ms,
+            rule.updated_at_ms,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn update_recurring_rule(conn: &Connection, rule: &RecurringRule) -> LedgerResult<bool> {
+    let changed = conn.execute(
+        "UPDATE recurring_rules
+         SET kind = ?2, amount_cents = ?3, note = ?4, category_id = ?5, account_id = ?6,
+             enabled = ?7, last_run_day = ?8, updated_at_ms = ?9
+         WHERE id = ?1",
+        params![
+            rule.id,
+            rule.kind.as_str(),
+            rule.amount_cents,
+            rule.note,
+            rule.category_id,
+            rule.account_id,
+            i64::from(rule.enabled),
+            rule.last_run_day,
+            rule.updated_at_ms,
+        ],
+    )?;
+    Ok(changed > 0)
+}
+
+pub fn delete_recurring_rule(conn: &Connection, id: &str) -> LedgerResult<bool> {
+    Ok(conn.execute("DELETE FROM recurring_rules WHERE id = ?1", [id])? > 0)
+}
+
+/// 幂等台账里是否已经有这条规则这一天。
+pub fn recurring_run_exists(conn: &Connection, rule_id: &str, day: &str) -> LedgerResult<bool> {
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM recurring_runs WHERE rule_id = ?1 AND day = ?2",
+        params![rule_id, day],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
+pub fn insert_recurring_run(
+    conn: &Connection,
+    rule_id: &str,
+    day: &str,
+    transaction_id: &str,
+    now_ms: i64,
+) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT OR IGNORE INTO recurring_runs (rule_id, day, transaction_id, created_at_ms)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![rule_id, day, transaction_id, now_ms],
+    )?;
+    Ok(())
+}
+
+pub fn set_recurring_last_run(
+    conn: &Connection,
+    id: &str,
+    day: &str,
+    now_ms: i64,
+) -> LedgerResult<()> {
+    conn.execute(
+        "UPDATE recurring_rules SET last_run_day = ?2, updated_at_ms = ?3 WHERE id = ?1",
+        params![id, day, now_ms],
+    )?;
+    Ok(())
+}
+
+/// 所有附件元信息（导出备份用）。
+pub fn list_all_attachments(conn: &Connection) -> LedgerResult<Vec<Attachment>> {
+    let mut statement = conn.prepare(&format!(
+        "SELECT {ATTACHMENT_COLUMNS} FROM attachments ORDER BY transaction_id, sort_order, created_at_ms"
+    ))?;
+    collect(&mut statement, [], map_attachment)
+}
+
+pub fn list_recurring_runs(conn: &Connection) -> LedgerResult<Vec<RecurringRun>> {
+    let mut statement = conn.prepare(&format!(
+        "SELECT {RECURRING_RUN_COLUMNS} FROM recurring_runs ORDER BY rule_id, day"
+    ))?;
+    let rows = statement.query_map([], |row| {
+        Ok(RecurringRun {
+            rule_id: row.get(0)?,
+            day: row.get(1)?,
+            transaction_id: row.get(2)?,
+            created_at_ms: row.get(3)?,
+        })
+    })?;
+    let mut items = Vec::new();
+    for row in rows {
+        items.push(row?);
+    }
+    Ok(items)
+}
+
+/// 导入时使用：保留备份里的 `created_at_ms`（`INSERT OR REPLACE`）。
+pub fn upsert_recurring_run(conn: &Connection, run: &RecurringRun) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO recurring_runs (rule_id, day, transaction_id, created_at_ms)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![run.rule_id, run.day, run.transaction_id, run.created_at_ms],
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -722,6 +901,30 @@ mod tests {
         let limited = search_transactions(&conn, "book_a", "%餐饮%", 1).expect("limit");
         assert_eq!(limited.len(), 1);
         assert_eq!(limited[0].id, "tx_new");
+    }
+
+    #[test]
+    fn deleting_account_nulls_recurring_rule_account() {
+        let conn = memory_db();
+        insert_book(&conn, &sample_book("book_a", "日常账")).expect("book");
+        conn.execute(
+            "INSERT INTO accounts (id, book_id, kind, name, icon_name, color, initial_balance_cents, sort_order, created_at_ms, updated_at_ms)
+             VALUES ('acc_1', 'book_a', 'asset', '现金', 'mdi:cash', 'theme', 0, 0, 1, 1)",
+            [],
+        )
+        .expect("account");
+        conn.execute(
+            "INSERT INTO recurring_rules (id, book_id, kind, amount_cents, note, category_id, account_id, enabled, start_day, last_run_day, created_at_ms, updated_at_ms)
+             VALUES ('rec_1', 'book_a', 'expense', 100, '', 'expense_food', 'acc_1', 1, '2025-09-08', NULL, 1, 1)",
+            [],
+        )
+        .expect("rule");
+
+        assert!(delete_account(&conn, "acc_1").expect("delete"));
+        let rule = get_recurring_rule(&conn, "rec_1")
+            .expect("query")
+            .expect("规则应保留");
+        assert_eq!(rule.account_id, None);
     }
 
     #[test]

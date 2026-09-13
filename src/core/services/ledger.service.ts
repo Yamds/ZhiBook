@@ -22,7 +22,12 @@ import type {
     NewAttachment,
     NewBook,
     NewCategory,
+    NewRecurringRule,
     NewTransaction,
+    RecurringOccurrence,
+    RecurringRule,
+    RecurringRulePatch,
+    RecurringRunResult,
     ShareBreakdown,
     StatsKind,
     Transaction,
@@ -107,6 +112,16 @@ export const ledgerService = {
         call<DaySummary[]>('list_day_summaries', { bookId, month }),
     getAssetsOverview: (bookId: string, untilDay: string, months = DEFAULT_TREND_MONTHS) =>
         call<AssetsOverview>('get_assets_overview', { bookId, untilDay, months }),
+
+    // ---- 固定收支（每日） ----
+    listRecurringRules: () => call<RecurringRule[]>('list_recurring_rules'),
+    createRecurringRule: (input: NewRecurringRule) =>
+        call<RecurringRule>('create_recurring_rule', { input }),
+    updateRecurringRule: (input: RecurringRulePatch) =>
+        call<void>('update_recurring_rule', { input }),
+    deleteRecurringRule: (id: string) => call<void>('delete_recurring_rule', { id }),
+    runRecurringEntries: (occurrences: RecurringOccurrence[]) =>
+        call<RecurringRunResult>('run_recurring_entries', { occurrences }),
 
     // ---- 附件 ----
     listAttachments: (transactionId: string) =>

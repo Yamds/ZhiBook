@@ -114,6 +114,22 @@ pub fn run() {
             commands::ledger::save_attachment,
             commands::ledger::read_attachment,
             commands::ledger::delete_attachment,
+            // 固定收支（每日）
+            commands::ledger::list_recurring_rules,
+            commands::ledger::create_recurring_rule,
+            commands::ledger::update_recurring_rule,
+            commands::ledger::delete_recurring_rule,
+            commands::ledger::run_recurring_entries,
+            // 密码锁（PIN）
+            commands::security::get_pin_configured,
+            commands::security::set_app_pin,
+            commands::security::change_app_pin,
+            commands::security::verify_app_pin,
+            commands::security::clear_app_pin,
+            // 数据导入 / 导出
+            commands::backup::export_data,
+            commands::backup::preview_backup,
+            commands::backup::import_data,
         ])
         .build(tauri::generate_context!());
 

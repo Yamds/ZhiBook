@@ -1,0 +1,23 @@
+[package]
+name = "tk-backup"
+description = "数据导入导出：JSON + ZIP 备份包（manifest.json + data.json + attachments/**）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tk-config = { path = "../tk-config" }
+tk-domain = { path = "../tk-domain" }
+tk-ledger = { path = "../tk-ledger" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+rusqlite = { version = "0.37", default-features = false }
+sha2 = "0.10"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

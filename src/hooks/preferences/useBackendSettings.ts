@@ -72,11 +72,30 @@ export function useBackendSettings() {
     // 离开设置页时把还没落盘的改动补上，避免防抖窗口内退出丢设置。
     useEffect(() => flush, [flush]);
 
+    /**
+     * 修改「非外观」的后端设置（如记账提醒）：只改 AppSettings，不动客户端偏好。
+     * 与 `patch` 一样乐观写缓存 + 防抖落盘。
+     */
+    const patchBackend = useCallback(
+        (updater: (current: AppSettings) => AppSettings) => {
+            const baseline = queryClient.getQueryData<AppSettings>(APP_SETTINGS_QUERY_KEY);
+            if (!baseline) return;
+            const next = updater(baseline);
+            queryClient.setQueryData(APP_SETTINGS_QUERY_KEY, next);
+            pendingRef.current = next;
+            if (timerRef.current) clearTimeout(timerRef.current);
+            timerRef.current = setTimeout(flush, PERSIST_DEBOUNCE_MS);
+        },
+        [queryClient, flush],
+    );
+
     return {
         settings: query.data ?? null,
         isLoading: query.isLoading,
         error: query.error,
-        /** 改一项设置。立即生效，后端写入防抖。 */
+        /** 改一项外观设置。立即生效，后端写入防抖。 */
         patch,
+        /** 改一项非外观的后端设置（如提醒）。 */
+        patchBackend,
     };
 }

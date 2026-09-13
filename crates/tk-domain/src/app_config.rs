@@ -59,6 +59,64 @@ fn default_infobar_dismiss_warning_ms() -> u64 {
     6000
 }
 
+fn default_reminder_hour() -> u32 {
+    20
+}
+
+fn default_reminder_minute() -> u32 {
+    0
+}
+
+fn default_reminder_title() -> String {
+    "Hello~".to_string()
+}
+
+fn default_reminder_body() -> String {
+    "今天要记得记账哦?~".to_string()
+}
+
+/// 提醒标题 / 内容长度上限。
+pub const REMINDER_TITLE_MAX: usize = 32;
+pub const REMINDER_BODY_MAX: usize = 64;
+
+/// 记账提醒（本地系统通知）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]
+pub struct ReminderPreferences {
+    /// 是否开启。
+    #[serde(rename = "enabled", default)]
+    pub enabled: bool,
+    /// 提醒时刻（本地时间，0~23）。
+    #[serde(rename = "hour", default = "default_reminder_hour")]
+    pub hour: u32,
+    #[serde(rename = "minute", default = "default_reminder_minute")]
+    pub minute: u32,
+    #[serde(rename = "title", default = "default_reminder_title")]
+    pub title: String,
+    #[serde(rename = "body", default = "default_reminder_body")]
+    pub body: String,
+}
+
+impl Default for ReminderPreferences {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            hour: default_reminder_hour(),
+            minute: default_reminder_minute(),
+            title: default_reminder_title(),
+            body: default_reminder_body(),
+        }
+    }
+}
+
+fn normalize_reminder_text(value: &str, default: &str, max: usize) -> String {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return default.to_string();
+    }
+    trimmed.chars().take(max).collect()
+}
+
 /// InfoBar 非 danger 自动关闭时长上限(毫秒),0 = 不自动关
 pub const INFOBAR_DISMISS_MS_MAX: u64 = 60_000;
 
@@ -133,6 +191,9 @@ pub struct AppSettings {
     /// 外观偏好
     #[serde(rename = "uiPreferences", default)]
     pub ui_preferences: AppUiPreferences,
+    /// 记账提醒（本地通知）
+    #[serde(rename = "reminder", default)]
+    pub reminder: ReminderPreferences,
 }
 
 impl AppSettings {
@@ -144,6 +205,19 @@ impl AppSettings {
         ui.info_bar_dismiss_info_ms = clamp_infobar_dismiss_ms(ui.info_bar_dismiss_info_ms);
         ui.info_bar_dismiss_success_ms = clamp_infobar_dismiss_ms(ui.info_bar_dismiss_success_ms);
         ui.info_bar_dismiss_warning_ms = clamp_infobar_dismiss_ms(ui.info_bar_dismiss_warning_ms);
+        let reminder = &mut self.reminder;
+        reminder.hour = reminder.hour.min(23);
+        reminder.minute = reminder.minute.min(59);
+        reminder.title = normalize_reminder_text(
+            &reminder.title,
+            &default_reminder_title(),
+            REMINDER_TITLE_MAX,
+        );
+        reminder.body = normalize_reminder_text(
+            &reminder.body,
+            &default_reminder_body(),
+            REMINDER_BODY_MAX,
+        );
     }
 }
 
@@ -170,6 +244,7 @@ mod tests {
                 info_bar_dismiss_info_ms: 8000,
                 ..AppUiPreferences::default()
             },
+            ..AppSettings::default()
         };
         let json = serde_json::to_string(&cfg).expect("serialize 不应失败");
         assert!(json.contains(r#""theme":"mocha""#));
@@ -228,6 +303,7 @@ mod tests {
                 startup_tab: "settings".to_string(),
                 ..AppUiPreferences::default()
             },
+            ..AppSettings::default()
         };
         cfg.normalize();
         assert_eq!(cfg.ui_preferences.startup_tab, "home");
@@ -240,8 +316,35 @@ mod tests {
                 info_bar_dismiss_info_ms: 10,
                 ..AppUiPreferences::default()
             },
+            ..AppSettings::default()
         };
         cfg.normalize();
         assert_eq!(cfg.ui_preferences.info_bar_dismiss_info_ms, 1000);
+    }
+
+    #[test]
+    fn reminder_defaults_and_normalization() {
+        let parsed: AppSettings = serde_json::from_str("{\"uiPreferences\":{}}").expect("应能读取");
+        assert!(!parsed.reminder.enabled);
+        assert_eq!(parsed.reminder.hour, 20);
+        assert_eq!(parsed.reminder.minute, 0);
+        assert_eq!(parsed.reminder.title, "Hello~");
+        assert_eq!(parsed.reminder.body, "今天要记得记账哦?~");
+
+        let mut cfg = AppSettings {
+            reminder: ReminderPreferences {
+                enabled: true,
+                hour: 99,
+                minute: 99,
+                title: "   ".to_string(),
+                body: "x".repeat(REMINDER_BODY_MAX + 10),
+            },
+            ..AppSettings::default()
+        };
+        cfg.normalize();
+        assert_eq!(cfg.reminder.hour, 23);
+        assert_eq!(cfg.reminder.minute, 59);
+        assert_eq!(cfg.reminder.title, "Hello~");
+        assert_eq!(cfg.reminder.body.chars().count(), REMINDER_BODY_MAX);
     }
 }

@@ -42,7 +42,7 @@ import { usePageBackHandler } from '../../app/pageBackHandler';
 import { useRetapHandler } from '../../app/navigationStore';
 import { SegmentedControl } from '../../shared/ui';
 import type { TimeValue } from '../../shared/ui/TimePicker';
-import { AccountSheet } from './AccountSheet';
+import { AccountSheet } from '../../shared/components/AccountSheet';
 import { AmountPanel } from './AmountPanel';
 import { AttachmentsRow, type AttachmentStripItem } from './AttachmentsRow';
 import { CategoryEditorSheet, type CategoryDraft } from './CategoryEditorSheet';

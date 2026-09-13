@@ -1,5 +1,5 @@
-// 设置页：页签结构完整保留 —— 「外观」（主题 / 圆角 / 动效）、「行为」（启动页签）与
-// 「关于」（只读版本信息），以后新增「数据」等分类时只往 SETTINGS_TABS 里加一条。
+// 设置页：页签结构完整保留，顺序由 settingsTabs.ts 注册表决定 ——
+// 「功能」（启动页签，后续承载固定收支 / 提醒 / 密码锁 / 数据）、「外观」、「关于」。
 //
 // 入口：日历页再次点击底部「日历」页签（该槽位随后显示为「设置」）。
 // 返回：点「设置」页签或按返回键都回日历页。
@@ -9,29 +9,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../shared/ui';
 import { useBackendSettings } from '../../hooks/preferences/useBackendSettings';
 import { neighborOf, useNestedSwipe } from '../../app/swipeNavigation';
 import { draftFromBackendAndPrefs } from './settings-draft';
+import {
+    DEFAULT_SETTINGS_TAB,
+    SETTINGS_TABS,
+    SETTINGS_TAB_ORDER,
+    type SettingsTab,
+} from './settingsTabs';
 import { AboutTab } from './tabs/AboutTab';
 import { AppearanceTab } from './tabs/AppearanceTab';
-import { BehaviourTab } from './tabs/BehaviourTab';
-
-/** 设置页签注册表：顺序即横滑顺序。 */
-const SETTINGS_TABS = [
-    { value: 'appearance', label: '外观' },
-    { value: 'behaviour', label: '行为' },
-    { value: 'about', label: '关于' },
-] as const;
-
-type SettingsTab = typeof SETTINGS_TABS[number]['value'];
-
-const TAB_ORDER: ReadonlyArray<SettingsTab> = SETTINGS_TABS.map((tab) => tab.value);
+import { FeatureTab } from './tabs/FeatureTab';
 
 export function SettingsPage() {
     const { settings, patch } = useBackendSettings();
-    const [tab, setTab] = useState<SettingsTab>('appearance');
+    const [tab, setTab] = useState<SettingsTab>(DEFAULT_SETTINGS_TAB);
     const draft = settings ? draftFromBackendAndPrefs(settings) : null;
 
     // 页签优先消费横滑；到边界返回 false，让壳去处理（当前壳在设置页不切页签）。
     useNestedSwipe((direction) => {
-        const next = neighborOf(TAB_ORDER, tab, direction);
+        const next = neighborOf(SETTINGS_TAB_ORDER, tab, direction);
         if (!next) return false;
         setTab(next);
         return true;
@@ -48,11 +43,11 @@ export function SettingsPage() {
                     </TabsList>
                 </div>
                 <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-0.5 pr-2">
+                    <TabsContent value="feature" className="pb-10 pt-7 focus-visible:outline-none">
+                        <FeatureTab draft={draft} patchDraft={patch} />
+                    </TabsContent>
                     <TabsContent value="appearance" className="pb-10 pt-7 focus-visible:outline-none">
                         <AppearanceTab draft={draft} patchDraft={patch} />
-                    </TabsContent>
-                    <TabsContent value="behaviour" className="pb-10 pt-7 focus-visible:outline-none">
-                        <BehaviourTab draft={draft} patchDraft={patch} />
                     </TabsContent>
                     <TabsContent value="about" className="pb-10 pt-7 focus-visible:outline-none">
                         <AboutTab />

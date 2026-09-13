@@ -5,8 +5,10 @@
 
 pub mod app_log;
 pub mod app_settings;
+pub mod backup;
 pub mod exit;
 pub mod ledger;
+pub mod security;
 
 use std::fs;
 use std::path::PathBuf;

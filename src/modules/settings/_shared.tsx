@@ -32,6 +32,30 @@ export function FieldRow({ label, description, isLast: _isLast, layout = 'inline
     return <div className="flex items-center justify-between gap-6 py-5 first:pt-1 last:pb-1"><div className="min-w-0 flex-1 space-y-1"><label className="block text-[13px] font-medium leading-snug text-text">{label}</label>{description && <p className="text-[12px] leading-relaxed text-text-tertiary">{description}</p>}</div>{children && <div className="flex shrink-0 items-center gap-2">{children}</div>}</div>;
 }
 
+/** 设置项入口行：点开一个管理弹窗（固定收支 / 记账提醒 / 密码锁 / 数据 …）。 */
+export function SettingsEntryRow({ icon, label, description, value, onClick, disabled }: { icon?: IconName; label: string; description?: ReactNode; value?: ReactNode; onClick: () => void; disabled?: boolean }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className="flex w-full items-center gap-3 py-5 text-left first:pt-1 last:pb-1 active:opacity-70 disabled:opacity-50"
+        >
+            {icon ? (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-inset text-text-secondary">
+                    <AppIcon name={icon} size={17} />
+                </span>
+            ) : null}
+            <span className="min-w-0 flex-1 space-y-1">
+                <span className="block text-[13px] font-medium leading-snug text-text">{label}</span>
+                {description ? <span className="block text-[12px] leading-relaxed text-text-tertiary">{description}</span> : null}
+            </span>
+            {value ? <span className="shrink-0 text-[12px] text-text-tertiary">{value}</span> : null}
+            <AppIcon name={UI_ICONS.chevronRight} size={14} className="shrink-0 text-text-tertiary" />
+        </button>
+    );
+}
+
 interface ThemeItem { value: ThemeMode; label: string; canvas: string; sidebar: string; text: string; subtext: string; brand: string; accent: string; }
 interface ThemeGroup { label: string; items: ReadonlyArray<ThemeItem>; }
 

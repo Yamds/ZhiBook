@@ -32,8 +32,9 @@ use tk_config::DataPaths;
 use tk_domain::{
     Account, AccountPatch, AssetsOverview, Attachment, AttachmentData, Book, BookPatch, Category,
     CategoryPatch, DaySummary, EntryKind, MAX_AMOUNT_CENTS, MonthStats, NewAccount, NewAttachment,
-    NewBook, NewCategory, NewTransaction, ShareBreakdown, StatsKind, Transaction, TransactionPatch,
-    TransactionRank, YearSummary,
+    NewBook, NewCategory, NewRecurringRule, NewTransaction, RecurringOccurrence, RecurringRule,
+    RecurringRulePatch, RecurringRunResult, ShareBreakdown, StatsKind, Transaction,
+    TransactionPatch, TransactionRank, YearSummary,
 };
 
 pub use attachments::AttachmentStore;
@@ -562,6 +563,178 @@ impl Ledger {
     pub fn delete_attachment(&self, attachment_id: &str) -> LedgerResult<()> {
         self.with_tx(|conn| self.attachments.delete(conn, attachment_id))
     }
+
+    // -----------------------------------------------------------------------
+    // 固定收支（每日）
+    // -----------------------------------------------------------------------
+
+    pub fn list_recurring_rules(&self) -> LedgerResult<Vec<RecurringRule>> {
+        self.with_conn(repo::list_recurring_rules)
+    }
+
+    /// 新建固定收支规则：`start_day` 由前端按本地时区给出（创建时刻之后的下一个 05:00）。
+    pub fn create_recurring_rule(&self, input: NewRecurringRule) -> LedgerResult<RecurringRule> {
+        validate::amount_cents(input.amount_cents)?;
+        let note = validate::note(&input.note)?;
+        if !dates::is_valid_day_key(&input.start_day) {
+            return Err(LedgerError::validation(format!(
+                "日期格式不合法：{}",
+                input.start_day
+            )));
+        }
+        let account_id = normalize_optional_id(input.account_id);
+        self.with_tx(move |conn| {
+            ensure_transaction_refs(
+                conn,
+                &input.book_id,
+                input.kind,
+                &input.category_id,
+                account_id.as_deref(),
+            )?;
+            let now = id::now_ms();
+            let rule = RecurringRule {
+                id: id::new_id("rec"),
+                book_id: input.book_id,
+                kind: input.kind,
+                amount_cents: input.amount_cents,
+                note,
+                category_id: input.category_id,
+                account_id,
+                enabled: true,
+                start_day: input.start_day,
+                last_run_day: None,
+                created_at_ms: now,
+                updated_at_ms: now,
+            };
+            repo::insert_recurring_rule(conn, &rule)?;
+            Ok(rule)
+        })
+    }
+
+    /// 编辑规则；`start_day` 保持不变（不允许把生效日改到更早，避免补出创建前的账单）。
+    pub fn update_recurring_rule(&self, input: RecurringRulePatch) -> LedgerResult<()> {
+        validate::amount_cents(input.amount_cents)?;
+        let note = validate::note(&input.note)?;
+        if let Some(day) = input.skip_through_day.as_deref()
+            && !dates::is_valid_day_key(day)
+        {
+            return Err(LedgerError::validation(format!("日期格式不合法：{day}")));
+        }
+        let account_id = normalize_optional_id(input.account_id);
+        self.with_tx(move |conn| {
+            let existing = repo::get_recurring_rule(conn, &input.id)?
+                .ok_or_else(|| LedgerError::not_found(format!("固定收支不存在：{}", input.id)))?;
+            ensure_transaction_refs(
+                conn,
+                &existing.book_id,
+                input.kind,
+                &input.category_id,
+                account_id.as_deref(),
+            )?;
+            let mut rule = RecurringRule {
+                kind: input.kind,
+                amount_cents: input.amount_cents,
+                note,
+                category_id: input.category_id,
+                account_id,
+                enabled: input.enabled,
+                updated_at_ms: id::now_ms(),
+                ..existing
+            };
+            // 停用 → 启用：把暂停期间视为已处理（暂停不补记）。
+            if input.enabled
+                && let Some(skip) = input.skip_through_day
+                && rule.last_run_day.as_deref().is_none_or(|last| skip.as_str() > last)
+            {
+                rule.last_run_day = Some(skip);
+            }
+            repo::update_recurring_rule(conn, &rule)?;
+            Ok(())
+        })
+    }
+
+    /// 删除规则；已生成的账单保留。
+    pub fn delete_recurring_rule(&self, id: &str) -> LedgerResult<()> {
+        self.with_tx(|conn| {
+            if !repo::delete_recurring_rule(conn, id)? {
+                return Err(LedgerError::not_found(format!("固定收支不存在：{id}")));
+            }
+            Ok(())
+        })
+    }
+
+    /// 补账：对每个 `(rule, day)` 幂等生成一笔账单（同一天最多一笔）。
+    ///
+    /// 校验顺序：规则存在 → 启用 → `day >= start_day`（绝不补到创建之前）
+    /// → 台账去重。
+    pub fn run_recurring_entries(
+        &self,
+        occurrences: Vec<RecurringOccurrence>,
+    ) -> LedgerResult<RecurringRunResult> {
+        self.with_tx(move |conn| {
+            let now = id::now_ms();
+            let mut created = Vec::new();
+            for occurrence in occurrences {
+                if !dates::is_valid_day_key(&occurrence.day) {
+                    continue;
+                }
+                let Some(rule) = repo::get_recurring_rule(conn, &occurrence.rule_id)? else {
+                    continue;
+                };
+                if !rule.enabled || occurrence.day.as_str() < rule.start_day.as_str() {
+                    continue;
+                }
+                // 已经处理过的日期（含暂停期间跳过的）不再补。
+                if rule
+                    .last_run_day
+                    .as_deref()
+                    .is_some_and(|last| occurrence.day.as_str() <= last)
+                {
+                    continue;
+                }
+                if repo::recurring_run_exists(conn, &rule.id, &occurrence.day)? {
+                    continue;
+                }
+                let month = dates::month_key_of_day(&occurrence.day)
+                    .ok_or_else(|| LedgerError::validation("日期格式不合法"))?;
+                ensure_transaction_refs(
+                    conn,
+                    &rule.book_id,
+                    rule.kind,
+                    &rule.category_id,
+                    rule.account_id.as_deref(),
+                )?;
+                let transaction = Transaction {
+                    id: id::new_id("tx"),
+                    book_id: rule.book_id.clone(),
+                    kind: rule.kind,
+                    category_id: rule.category_id.clone(),
+                    account_id: rule.account_id.clone(),
+                    amount_cents: rule.amount_cents,
+                    note: rule.note.clone(),
+                    day: occurrence.day.clone(),
+                    month,
+                    occurred_at_ms: occurrence.occurred_at_ms,
+                    created_at_ms: now,
+                    updated_at_ms: now,
+                };
+                repo::insert_transaction(conn, &transaction)?;
+                repo::insert_recurring_run(conn, &rule.id, &occurrence.day, &transaction.id, now)?;
+                if rule
+                    .last_run_day
+                    .as_deref()
+                    .is_none_or(|last| occurrence.day.as_str() > last)
+                {
+                    repo::set_recurring_last_run(conn, &rule.id, &occurrence.day, now)?;
+                }
+                created.push(transaction.id);
+            }
+            Ok(RecurringRunResult {
+                created_count: created.len() as i64,
+                transaction_ids: created,
+            })
+        })
+    }
 }
 
 /// 打开数据库时的 PRAGMA。
@@ -694,5 +867,114 @@ mod tests {
         let existing = vec!["a".to_string(), "b".to_string(), "c".to_string()];
         let requested = vec!["c".to_string(), "nope".to_string(), "a".to_string()];
         assert_eq!(apply_order(&existing, &requested), vec!["c", "a", "b"]);
+    }
+
+    fn sample_rule(ledger: &Ledger, start_day: &str) -> RecurringRule {
+        ledger
+            .create_recurring_rule(NewRecurringRule {
+                book_id: seed::DEFAULT_BOOK_ID.to_string(),
+                kind: EntryKind::Expense,
+                amount_cents: 1234,
+                note: "早餐".to_string(),
+                category_id: "expense_food".to_string(),
+                account_id: None,
+                start_day: start_day.to_string(),
+            })
+            .expect("create rule")
+    }
+
+    #[test]
+    fn recurring_entries_are_idempotent_and_never_before_start_day() {
+        let ledger = TestLedger::new();
+        let rule = sample_rule(&ledger, "2025-09-10");
+        let occurrence = |day: &str| RecurringOccurrence {
+            rule_id: rule.id.clone(),
+            day: day.to_string(),
+            occurred_at_ms: 1,
+        };
+
+        let result = ledger
+            .run_recurring_entries(vec![
+                occurrence("2025-09-09"), // 早于 start_day → 不补
+                occurrence("2025-09-10"),
+                occurrence("2025-09-10"), // 重复 → 幂等
+                occurrence("2025-09-11"),
+            ])
+            .expect("run");
+        assert_eq!(result.created_count, 2);
+        assert_eq!(
+            ledger
+                .list_transactions_by_day(seed::DEFAULT_BOOK_ID, "2025-09-10")
+                .expect("10 日")
+                .len(),
+            1
+        );
+        assert_eq!(
+            ledger
+                .list_transactions_by_day(seed::DEFAULT_BOOK_ID, "2025-09-11")
+                .expect("11 日")
+                .len(),
+            1
+        );
+        let stored = ledger
+            .list_recurring_rules()
+            .expect("rules")
+            .into_iter()
+            .find(|item| item.id == rule.id)
+            .expect("rule");
+        assert_eq!(stored.last_run_day.as_deref(), Some("2025-09-11"));
+    }
+
+    #[test]
+    fn disabled_rule_does_not_run_and_paused_window_is_skipped_on_reenable() {
+        let ledger = TestLedger::new();
+        let rule = sample_rule(&ledger, "2025-09-01");
+
+        // 停用期间不生成
+        ledger
+            .update_recurring_rule(RecurringRulePatch {
+                id: rule.id.clone(),
+                kind: EntryKind::Expense,
+                amount_cents: 1234,
+                note: "早餐".to_string(),
+                category_id: "expense_food".to_string(),
+                account_id: None,
+                enabled: false,
+                skip_through_day: None,
+            })
+            .expect("disable");
+        let occurrence = |day: &str| RecurringOccurrence {
+            rule_id: rule.id.clone(),
+            day: day.to_string(),
+            occurred_at_ms: 1,
+        };
+        assert_eq!(
+            ledger
+                .run_recurring_entries(vec![occurrence("2025-09-03")])
+                .expect("disabled run")
+                .created_count,
+            0
+        );
+
+        // 重新启用：暂停窗口视为已处理
+        ledger
+            .update_recurring_rule(RecurringRulePatch {
+                id: rule.id.clone(),
+                kind: EntryKind::Expense,
+                amount_cents: 1234,
+                note: "早餐".to_string(),
+                category_id: "expense_food".to_string(),
+                account_id: None,
+                enabled: true,
+                skip_through_day: Some("2025-09-05".to_string()),
+            })
+            .expect("reenable");
+        assert_eq!(
+            ledger
+                .run_recurring_entries(vec![occurrence("2025-09-05"), occurrence("2025-09-06")])
+                .expect("reenable run")
+                .created_count,
+            1
+        );
     }
 }

@@ -1,12 +1,14 @@
 // 首屏闸门：磁盘 UI 偏好就绪 → StartupSplash → AppNext。
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './index.css';
 import { StartupSplash } from './StartupSplash';
 import { AppNext } from './AppNext';
 import { hydrateAppUiPreferencesFromDisk } from '../hooks/preferences/useAppUiPreferencesBootstrap';
 import { applySideEffects, preferencesStore } from '../hooks/preferences/preferencesStore';
 import { useMotion } from '../hooks/preferences/useMotion';
+import { refreshPinConfigured, useLockState } from '../hooks/security/usePinLock';
+import { PinLockScreen } from '../modules/security/PinLockScreen';
 import { supportsCircleReveal } from '../core/design/circleReveal';
 import { normalizeStartupTab } from '../core/domain/ui/startupTab';
 import { applyStartupScreen } from './navigationStore';
@@ -16,11 +18,14 @@ import { perfMark, perfMeasure } from '../core/domain/performance/perfMarks';
 
 export const AppBootGate: React.FC = () => {
     const [prefsReady, setPrefsReady] = useState(false);
+    const [pinReady, setPinReady] = useState(false);
     const [shellReady, setShellReady] = useState(false);
     const [splashDone, setSplashDone] = useState(false);
     // 主界面壳的入场动画（顶部栏/主区）押到 splash 开始揭示时才播，
     // 否则它们在 splash 底下就播完了，用户永远看不到。
     const [revealed, setRevealed] = useState(false);
+    const lock = useLockState();
+    const prevLockedRef = useRef(false);
     const motion = useMotion();
     // 圆形揭示 = 主题切换同一套 View Transition（快照 + mask-size）。
     // 能用它时壳的入场动画让位（新快照必须是终态，不能拍在动画首帧）。
@@ -29,12 +34,27 @@ export const AppBootGate: React.FC = () => {
     useEffect(() => {
         applySideEffects();
         syncRootChromeBackground();
-        void hydrateAppUiPreferencesFromDisk().finally(() => {
-            syncRootChromeBackground();
-            perfMark('prefs_ready', { once: true });
-            setPrefsReady(true);
-        });
+        void hydrateAppUiPreferencesFromDisk()
+            .catch(() => undefined)
+            // 偏好就绪后读一次密码锁状态（已设置则进入锁定态）。
+            .then(() => refreshPinConfigured(true))
+            .catch(() => undefined)
+            .finally(() => {
+                syncRootChromeBackground();
+                perfMark('prefs_ready', { once: true });
+                setPrefsReady(true);
+                setPinReady(true);
+            });
     }, []);
+
+    // 解锁时跳过启动页：锁屏已经等过一次，再播一遍五幕动画会很拖。
+    useEffect(() => {
+        if (prevLockedRef.current && !lock.locked) {
+            setRevealed(true);
+            setSplashDone(true);
+        }
+        prevLockedRef.current = lock.locked;
+    }, [lock.locked]);
 
     useEffect(() => {
         if (!prefsReady) return;
@@ -62,7 +82,7 @@ export const AppBootGate: React.FC = () => {
         perfMeasure('boot_prefs_to_splash_exit', 'prefs_ready', 'splash_exit');
     }, []);
 
-    if (!prefsReady) {
+    if (!prefsReady || !pinReady) {
         return (
             <div
                 className="fixed inset-0 z-[200] bg-canvas"
@@ -71,6 +91,11 @@ export const AppBootGate: React.FC = () => {
                 aria-label="正在加载设置"
             />
         );
+    }
+
+    // 锁定期间不挂载主界面：数据不在锁屏背后渲染。
+    if (lock.locked) {
+        return <PinLockScreen />;
     }
 
     return (

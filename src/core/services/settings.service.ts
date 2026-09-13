@@ -6,6 +6,7 @@
 import { invoke, isTauri } from '../ipc/transport';
 import type { AppSettings } from '../ipc/types';
 import type { AppUiPreferences } from '../ipc/generated/domain/AppUiPreferences';
+import type { ReminderPreferences } from '../ipc/generated/domain/ReminderPreferences';
 import type { AppPreferences } from '../../hooks/preferences/preferencesStore';
 import { MOTION_SPEED_DEFAULT, MOTION_SPEED_MAX, MOTION_SPEED_MIN, type MotionLevel } from '../design/motion';
 import { normalizeRadiusStyle } from '../design/radius';
@@ -24,8 +25,18 @@ export const DEFAULT_UI_PREFERENCES: AppUiPreferences = {
     infoBarDismissWarningMs: 6000,
 };
 
+/** 记账提醒默认值（与 Rust `ReminderPreferences::default` 一致）。 */
+export const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
+    enabled: false,
+    hour: 20,
+    minute: 0,
+    title: 'Hello~',
+    body: '今天要记得记账哦?~',
+};
+
 export const DEFAULT_APP_SETTINGS: AppSettings = {
     uiPreferences: DEFAULT_UI_PREFERENCES,
+    reminder: DEFAULT_REMINDER_PREFERENCES,
 };
 
 function normalizeMotionLevel(value: unknown): MotionLevel {

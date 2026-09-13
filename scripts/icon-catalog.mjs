@@ -66,6 +66,16 @@ export const UI_ICONS = {
     radiusSquare: 'square-outline',
     radiusStandard: 'rectangle-outline',
     radiusRound: 'circle-outline',
+
+    // 设置 · 功能页（P10+：固定收支 / 提醒 / 密码锁 / 导入导出 / 云端备份）
+    repeat: 'repeat',
+    bell: 'bell-outline',
+    lock: 'lock-outline',
+    shieldLock: 'shield-lock-outline',
+    cloudUpload: 'cloud-upload-outline',
+    databaseExport: 'database-export-outline',
+    databaseImport: 'database-import-outline',
+    key: 'key-outline',
 };
 
 /** 内置分类默认图标：与 BRD 第 6 章的推荐表一一对应。 */

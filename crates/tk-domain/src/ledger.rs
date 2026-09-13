@@ -357,6 +357,104 @@ pub struct NewAttachment {
 }
 
 // ---------------------------------------------------------------------------
+// 固定收支（每日固定支出 / 收入）
+// ---------------------------------------------------------------------------
+
+/// 固定收支规则：每天 05:00 自动记一笔。
+///
+/// `start_day` = 创建时刻之后的**下一个 05:00** 所在日（绝不早于创建时刻）；
+/// `last_run_day` = 最近一次已生成（或已跳过）的日期。
+/// 补账从 `max(start_day, last_run_day + 1)` 开始，`recurring_runs` 保幂等。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]
+pub struct RecurringRule {
+    pub id: String,
+    pub book_id: String,
+    pub kind: EntryKind,
+    #[ts(type = "number")]
+    pub amount_cents: i64,
+    pub note: String,
+    pub category_id: String,
+    /// 可选关联账户（null = 未指定）。
+    pub account_id: Option<String>,
+    pub enabled: bool,
+    pub start_day: String,
+    /// 最近一次已处理的日期；null = 从未处理。
+    pub last_run_day: Option<String>,
+    #[ts(type = "number")]
+    pub created_at_ms: i64,
+    #[ts(type = "number")]
+    pub updated_at_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]
+pub struct NewRecurringRule {
+    pub book_id: String,
+    pub kind: EntryKind,
+    #[ts(type = "number")]
+    pub amount_cents: i64,
+    pub note: String,
+    pub category_id: String,
+    pub account_id: Option<String>,
+    /// 首个可能生成的日期（含），由前端按设备本地时间算出。
+    pub start_day: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]
+pub struct RecurringRulePatch {
+    pub id: String,
+    pub kind: EntryKind,
+    #[ts(type = "number")]
+    pub amount_cents: i64,
+    pub note: String,
+    pub category_id: String,
+    pub account_id: Option<String>,
+    pub enabled: bool,
+    /// 由停用切换为启用时由前端提供：把「最近已处理日期」推进到该日（含），
+    /// 用来跳过暂停期间（暂停不补记）。其余情况传 null。
+    pub skip_through_day: Option<String>,
+}
+
+/// 一次补账：某条规则在某天生成一笔自动账单。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]
+pub struct RecurringOccurrence {
+    pub rule_id: String,
+    pub day: String,
+    /// 当天 05:00 的本地时间戳（补账时回写「发生时间」）。
+    #[ts(type = "number")]
+    pub occurred_at_ms: i64,
+}
+
+/// 补账结果。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]
+pub struct RecurringRunResult {
+    #[ts(type = "number")]
+    pub created_count: i64,
+    pub transaction_ids: Vec<String>,
+}
+
+/// 固定收支的幂等台账（同一条规则同一天最多一笔）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]
+pub struct RecurringRun {
+    pub rule_id: String,
+    pub day: String,
+    pub transaction_id: String,
+    #[ts(type = "number")]
+    pub created_at_ms: i64,
+}
+
+// ---------------------------------------------------------------------------
 // 统计读取模型（Rust 聚合后返回，不落库）
 // ---------------------------------------------------------------------------
 

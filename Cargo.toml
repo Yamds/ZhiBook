@@ -6,6 +6,8 @@ members = [
     "crates/tk-config",
     "crates/tk-log",
     "crates/tk-ledger",
+    "crates/tk-security",
+    "crates/tk-backup",
     "crates/tk-runtime",
 ]
 resolver = "3"

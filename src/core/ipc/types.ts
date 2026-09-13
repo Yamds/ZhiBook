@@ -1,5 +1,10 @@
 export type { AppSettings } from './generated/domain/AppSettings';
 export type { AppUiPreferences } from './generated/domain/AppUiPreferences';
+export type { BackupCounts } from './generated/domain/BackupCounts';
+export type { BackupPreview } from './generated/domain/BackupPreview';
+export type { BackupSummary } from './generated/domain/BackupSummary';
+export type { ImportSummary } from './generated/domain/ImportSummary';
+export type { ReminderPreferences } from './generated/domain/ReminderPreferences';
 
 // 记账域类型（Rust `crates/tk-domain/src/ledger.rs` 定义，pnpm run ts-bindings 生成）
 export type { Account } from './generated/domain/Account';
@@ -24,7 +29,13 @@ export type { NewAccount } from './generated/domain/NewAccount';
 export type { NewAttachment } from './generated/domain/NewAttachment';
 export type { NewBook } from './generated/domain/NewBook';
 export type { NewCategory } from './generated/domain/NewCategory';
+export type { NewRecurringRule } from './generated/domain/NewRecurringRule';
 export type { NewTransaction } from './generated/domain/NewTransaction';
+export type { RecurringOccurrence } from './generated/domain/RecurringOccurrence';
+export type { RecurringRule } from './generated/domain/RecurringRule';
+export type { RecurringRulePatch } from './generated/domain/RecurringRulePatch';
+export type { RecurringRun } from './generated/domain/RecurringRun';
+export type { RecurringRunResult } from './generated/domain/RecurringRunResult';
 export type { ReorderRequest } from './generated/domain/ReorderRequest';
 export type { ShareBreakdown } from './generated/domain/ShareBreakdown';
 export type { StatsKind } from './generated/domain/StatsKind';

@@ -65,6 +65,10 @@ export const ledgerKeys = {
         [...ledgerKeys.attachmentsRoot(), transactionId] as const,
     attachmentData: (attachmentId: string) =>
         [...ledgerKeys.attachmentsRoot(), 'data', attachmentId] as const,
+
+    // 固定收支（每日）
+    recurringRoot: () => [...ledgerKeys.all, 'recurring'] as const,
+    recurringRules: () => [...ledgerKeys.recurringRoot(), 'rules'] as const,
 };
 
 /**

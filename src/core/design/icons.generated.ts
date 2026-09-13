@@ -94,6 +94,7 @@ export type IconName =
     | 'mdi:clipboard-text-outline'
     | 'mdi:clock-outline'
     | 'mdi:close'
+    | 'mdi:cloud-upload-outline'
     | 'mdi:coffee'
     | 'mdi:cog-outline'
     | 'mdi:coins-outline'
@@ -117,6 +118,8 @@ export type IconName =
     | 'mdi:cupcake'
     | 'mdi:currency-cny'
     | 'mdi:currency-usd'
+    | 'mdi:database-export-outline'
+    | 'mdi:database-import-outline'
     | 'mdi:desk'
     | 'mdi:diamond-stone'
     | 'mdi:dice-multiple-outline'
@@ -198,6 +201,7 @@ export type IconName =
     | 'mdi:lightbulb-outline'
     | 'mdi:lightning-bolt-outline'
     | 'mdi:lipstick'
+    | 'mdi:lock-outline'
     | 'mdi:magic-staff'
     | 'mdi:magnify'
     | 'mdi:map-legend'
@@ -259,6 +263,7 @@ export type IconName =
     | 'mdi:receipt-text-outline'
     | 'mdi:rectangle-outline'
     | 'mdi:refresh'
+    | 'mdi:repeat'
     | 'mdi:rice'
     | 'mdi:ring'
     | 'mdi:road-variant'
@@ -273,6 +278,7 @@ export type IconName =
     | 'mdi:school-outline'
     | 'mdi:screwdriver'
     | 'mdi:shape-outline'
+    | 'mdi:shield-lock-outline'
     | 'mdi:shield-outline'
     | 'mdi:shoe-heel'
     | 'mdi:shoe-sneaker'
@@ -450,6 +456,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:clipboard-text-outline',
     'mdi:clock-outline',
     'mdi:close',
+    'mdi:cloud-upload-outline',
     'mdi:coffee',
     'mdi:cog-outline',
     'mdi:coins-outline',
@@ -473,6 +480,8 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:cupcake',
     'mdi:currency-cny',
     'mdi:currency-usd',
+    'mdi:database-export-outline',
+    'mdi:database-import-outline',
     'mdi:desk',
     'mdi:diamond-stone',
     'mdi:dice-multiple-outline',
@@ -554,6 +563,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:lightbulb-outline',
     'mdi:lightning-bolt-outline',
     'mdi:lipstick',
+    'mdi:lock-outline',
     'mdi:magic-staff',
     'mdi:magnify',
     'mdi:map-legend',
@@ -615,6 +625,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:receipt-text-outline',
     'mdi:rectangle-outline',
     'mdi:refresh',
+    'mdi:repeat',
     'mdi:rice',
     'mdi:ring',
     'mdi:road-variant',
@@ -629,6 +640,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:school-outline',
     'mdi:screwdriver',
     'mdi:shape-outline',
+    'mdi:shield-lock-outline',
     'mdi:shield-outline',
     'mdi:shoe-heel',
     'mdi:shoe-sneaker',
@@ -765,6 +777,14 @@ export const UI_ICONS = {
     radiusSquare: 'mdi:square-outline',
     radiusStandard: 'mdi:rectangle-outline',
     radiusRound: 'mdi:circle-outline',
+    repeat: 'mdi:repeat',
+    bell: 'mdi:bell-outline',
+    lock: 'mdi:lock-outline',
+    shieldLock: 'mdi:shield-lock-outline',
+    cloudUpload: 'mdi:cloud-upload-outline',
+    databaseExport: 'mdi:database-export-outline',
+    databaseImport: 'mdi:database-import-outline',
+    key: 'mdi:key-outline',
 } as const satisfies Record<string, IconName>;
 
 /** 选择器分组顺序。 */

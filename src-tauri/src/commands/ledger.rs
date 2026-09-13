@@ -10,7 +10,8 @@ use tauri::State;
 use tk_domain::{
     Account, AccountPatch, AssetsOverview, Attachment, AttachmentData, Book, BookPatch, Category,
     CategoryPatch, DaySummary, EntryKind, MonthStats, NewAccount, NewAttachment, NewBook,
-    NewCategory, NewTransaction, ReorderRequest, ShareBreakdown, StatsKind, Transaction,
+    NewCategory, NewRecurringRule, NewTransaction, RecurringOccurrence, RecurringRule,
+    RecurringRulePatch, RecurringRunResult, ReorderRequest, ShareBreakdown, StatsKind, Transaction,
     TransactionPatch, TransactionRank, YearSummary,
 };
 use tk_ledger::{Ledger, LedgerError};
@@ -379,4 +380,46 @@ pub async fn read_attachment(
 #[tauri::command]
 pub async fn delete_attachment(state: State<'_, AppState>, id: String) -> CommandResult<()> {
     run(handle(&state)?, move |ledger| ledger.delete_attachment(&id)).await
+}
+
+// ---------------------------------------------------------------------------
+// 固定收支（每日）
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn list_recurring_rules(state: State<'_, AppState>) -> CommandResult<Vec<RecurringRule>> {
+    run(handle(&state)?, |ledger| ledger.list_recurring_rules()).await
+}
+
+#[tauri::command]
+pub async fn create_recurring_rule(
+    state: State<'_, AppState>,
+    input: NewRecurringRule,
+) -> CommandResult<RecurringRule> {
+    run(handle(&state)?, move |ledger| ledger.create_recurring_rule(input)).await
+}
+
+#[tauri::command]
+pub async fn update_recurring_rule(
+    state: State<'_, AppState>,
+    input: RecurringRulePatch,
+) -> CommandResult<()> {
+    run(handle(&state)?, move |ledger| ledger.update_recurring_rule(input)).await
+}
+
+#[tauri::command]
+pub async fn delete_recurring_rule(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+    run(handle(&state)?, move |ledger| ledger.delete_recurring_rule(&id)).await
+}
+
+/// 补账：前端按本地时区算好「哪些规则的哪天」，这里只做幂等落库。
+#[tauri::command]
+pub async fn run_recurring_entries(
+    state: State<'_, AppState>,
+    occurrences: Vec<RecurringOccurrence>,
+) -> CommandResult<RecurringRunResult> {
+    run(handle(&state)?, move |ledger| {
+        ledger.run_recurring_entries(occurrences)
+    })
+    .await
 }
