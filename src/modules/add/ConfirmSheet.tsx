@@ -1,0 +1,64 @@
+// 破坏性操作的二次确认弹层（BRD 3.7：删除分类 / 账户 / 账单都要说明影响范围）。
+//
+// 用 BottomSheet 而不是系统 confirm：移动端更顺手，也能带上「影响范围」文案。
+
+import type { ReactNode } from 'react';
+import { BottomSheet } from '../../shared/ui/BottomSheet';
+import { cn } from '../../shared/utils/cn';
+
+export interface ConfirmSheetProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    title: string;
+    /** 影响范围说明（必填，别让用户猜）。 */
+    description: ReactNode;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    /** danger = 删除类操作。 */
+    tone?: 'danger' | 'primary';
+    busy?: boolean;
+    onConfirm: () => void;
+}
+
+export function ConfirmSheet({
+    open,
+    onOpenChange,
+    title,
+    description,
+    confirmLabel = '确认删除',
+    cancelLabel = '取消',
+    tone = 'danger',
+    busy = false,
+    onConfirm,
+}: ConfirmSheetProps) {
+    return (
+        <BottomSheet open={open} onOpenChange={onOpenChange} title={title} maxHeightRatio={0.6}>
+            <div className="flex flex-col gap-4">
+                <div className="text-[13px] leading-relaxed text-text-secondary">{description}</div>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => onOpenChange(false)}
+                        className="h-10 flex-1 rounded-md bg-inset text-[14px] font-medium text-text-secondary active:bg-muted"
+                    >
+                        {cancelLabel}
+                    </button>
+                    <button
+                        type="button"
+                        disabled={busy}
+                        onClick={onConfirm}
+                        className={cn(
+                            'h-10 flex-1 rounded-md text-[14px] font-semibold text-white',
+                            tone === 'danger' ? 'bg-danger' : 'bg-brand',
+                            busy ? 'opacity-60' : 'active:opacity-90',
+                        )}
+                    >
+                        {busy ? '处理中' : confirmLabel}
+                    </button>
+                </div>
+            </div>
+        </BottomSheet>
+    );
+}
+
+export default ConfirmSheet;

@@ -1,231 +1,523 @@
-// 添加页占位（**临时**）。
+// 添加页：3 次以内完成一笔记账（BRD 4.1 FR-ADD-1 ~ 18）。
 //
-// P4 会把它替换成真正的记账界面；在那之前，这里作为 P2 通用组件的预览台：
-// 图标系统、周期选择器、金额格式、图表、分段控件、底部弹层、长按都能当场试。
+// 组合关系：
+//   AddPage            状态编排（收支 / 分类 / 金额 / 日期 / 账户 / 附件 / 保存）
+//   CategoryGrid       分类宫格 + 编辑模式 + 拖动排序
+//   AmountPanel        备注 / 附图入口 / 账户入口 / 金额显示
+//   Keypad             4×4 数字键盘
+//   DateSheet          月历选日期
+//   AccountSheet       账户选择
+//   CategoryEditorSheet分类新增 / 编辑
+//   ConfirmSheet       删除确认
 //
-// 每个组件都只在这里做展示，不承载业务逻辑。
+// 记住上次选择（分类按收支分组、账户一个）走 addEntryPrefsStore。
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { parseDayKey, toDayKey, todayDate, todayKey, type CalendarDate } from '../../core/domain/date';
+import { isSubmittableAmount, parseAmountExpression, tryAppendKeypadKey, type KeypadKey } from '../../core/domain/money';
+import type { Category, EntryKind } from '../../core/ipc/types';
+import { addEntryPrefsStore, useAddEntryPrefs } from '../../hooks/preferences/addEntryPrefsStore';
 import {
-    BottomSheet,
-    Button,
-    EmptyState,
-    IconPicker,
-    PeriodSelector,
-    SegmentedControl,
-} from '../../shared/ui';
-import { AppIcon } from '../../shared/ui/AppIcon';
-import { DisparityBar, DonutChart, LineChart, RankRow } from '../../shared/charts';
-import { DEFAULT_CATEGORY_ICONS, UI_ICONS, type IconName } from '../../core/design/icons';
-import { formatMoney, formatSignedMoney, parseAmountExpression } from '../../core/domain/money';
-import { daysOfMonth, shiftMonth, todayDate } from '../../core/domain/date';
-import { useLongPress } from '../../hooks/ui/useLongPress';
+    useCreateCategory,
+    useHideCategory,
+    useReorderCategories,
+    useUpdateCategory,
+    useVisibleCategories,
+} from '../../hooks/ledger/useLedgerCategories';
+import { useCurrentBook } from '../../hooks/ledger/useLedgerBooks';
+import { useAccounts } from '../../hooks/ledger/useLedgerAssets';
+import { useCreateTransaction, useSaveAttachment, useTransactionsByDay } from '../../hooks/ledger';
 import { pushInfoBar } from '../../hooks/ui/globalInfoBarStore';
+import { usePageBackHandler } from '../../app/pageBackHandler';
+import { clearNavigationIntent, useNavigation, useRetapHandler } from '../../app/navigationStore';
+import { SegmentedControl } from '../../shared/ui';
+import { AccountSheet } from './AccountSheet';
+import { AmountPanel } from './AmountPanel';
+import { AttachmentsRow } from './AttachmentsRow';
+import { CategoryEditorSheet, type CategoryDraft } from './CategoryEditorSheet';
+import { CategoryGrid } from './CategoryGrid';
+import { ConfirmSheet } from './ConfirmSheet';
+import { DateSheet } from './DateSheet';
+import { Keypad } from './Keypad';
+import { describeError, occurredAtMs, shortDateLabel } from './addPage.logic';
+import { MAX_ATTACHMENTS, prepareImage, remainingAttachmentSlots, type PendingAttachment } from './image';
 
-const UI_ICON_SAMPLE: IconName[] = [
-    'mdi:noodles', 'mdi:cart-outline', 'mdi:bus', 'mdi:coffee', 'mdi:paw',
-    'mdi:pill', 'mdi:finance', 'mdi:tshirt-crew-outline', 'mdi:home-outline', 'mdi:airplane',
-];
-
-const DEMO_SLICES = [
-    { key: 'food', label: '餐饮', value: 75000, color: 'var(--brand-500)' },
-    { key: 'traffic', label: '交通', value: 14600, color: 'var(--state-info)' },
-    { key: 'daily', label: '日用', value: 6200, color: 'var(--state-success)' },
-    { key: 'other', label: '其它', value: 3100, color: 'var(--state-warning)' },
-];
-
-const DEMO_LINE = Array.from({ length: 30 }, (_, index) => ({
-    key: `d${index + 1}`,
-    label: String(index + 1).padStart(2, '0'),
-    value: Math.round(80 * Math.sin(index / 3) + (index === 8 ? 320 : 0) + 60),
-}));
-
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
-    return (
-        <section className="rounded-lg border border-border-subtle bg-surface p-3 shadow-card">
-            <header className="mb-2.5">
-                <h2 className="text-[13px] font-semibold text-text">{title}</h2>
-                {hint ? <p className="mt-0.5 text-[11px] text-text-tertiary">{hint}</p> : null}
-            </header>
-            {children}
-        </section>
-    );
-}
+type SheetKind = 'date' | 'account' | 'category';
 
 export function AddPage() {
-    const today = todayDate();
-    const [icon, setIcon] = useState<IconName>('mdi:noodles');
-    const [kind, setKind] = useState<'expense' | 'income'>('expense');
-    const [year, setYear] = useState(today.year);
-    const [month, setMonth] = useState(today.month);
-    const [day, setDay] = useState(today.day);
-    const [sheetOpen, setSheetOpen] = useState(false);
-    const [lineIndex, setLineIndex] = useState<number | null>(null);
-    const [donutKey, setDonutKey] = useState<string | null>(null);
+    const navigation = useNavigation();
+    const prefs = useAddEntryPrefs();
+    const { currentBook } = useCurrentBook();
+    const bookId = currentBook?.id;
 
-    const handleLongPress = () =>
-        pushInfoBar({ key: 'long-press-demo', tone: 'info', title: '长按生效', content: 'P4 会用它进入分类编辑模式' });
+    const { expense, income } = useVisibleCategories();
+    const { data: accounts = [] } = useAccounts(bookId);
 
-    const longPressBind = useLongPress({ onLongPress: handleLongPress });
+    const createTransaction = useCreateTransaction();
+    const saveAttachment = useSaveAttachment();
+    const createCategory = useCreateCategory();
+    const updateCategory = useUpdateCategory();
+    const hideCategory = useHideCategory();
+    const reorderCategories = useReorderCategories();
+
+    const [kind, setKind] = useState<EntryKind>('expense');
+    /** null = 用记忆值 / 该组第一个；显式点选后覆盖。 */
+    const [categoryOverride, setCategoryOverride] = useState<string | null>(null);
+    const [accountOverride, setAccountOverride] = useState<{ id: string | null } | null>(null);
+    const [expression, setExpression] = useState('');
+    const [note, setNote] = useState('');
+    const [noteFocused, setNoteFocused] = useState(false);
+    const [date, setDate] = useState<CalendarDate>(() => todayDate());
+    const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+    const [submitting, setSubmitting] = useState(false);
+
+    const [editing, setEditing] = useState(false);
+    const [sheet, setSheet] = useState<SheetKind | null>(null);
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [categoryError, setCategoryError] = useState<string | null>(null);
+    const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
+    const [deleting, setDeleting] = useState(false);
+
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const noteInputRef = useRef<HTMLInputElement | null>(null);
+
+    // 今日已记笔数：既是给小字提示，也是真机验收时「数据真的落库了」的可见证据
+    const today = todayKey();
+    const { data: todayTransactions = [] } = useTransactionsByDay(bookId, today);
+
+    const categories = kind === 'expense' ? expense : income;
+
+    // 分类选择：显式覆盖 > 记忆值 > 该组第一个（删除分类后自动回落，无需清状态）
+    const categoryId = useMemo(() => {
+        if (categoryOverride && categories.some((item) => item.id === categoryOverride)) {
+            return categoryOverride;
+        }
+        const remembered = prefs.lastCategoryByKind[kind];
+        if (remembered && categories.some((item) => item.id === remembered)) return remembered;
+        return categories[0]?.id ?? null;
+    }, [categoryOverride, categories, kind, prefs.lastCategoryByKind]);
+
+    const accountId = useMemo(() => {
+        if (accountOverride) {
+            const picked = accountOverride.id;
+            if (picked === null || accounts.some((item) => item.id === picked)) return picked;
+        }
+        const remembered = prefs.lastAccountId;
+        if (remembered && accounts.some((item) => item.id === remembered)) return remembered;
+        return null;
+    }, [accountOverride, accounts, prefs.lastAccountId]);
+
+    const parsed = useMemo(() => parseAmountExpression(expression), [expression]);
+    const amountCents = parsed.ok ? parsed.cents : 0;
+    const amountValid = parsed.ok && isSubmittableAmount(parsed.cents);
+    const canSubmit = Boolean(categoryId) && amountValid && !submitting;
+
+    const accountName = useMemo(() => {
+        if (!accountId) return '未指定账户';
+        return accounts.find((item) => item.id === accountId)?.name ?? '未指定账户';
+    }, [accountId, accounts]);
+
+    // 日历点某天 → 添加页带日期（FR-ADD-18）；消费后清掉一次性意图
+    const intentDate = navigation.intent?.date;
+    useEffect(() => {
+        if (!intentDate) return;
+        const parsedDate = parseDayKey(intentDate);
+        if (parsedDate) setDate(parsedDate);
+        clearNavigationIntent('add');
+    }, [intentDate, navigation.seq]);
+
+    // 再次点「添加」页签：清掉已输入的金额，避免误提交上一笔
+    useRetapHandler('add', () => {
+        setExpression('');
+        setNote('');
+        setAttachments([]);
+    });
+
+    // 返回键：先关弹层 / 退出编辑模式，再交回壳
+    usePageBackHandler(() => {
+        if (pendingDelete) {
+            setPendingDelete(null);
+            return true;
+        }
+        if (sheet !== null) {
+            setSheet(null);
+            return true;
+        }
+        if (editing) {
+            setEditing(false);
+            return true;
+        }
+        return false;
+    });
+
+    const handleKindChange = useCallback((next: EntryKind) => {
+        setKind(next);
+        setCategoryOverride(null);
+    }, []);
+
+    const handleSelectCategory = useCallback((id: string) => {
+        setCategoryOverride(id);
+        addEntryPrefsStore.rememberCategory(kind, id);
+    }, [kind]);
+
+    const handleKey = useCallback((key: KeypadKey) => {
+        setExpression((prev) => tryAppendKeypadKey(prev, key) ?? prev);
+    }, []);
+
+    const handlePickFiles = useCallback(() => {
+        if (attachments.length >= MAX_ATTACHMENTS) {
+            pushInfoBar({
+                key: 'add-attachments-full',
+                tone: 'warning',
+                title: '附件已达上限',
+                content: `单笔最多 ${MAX_ATTACHMENTS} 张图片`,
+            });
+            return;
+        }
+        fileInputRef.current?.click();
+    }, [attachments.length]);
+
+    const handleFilesPicked = useCallback(
+        async (files: FileList | null) => {
+            if (!files || files.length === 0) return;
+            const slots = remainingAttachmentSlots(attachments.length);
+            const picked = Array.from(files).slice(0, slots);
+            if (Array.from(files).length > slots) {
+                pushInfoBar({
+                    key: 'add-attachments-trim',
+                    tone: 'warning',
+                    title: `只添加了前 ${slots} 张`,
+                    content: `单笔最多 ${MAX_ATTACHMENTS} 张图片`,
+                });
+            }
+            const prepared: PendingAttachment[] = [];
+            for (const file of picked) {
+                try {
+                    prepared.push(await prepareImage(file));
+                } catch (error) {
+                    pushInfoBar({
+                        key: 'add-image-error',
+                        tone: 'danger',
+                        title: '图片处理失败',
+                        content: describeError(error),
+                    });
+                }
+            }
+            if (prepared.length > 0) {
+                setAttachments((prev) => [...prev, ...prepared]);
+            }
+        },
+        [attachments.length],
+    );
+
+    const handleSubmit = useCallback(async () => {
+        if (submitting) return;
+        if (!bookId) {
+            pushInfoBar({ key: 'add-no-book', tone: 'danger', title: '账本还没准备好', content: '请稍后重试' });
+            return;
+        }
+        if (!categoryId) {
+            pushInfoBar({ key: 'add-no-category', tone: 'warning', title: '先选一个分类' });
+            return;
+        }
+        if (!parsed.ok || !isSubmittableAmount(parsed.cents)) {
+            pushInfoBar({
+                key: 'add-bad-amount',
+                tone: 'warning',
+                title: '金额不正确',
+                content:
+                    expression.trim() === ''
+                        ? '请输入金额'
+                        : '金额需大于 0 且不超过 ¥ 999,999,999.99',
+            });
+            return;
+        }
+
+        setSubmitting(true);
+        const dayKey = toDayKey(date);
+        try {
+            const created = await createTransaction.mutateAsync({
+                bookId,
+                kind,
+                categoryId,
+                accountId,
+                amountCents: parsed.cents,
+                note,
+                day: dayKey,
+                month: dayKey.slice(0, 7),
+                occurredAtMs: occurredAtMs(date),
+            });
+            // 附件逐张落盘（失败不回滚账单，但要明确告知）
+            const failed: string[] = [];
+            for (const attachment of attachments) {
+                try {
+                    await saveAttachment.mutateAsync({
+                        transactionId: created.id,
+                        mime: attachment.mime,
+                        base64: attachment.base64,
+                    });
+                } catch (error) {
+                    failed.push(describeError(error));
+                }
+            }
+            // 保留分类 / 日期 / 账户，清空金额与备注（FR-ADD-17）
+            setExpression('');
+            setNote('');
+            setAttachments([]);
+            if (failed.length > 0) {
+                pushInfoBar({
+                    key: 'add-entry',
+                    tone: 'warning',
+                    title: `已记一笔，但 ${failed.length} 张图片没存上`,
+                    content: `${failed[0]}（可重新添加图片再存一次）`,
+                });
+            } else {
+                pushInfoBar({
+                    key: 'add-entry',
+                    tone: 'success',
+                    title: '已记一笔',
+                    content: attachments.length > 0 ? `含 ${attachments.length} 张图片` : undefined,
+                });
+            }
+        } catch (error) {
+            pushInfoBar({
+                key: 'add-entry-error',
+                tone: 'danger',
+                title: '保存失败',
+                content: describeError(error),
+            });
+        } finally {
+            setSubmitting(false);
+        }
+    }, [
+        accountId,
+        attachments,
+        bookId,
+        categoryId,
+        createTransaction,
+        date,
+        expression,
+        kind,
+        note,
+        parsed,
+        saveAttachment,
+        submitting,
+    ]);
+
+    const handleCategorySubmit = useCallback(
+        async (draft: CategoryDraft) => {
+            setCategoryError(null);
+            try {
+                if (editingCategory) {
+                    await updateCategory.mutateAsync({
+                        id: editingCategory.id,
+                        name: draft.name,
+                        iconName: draft.iconName,
+                        color: draft.color,
+                    });
+                    pushInfoBar({ key: 'category-saved', tone: 'success', title: '分类已更新' });
+                } else {
+                    const created = await createCategory.mutateAsync({
+                        kind,
+                        name: draft.name,
+                        iconName: draft.iconName,
+                        color: draft.color,
+                    });
+                    setCategoryOverride(created.id);
+                    addEntryPrefsStore.rememberCategory(kind, created.id);
+                    pushInfoBar({ key: 'category-saved', tone: 'success', title: '分类已创建' });
+                }
+                setSheet(null);
+                setEditingCategory(null);
+            } catch (error) {
+                setCategoryError(describeError(error));
+            }
+        },
+        [createCategory, editingCategory, kind, updateCategory],
+    );
+
+    const handleDeleteCategory = useCallback(async () => {
+        if (!pendingDelete) return;
+        setDeleting(true);
+        try {
+            await hideCategory.mutateAsync(pendingDelete.id);
+            pushInfoBar({
+                key: 'category-deleted',
+                tone: 'success',
+                title: '分类已删除',
+                content: '历史账单仍保留这个分类',
+            });
+            setPendingDelete(null);
+            setSheet(null);
+            setEditingCategory(null);
+        } catch (error) {
+            pushInfoBar({
+                key: 'category-delete-error',
+                tone: 'danger',
+                title: '删除失败',
+                content: describeError(error),
+            });
+        } finally {
+            setDeleting(false);
+        }
+    }, [hideCategory, pendingDelete]);
+
+    const handleReorder = useCallback(
+        (orderedIds: string[]) => {
+            reorderCategories.mutate({ kind, ids: orderedIds });
+        },
+        [kind, reorderCategories],
+    );
 
     return (
-        <section className="flex w-full flex-col gap-3 pb-2 pt-1">
-            <p className="px-0.5 text-[11.5px] leading-relaxed text-text-tertiary">
-                当前是 P2 组件预览（临时）：P4 会把这里换成真正的记账界面。
-            </p>
-
-            <Section title="图标系统" hint="全部来自 Iconify（MDI 精选子集，离线渲染，可换色）">
-                <div className="flex flex-wrap items-center gap-2">
-                    {UI_ICON_SAMPLE.map((name) => (
-                        <span key={name} className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-inset text-text-secondary">
-                            <AppIcon name={name} size={18} />
-                        </span>
-                    ))}
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand-soft text-brand">
-                        <AppIcon name={icon} size={18} />
-                    </span>
-                </div>
-                <div className="mt-3">
-                    <IconPicker value={icon} onChange={setIcon} />
-                </div>
-                <p className="mt-2 text-[11px] text-text-tertiary">
-                    内置分类图标（支出）：{[...Object.values(DEFAULT_CATEGORY_ICONS.expense)].slice(0, 8).map((name) => (
-                        <AppIcon key={name} name={name} size={14} className="mx-0.5 inline-flex align-middle text-text-secondary" />
-                    ))}
-                </p>
-            </Section>
-
-            <Section title="周期选择器" hint="年 3 位 / 月 5 位 / 日 5 位，左右渐隐、吸附、边界留空">
-                <PeriodSelector
-                    values={Array.from({ length: 6 }, (_, index) => today.year - 5 + index)}
-                    value={year}
-                    onChange={setYear}
-                    visible={3}
-                    unit="年"
-                    ariaLabel="选择年份"
-                />
-                <PeriodSelector
-                    values={Array.from({ length: 12 }, (_, index) => index + 1)}
-                    value={month}
-                    onChange={(next) => {
-                        setMonth(next);
-                        const max = daysOfMonth(year, next).length;
-                        if (day > max) setDay(max);
-                    }}
-                    unit="月"
-                    ariaLabel="选择月份"
-                />
-                <PeriodSelector
-                    values={daysOfMonth(year, month)}
-                    value={day}
-                    onChange={setDay}
-                    unit="日"
-                    ariaLabel="选择日期"
-                />
-                <p className="mt-1 text-center text-[11.5px] text-text-tertiary tabular-nums">
-                    {year} 年 {month} 月 {day} 日 · 上个月 {(() => { const prev = shiftMonth(year, month, -1); return `${prev.year}-${prev.month}`; })()}
-                </p>
-            </Section>
-
-            <Section title="金额格式与键盘表达式" hint="内部按分存储，展示统一 ¥ x,xxx.xx">
-                <dl className="grid grid-cols-2 gap-1.5 text-[12.5px]">
-                    <dt className="text-text-tertiary">支出</dt>
-                    <dd className="text-right tabular-nums text-text">{formatSignedMoney(34450, 'expense')}</dd>
-                    <dt className="text-text-tertiary">收入</dt>
-                    <dd className="text-right tabular-nums text-text">{formatSignedMoney(100000, 'income')}</dd>
-                    <dt className="text-text-tertiary">负结余</dt>
-                    <dd className="text-right tabular-nums text-text">{formatMoney(-89600)}</dd>
-                    <dt className="text-text-tertiary">表达式 12+3.5</dt>
-                    <dd className="text-right tabular-nums text-text">
-                        {(() => { const parsed = parseAmountExpression('12+3.5'); return parsed.ok ? formatMoney(parsed.cents) : '解析失败'; })()}
-                    </dd>
-                </dl>
-            </Section>
-
-            <Section title="分段控件" hint="支出 / 收入、结余 / 支出 / 收入 的口径切换">
+        <section className="flex h-full min-h-0 flex-col">
+            <div className="flex shrink-0 items-center gap-2 px-3 pt-1">
                 <SegmentedControl
-                    items={[{ value: 'expense', label: '支出' }, { value: 'income', label: '收入' }]}
+                    className="flex-1"
+                    items={[
+                        { value: 'expense', label: '支出' },
+                        { value: 'income', label: '收入' },
+                    ]}
                     value={kind}
-                    onChange={setKind}
+                    onChange={handleKindChange}
                     ariaLabel="收支切换"
                 />
-            </Section>
+                <span className="shrink-0 text-[11px] text-text-tertiary tabular-nums">
+                    今日 {todayTransactions.length} 笔
+                </span>
+            </div>
 
-            <Section title="图表" hint="自绘 SVG：环形图（可点扇区）、折线图（可点选日期）、排行条、差距条">
-                <div className="flex flex-wrap items-center gap-3">
-                    <DonutChart
-                        slices={DEMO_SLICES}
-                        activeKey={donutKey}
-                        onSelect={(key) => setDonutKey((prev) => (prev === key ? null : key))}
-                        centerLabel="本月支出"
-                        centerValue={formatMoney(DEMO_SLICES.reduce((sum, slice) => sum + slice.value, 0))}
-                    />
-                    <div className="min-w-[150px] flex-1 space-y-1.5">
-                        {DEMO_SLICES.map((slice) => (
-                            <RankRow
-                                key={slice.key}
-                                leading={<span className="inline-flex h-7 w-7 items-center justify-center rounded-full" style={{ background: slice.color, opacity: 0.16 }}>
-                                    <AppIcon name={'mdi:circle'} size={10} color={slice.color} />
-                                </span>}
-                                title={slice.label}
-                                subtitle={`${((slice.value / DEMO_SLICES.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(1)}%`}
-                                trailing={formatMoney(slice.value)}
-                                ratio={slice.value / DEMO_SLICES[0]!.value}
-                                color={slice.color}
-                            />
-                        ))}
-                    </div>
-                </div>
-                <div className="mt-3">
-                    <LineChart
-                        points={DEMO_LINE}
-                        activeIndex={lineIndex}
-                        onActiveIndexChange={setLineIndex}
-                        formatValue={(value) => formatMoney(value * 100)}
-                    />
-                </div>
-                <div className="mt-2 space-y-1.5">
-                    <DisparityBar label="总资产" valueCents={523000} maxCents={600000} tone="asset" />
-                    <DisparityBar label="负债" valueCents={78000} maxCents={600000} tone="liability" />
-                </div>
-            </Section>
+            <div className="min-h-0 flex-1 overflow-y-auto pt-2">
+                <CategoryGrid
+                    kind={kind}
+                    categories={categories}
+                    selectedId={categoryId}
+                    editing={editing}
+                    busy={reorderCategories.isPending}
+                    onSelect={handleSelectCategory}
+                    onEnterEditing={() => setEditing(true)}
+                    onEditCategory={(category) => {
+                        setCategoryError(null);
+                        setEditingCategory(category);
+                        setSheet('category');
+                    }}
+                    onDeleteCategory={(category) => setPendingDelete(category)}
+                    onCreateCategory={() => {
+                        setCategoryError(null);
+                        setEditingCategory(null);
+                        setSheet('category');
+                    }}
+                    onExitEditing={() => setEditing(false)}
+                    onReorder={handleReorder}
+                />
+            </div>
 
-            <Section title="交互件" hint="长按（500ms）、底部弹层、空态">
-                <div className="flex flex-wrap items-center gap-2">
+            <AttachmentsRow
+                attachments={attachments}
+                onRemove={(localId) =>
+                    setAttachments((prev) => prev.filter((item) => item.localId !== localId))
+                }
+            />
+
+            <AmountPanel
+                kind={kind}
+                note={note}
+                onNoteChange={setNote}
+                onNoteFocus={() => setNoteFocused(true)}
+                onNoteBlur={() => setNoteFocused(false)}
+                noteInputRef={noteInputRef}
+                attachmentCount={attachments.length}
+                onPickAttachments={handlePickFiles}
+                expression={expression}
+                amountCents={amountCents}
+                amountValid={amountValid}
+                accountName={accountName}
+                onPickAccount={() => setSheet('account')}
+            />
+
+            {noteFocused ? (
+                <div className="flex shrink-0 items-center gap-2 px-3 pt-2 pb-2">
+                    <span className="flex-1 text-[12px] text-text-tertiary">备注输入中…</span>
                     <button
                         type="button"
-                        {...longPressBind}
-                        className="h-9 rounded-md bg-inset px-3 text-[12.5px] font-medium text-text-secondary active:bg-muted"
+                        onClick={() => noteInputRef.current?.blur()}
+                        className="h-10 rounded-md bg-inset px-3 text-[13px] font-medium text-text-secondary active:bg-muted"
                     >
-                        长按我试试
+                        收起
                     </button>
-                    <Button size="sm" variant="secondary" onClick={() => setSheetOpen(true)}>打开底部弹层</Button>
-                    <span className="inline-flex items-center gap-1 text-[11px] text-text-tertiary">
-                        <AppIcon name={UI_ICONS.info} size={13} /> 长按 500ms 触发
-                    </span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            noteInputRef.current?.blur();
+                            void handleSubmit();
+                        }}
+                        className="h-10 rounded-md bg-brand px-4 text-[14px] font-semibold text-white shadow-card active:opacity-90"
+                    >
+                        完成
+                    </button>
                 </div>
-                <EmptyState
-                    size="compact"
-                    icon={UI_ICONS.calendar}
-                    title="这是空态样式"
-                    description="列表 / 图表 / 统计卡片没有数据时统一用它"
+            ) : (
+                <Keypad
+                    dateLabel={shortDateLabel(date)}
+                    canSubmit={canSubmit}
+                    submitting={submitting}
+                    onKey={handleKey}
+                    onPickDate={() => setSheet('date')}
+                    onSubmit={() => void handleSubmit()}
                 />
-            </Section>
+            )}
 
-            <BottomSheet
-                open={sheetOpen}
-                onOpenChange={setSheetOpen}
-                title="底部弹层"
-                description="P4 的分类编辑器、账户选择都会用它"
-            >
-                <p className="text-[12.5px] leading-relaxed text-text-secondary">
-                    点击遮罩 / 按返回键 / 下拉手柄都能关闭；动效跟随设置里的「动画与体感」开关。
-                </p>
-                <div className="mt-3">
-                    <IconPicker value={icon} onChange={setIcon} columns={5} />
-                </div>
-                <Button className="mt-3 w-full" variant="primary" onClick={() => setSheetOpen(false)}>知道了</Button>
-            </BottomSheet>
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                    void handleFilesPicked(event.target.files);
+                    event.target.value = '';
+                }}
+            />
+
+            <DateSheet
+                open={sheet === 'date'}
+                onOpenChange={(open) => setSheet(open ? 'date' : null)}
+                value={date}
+                onSelect={setDate}
+            />
+            <AccountSheet
+                open={sheet === 'account'}
+                onOpenChange={(open) => setSheet(open ? 'account' : null)}
+                accounts={accounts}
+                value={accountId}
+                onSelect={(id) => {
+                    setAccountOverride({ id });
+                    addEntryPrefsStore.rememberAccount(id);
+                }}
+            />
+            <CategoryEditorSheet
+                open={sheet === 'category'}
+                onOpenChange={(open) => {
+                    setSheet(open ? 'category' : null);
+                    if (!open) setCategoryError(null);
+                }}
+                kind={kind}
+                category={editingCategory}
+                busy={createCategory.isPending || updateCategory.isPending}
+                errorMessage={categoryError}
+                onSubmit={(draft) => void handleCategorySubmit(draft)}
+                onRequestDelete={() => editingCategory && setPendingDelete(editingCategory)}
+            />
+            <ConfirmSheet
+                open={pendingDelete !== null}
+                onOpenChange={(open) => {
+                    if (!open) setPendingDelete(null);
+                }}
+                title={`删除分类「${pendingDelete?.name ?? ''}」？`}
+                description="分类会被隐藏，宫格里不再出现；历史账单仍保留这个分类，统计不受影响。"
+                busy={deleting}
+                onConfirm={() => void handleDeleteCategory()}
+            />
         </section>
     );
 }

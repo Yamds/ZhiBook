@@ -24,8 +24,16 @@ import { DetailsPage } from '../modules/details/DetailsPage';
 import { HomePage } from '../modules/home/HomePage';
 import { SettingsPage } from '../modules/settings/SettingsPage';
 import { AppExitGate } from './AppExitGate';
-import { HOME_ROUTE, ROUTE_ORDER, routeTitle, type AppRoute, type AppScreen } from './navigation';
+import {
+    HOME_ROUTE,
+    ROUTE_ORDER,
+    routeContentClass,
+    routeTitle,
+    type AppRoute,
+    type AppScreen,
+} from './navigation';
 import { backActionFor, navigateTo, retapScreen, useNavigation, useRetapHandler } from './navigationStore';
+import { runPageBackHandler } from './pageBackHandler';
 import { SwipeProvider, neighborOf, type NestedSwipeHandler, type SwipeDirection } from './swipeNavigation';
 
 /** 顶部栏右侧的账本入口：P3 接入真实账本数据前先显示占位名。 */
@@ -135,7 +143,9 @@ export function AppNext() {
     useHorizontalSwipe(mainRef, handleSwipe);
 
     // ===== Android 返回键 =====
+    // 优先级：页面拦截（弹层 / 分类编辑模式）> 非首页回首页 > 首页退出确认。
     useEffect(() => registerBackButtonHandler(() => {
+        if (runPageBackHandler()) return 'handled';
         switch (backActionFor(screen, exitGateOpen)) {
             case 'close-overlay':
                 setExitGateOpen(false);
@@ -166,7 +176,7 @@ export function AppNext() {
                             <div
                                 key={displayedScreen}
                                 ref={scrollRef}
-                                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
+                                className={routeContentClass(displayedScreen)}
                             >
                                 <RouteErrorBoundary title="页面渲染失败">{renderScreen(displayedScreen)}</RouteErrorBoundary>
                             </div>

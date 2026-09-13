@@ -8,6 +8,11 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
+/** 长按触发阈值（BRD 3.8：500ms）。 */
+export const LONG_PRESS_DELAY_MS = 500;
+/** 触发前允许的位移（BRD 3.8：超过 ~8px 视为滑动）。 */
+export const LONG_PRESS_MOVE_TOLERANCE_PX = 8;
+
 export interface UseLongPressOptions {
     onLongPress: () => void;
     onClick?: () => void;
@@ -30,8 +35,8 @@ export interface LongPressBindings {
 export function useLongPress({
     onLongPress,
     onClick,
-    delayMs = 500,
-    moveTolerancePx = 8,
+    delayMs = LONG_PRESS_DELAY_MS,
+    moveTolerancePx = LONG_PRESS_MOVE_TOLERANCE_PX,
 }: UseLongPressOptions): LongPressBindings {
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const originRef = useRef<{ x: number; y: number } | null>(null);

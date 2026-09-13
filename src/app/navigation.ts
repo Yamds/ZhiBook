@@ -69,3 +69,16 @@ export function routeTitle(screen: AppScreen): string {
     const def = findRoute(screen);
     return def?.title ?? def?.label ?? '';
 }
+
+/**
+ * 主内容区容器 class。
+ *
+ * 默认：纵向可滚动 + 常规内边距。
+ * 添加页自己管整屏布局（分类宫格 + 数字键盘要贴底、不能整页滚），
+ * 所以给它取消外层滚动与内边距。
+ */
+export function routeContentClass(screen: AppScreen): string {
+    return screen === 'add'
+        ? 'min-h-0 flex-1 overflow-hidden px-0 pb-0'
+        : 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4';
+}

@@ -12,6 +12,7 @@ import {
     ROUTE_ORDER,
     SETTINGS_TAB,
     bottomNavTabs,
+    routeContentClass,
     routeTitle,
 } from './navigation';
 import {
@@ -126,5 +127,22 @@ describe('navigation store', () => {
         retapScreen('home');
         expect(navigationStore.getSnapshot().screen).toBe('bills');
         expect(navigationStore.getSnapshot().intent).toBeNull();
+    });
+});
+
+describe('主内容区容器 class', () => {
+    it('添加页不参与外层滚动，也不加内边距（自己管整屏布局）', () => {
+        const cls = routeContentClass('add');
+        expect(cls).toContain('overflow-hidden');
+        expect(cls).not.toContain('overflow-y-auto');
+        expect(cls).toContain('px-0');
+    });
+
+    it('其它页面保持可滚动 + 常规内边距', () => {
+        for (const screen of ['bills', 'details', 'home', 'assets', 'settings'] as const) {
+            const cls = routeContentClass(screen);
+            expect(cls).toContain('overflow-y-auto');
+            expect(cls).toContain('px-4');
+        }
     });
 });
