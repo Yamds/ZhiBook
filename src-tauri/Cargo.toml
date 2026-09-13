@@ -19,6 +19,7 @@ path = "src/main.rs"
 tk-domain = { path = "../crates/tk-domain" }
 tk-traits = { path = "../crates/tk-traits" }
 tk-config = { path = "../crates/tk-config" }
+tk-ledger = { path = "../crates/tk-ledger" }
 tk-log = { path = "../crates/tk-log" }
 tk-runtime = { path = "../crates/tk-runtime" }
 serde = { workspace = true }

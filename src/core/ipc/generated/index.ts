@@ -1,3 +1,35 @@
 export type { AppSettings } from './domain/AppSettings';
 export type { AppUiPreferences } from './domain/AppUiPreferences';
 export type { BootstrapSnapshot } from './domain/BootstrapSnapshot';
+
+// 记账域类型（与 src/core/ipc/types.ts 保持同一份清单）
+export type { Account } from './domain/Account';
+export type { AccountKind } from './domain/AccountKind';
+export type { AccountPatch } from './domain/AccountPatch';
+export type { AssetPoint } from './domain/AssetPoint';
+export type { AssetsOverview } from './domain/AssetsOverview';
+export type { Attachment } from './domain/Attachment';
+export type { AttachmentData } from './domain/AttachmentData';
+export type { Book } from './domain/Book';
+export type { BookPatch } from './domain/BookPatch';
+export type { Category } from './domain/Category';
+export type { CategoryPatch } from './domain/CategoryPatch';
+export type { CategoryShare } from './domain/CategoryShare';
+export type { CategoryShareSet } from './domain/CategoryShareSet';
+export type { DaySummary } from './domain/DaySummary';
+export type { EntryKind } from './domain/EntryKind';
+export type { KindMonthStats } from './domain/KindMonthStats';
+export type { MonthPoint } from './domain/MonthPoint';
+export type { MonthStats } from './domain/MonthStats';
+export type { NewAccount } from './domain/NewAccount';
+export type { NewAttachment } from './domain/NewAttachment';
+export type { NewBook } from './domain/NewBook';
+export type { NewCategory } from './domain/NewCategory';
+export type { NewTransaction } from './domain/NewTransaction';
+export type { ReorderRequest } from './domain/ReorderRequest';
+export type { ShareBreakdown } from './domain/ShareBreakdown';
+export type { StatsKind } from './domain/StatsKind';
+export type { Transaction } from './domain/Transaction';
+export type { TransactionPatch } from './domain/TransactionPatch';
+export type { TransactionRank } from './domain/TransactionRank';
+export type { YearSummary } from './domain/YearSummary';

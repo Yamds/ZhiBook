@@ -6,6 +6,7 @@
 pub mod app_log;
 pub mod app_settings;
 pub mod exit;
+pub mod ledger;
 
 use std::fs;
 use std::path::PathBuf;

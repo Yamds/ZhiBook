@@ -1,0 +1,658 @@
+//! Layer 3 记账数据底座。
+//!
+//! 职责：SQLite(bundled) 持久化、统计聚合、附件落盘。
+//! - 不依赖 Tauri / Tokio：命令层只做参数转换与错误边界（见 `src-tauri/src/commands/ledger.rs`）；
+//! - 业务规则（校验、级联清理、软删除语义）都在 [`Ledger`] 的方法里，
+//!   仓储函数只做 SQL；
+//! - 数据根布局来自 `tk_config::DataPaths`：`<data_root>/ledger/ledger.db`
+//!   与 `<data_root>/ledger/attachments/**`。
+
+pub mod attachments;
+pub mod dates;
+pub mod error;
+pub mod id;
+pub mod query;
+pub mod repo;
+pub mod schema;
+pub mod seed;
+/// 内置分类种子数据（由 `pnpm run icons` 生成，勿手改）。
+#[path = "seed_categories.generated.rs"]
+pub mod seed_categories;
+pub mod validate;
+
+#[cfg(test)]
+mod test_support;
+
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, MutexGuard};
+
+use rusqlite::Connection;
+use tk_config::DataPaths;
+use tk_domain::{
+    Account, AccountPatch, AssetsOverview, Attachment, AttachmentData, Book, BookPatch, Category,
+    CategoryPatch, DaySummary, EntryKind, MAX_AMOUNT_CENTS, MonthStats, NewAccount, NewAttachment,
+    NewBook, NewCategory, NewTransaction, ShareBreakdown, StatsKind, Transaction, TransactionPatch,
+    TransactionRank, YearSummary,
+};
+
+pub use attachments::AttachmentStore;
+pub use error::{LedgerError, LedgerResult};
+pub use schema::SCHEMA_VERSION;
+
+/// 业务侧默认趋势回看月数。
+pub const DEFAULT_TREND_MONTHS: usize = query::DEFAULT_TREND_MONTHS;
+
+/// 记账数据入口：一个账本库 = 一个连接 + 一个附件仓库。
+pub struct Ledger {
+    conn: Mutex<Connection>,
+    data_root: PathBuf,
+    attachments: AttachmentStore,
+}
+
+impl Ledger {
+    /// 打开（必要时创建）数据根下的记账库：建目录 → 开库 → 设 PRAGMA → 迁移 → 种子。
+    pub fn open(data_root: impl AsRef<Path>) -> LedgerResult<Self> {
+        let data_root = data_root.as_ref().to_path_buf();
+        let paths = DataPaths::new(&data_root);
+        create_dir(&paths.ledger_dir())?;
+        create_dir(&paths.attachments_dir())?;
+
+        let db_path = paths.ledger_db_path();
+        let mut conn = Connection::open(&db_path)?;
+        configure(&conn)?;
+        schema::migrate(&mut conn)?;
+        seed::seed_if_needed(&mut conn)?;
+
+        Ok(Self {
+            conn: Mutex::new(conn),
+            attachments: AttachmentStore::new(data_root.clone()),
+            data_root,
+        })
+    }
+
+    pub fn data_root(&self) -> &Path {
+        &self.data_root
+    }
+
+    /// 只读访问（内部使用；命令层请走下面的业务方法）。
+    pub fn with_conn<T>(&self, run: impl FnOnce(&Connection) -> LedgerResult<T>) -> LedgerResult<T> {
+        let guard = self.lock()?;
+        run(&guard)
+    }
+
+    /// 事务访问：闭包返回 `Err` 时自动回滚。
+    pub fn with_tx<T>(&self, run: impl FnOnce(&Connection) -> LedgerResult<T>) -> LedgerResult<T> {
+        let mut guard = self.lock()?;
+        let transaction = guard.transaction()?;
+        let value = run(&transaction)?;
+        transaction.commit()?;
+        Ok(value)
+    }
+
+    fn lock(&self) -> LedgerResult<MutexGuard<'_, Connection>> {
+        self.conn
+            .lock()
+            .map_err(|_| LedgerError::corrupt("数据库连接锁已损坏，请重启应用"))
+    }
+
+    // -----------------------------------------------------------------------
+    // 账本
+    // -----------------------------------------------------------------------
+
+    pub fn list_books(&self) -> LedgerResult<Vec<Book>> {
+        self.with_conn(repo::list_books)
+    }
+
+    pub fn create_book(&self, input: NewBook) -> LedgerResult<Book> {
+        let name = validate::book_name(&input.name)?;
+        self.with_tx(|conn| {
+            let book = Book {
+                id: id::new_id("book"),
+                name: name.clone(),
+                created_at_ms: id::now_ms(),
+                sort_order: repo::next_book_sort_order(conn)?,
+            };
+            repo::insert_book(conn, &book)?;
+            Ok(book)
+        })
+    }
+
+    pub fn update_book(&self, input: BookPatch) -> LedgerResult<Book> {
+        let name = validate::book_name(&input.name)?;
+        self.with_tx(|conn| {
+            if !repo::update_book_name(conn, &input.id, &name)? {
+                return Err(LedgerError::not_found(format!("账本不存在：{}", input.id)));
+            }
+            repo::get_book(conn, &input.id)?
+                .ok_or_else(|| LedgerError::not_found(format!("账本不存在：{}", input.id)))
+        })
+    }
+
+    /// 删除账本：附件文件逐张删除 → 数据库级联删除账单 / 账户 → 修正当前账本指针。
+    ///
+    /// 最后一个账本不允许删除（FR-AST-5）。
+    pub fn delete_book(&self, id: &str) -> LedgerResult<()> {
+        self.with_tx(|conn| {
+            let book = repo::get_book(conn, id)?
+                .ok_or_else(|| LedgerError::not_found(format!("账本不存在：{id}")))?;
+            if repo::count_books(conn)? <= 1 {
+                return Err(LedgerError::validation("至少保留一个账本"));
+            }
+            let paths = repo::attachment_paths_for_book(conn, &book.id)?;
+            self.attachments.remove_files(&paths)?;
+            repo::delete_book(conn, &book.id)?;
+            seed::ensure_current_book(conn)?;
+            Ok(())
+        })
+    }
+
+    pub fn current_book_id(&self) -> LedgerResult<Option<String>> {
+        self.with_conn(|conn| seed::get_meta(conn, seed::META_CURRENT_BOOK_KEY))
+    }
+
+    pub fn set_current_book(&self, book_id: &str) -> LedgerResult<()> {
+        self.with_tx(|conn| {
+            if !repo::book_exists(conn, book_id)? {
+                return Err(LedgerError::not_found(format!("账本不存在：{book_id}")));
+            }
+            seed::set_meta(conn, seed::META_CURRENT_BOOK_KEY, book_id)
+        })
+    }
+
+    // -----------------------------------------------------------------------
+    // 账户
+    // -----------------------------------------------------------------------
+
+    /// 账户列表；`until_day`（含）之后的账单不计入余额，通常传今天。
+    pub fn list_accounts(&self, book_id: &str, until_day: &str) -> LedgerResult<Vec<Account>> {
+        if !dates::is_valid_day_key(until_day) {
+            return Err(LedgerError::validation(format!(
+                "日期格式不合法：{until_day}"
+            )));
+        }
+        self.with_conn(|conn| repo::list_accounts(conn, book_id, until_day))
+    }
+
+    pub fn create_account(&self, input: NewAccount) -> LedgerResult<Account> {
+        let name = validate::account_name(&input.name)?;
+        validate::icon_name(&input.icon_name)?;
+        validate::color(&input.color)?;
+        validate_balance(input.initial_balance_cents, "初始余额")?;
+        self.with_tx(move |conn| {
+            if !repo::book_exists(conn, &input.book_id)? {
+                return Err(LedgerError::not_found(format!(
+                    "账本不存在：{}",
+                    input.book_id
+                )));
+            }
+            let now = id::now_ms();
+            let account = Account {
+                id: id::new_id("acc"),
+                book_id: input.book_id.clone(),
+                kind: input.kind,
+                name,
+                icon_name: input.icon_name,
+                color: input.color,
+                initial_balance_cents: input.initial_balance_cents,
+                // 新账户还没有任何账单，当前余额 = 初始余额
+                balance_cents: input.initial_balance_cents,
+                sort_order: repo::next_account_sort_order(conn, &input.book_id)?,
+                created_at_ms: now,
+                updated_at_ms: now,
+            };
+            repo::insert_account(conn, &account)?;
+            Ok(account)
+        })
+    }
+
+    /// 更新账户；余额由账单聚合，不接受直接改写。
+    pub fn update_account(&self, input: AccountPatch) -> LedgerResult<()> {
+        let name = validate::account_name(&input.name)?;
+        validate::icon_name(&input.icon_name)?;
+        validate::color(&input.color)?;
+        validate_balance(input.initial_balance_cents, "初始余额")?;
+        self.with_tx(|conn| {
+            let existing = repo::get_account_record(conn, &input.id)?
+                .ok_or_else(|| LedgerError::not_found(format!("账户不存在：{}", input.id)))?;
+            let account = Account {
+                kind: input.kind,
+                name,
+                icon_name: input.icon_name,
+                color: input.color,
+                initial_balance_cents: input.initial_balance_cents,
+                updated_at_ms: id::now_ms(),
+                ..existing
+            };
+            repo::update_account(conn, &account)?;
+            Ok(())
+        })
+    }
+
+    /// 删除账户：历史账单保留并变为「未指定账户」（外键置空）。
+    pub fn delete_account(&self, id: &str) -> LedgerResult<()> {
+        self.with_tx(|conn| {
+            if !repo::delete_account(conn, id)? {
+                return Err(LedgerError::not_found(format!("账户不存在：{id}")));
+            }
+            Ok(())
+        })
+    }
+
+    /// 按给定顺序重排账户；未列出的账户保持原相对顺序排在后面。
+    pub fn reorder_accounts(&self, book_id: &str, ids: &[String]) -> LedgerResult<()> {
+        self.with_tx(|conn| {
+            let existing = repo::account_ids_in_order(conn, book_id)?;
+            let ordered = apply_order(&existing, ids);
+            for (index, id) in ordered.iter().enumerate() {
+                repo::set_account_sort_order(conn, id, index as i64)?;
+            }
+            Ok(())
+        })
+    }
+
+    // -----------------------------------------------------------------------
+    // 分类（全局共享）
+    // -----------------------------------------------------------------------
+
+    pub fn list_categories(&self, include_hidden: bool) -> LedgerResult<Vec<Category>> {
+        self.with_conn(|conn| repo::list_categories(conn, include_hidden))
+    }
+
+    pub fn create_category(&self, input: NewCategory) -> LedgerResult<Category> {
+        let name = validate::category_name(&input.name)?;
+        validate::icon_name(&input.icon_name)?;
+        validate::color(&input.color)?;
+        self.with_tx(|conn| {
+            if repo::category_name_taken(conn, input.kind, &name, None)? {
+                return Err(LedgerError::validation("同类型下已存在同名分类"));
+            }
+            let now = id::now_ms();
+            let category = Category {
+                id: id::new_id("cat"),
+                kind: input.kind,
+                name,
+                icon_name: input.icon_name,
+                color: input.color,
+                sort_order: repo::next_category_sort_order(conn, input.kind)?,
+                hidden: false,
+                created_at_ms: now,
+                updated_at_ms: now,
+            };
+            repo::insert_category(conn, &category)?;
+            Ok(category)
+        })
+    }
+
+    pub fn update_category(&self, input: CategoryPatch) -> LedgerResult<()> {
+        let name = validate::category_name(&input.name)?;
+        validate::icon_name(&input.icon_name)?;
+        validate::color(&input.color)?;
+        self.with_tx(|conn| {
+            let existing = repo::get_category(conn, &input.id)?
+                .ok_or_else(|| LedgerError::not_found(format!("分类不存在：{}", input.id)))?;
+            if repo::category_name_taken(conn, existing.kind, &name, Some(&input.id))? {
+                return Err(LedgerError::validation("同类型下已存在同名分类"));
+            }
+            let category = Category {
+                name,
+                icon_name: input.icon_name,
+                color: input.color,
+                updated_at_ms: id::now_ms(),
+                ..existing
+            };
+            repo::update_category(conn, &category)?;
+            Ok(())
+        })
+    }
+
+    /// 软删除分类（FR-ADD-7 / Q4）：历史账单继续显示原分类。
+    pub fn hide_category(&self, id: &str) -> LedgerResult<()> {
+        self.with_tx(|conn| {
+            if !repo::hide_category(conn, id, id::now_ms())? {
+                return Err(LedgerError::not_found(format!("分类不存在：{id}")));
+            }
+            Ok(())
+        })
+    }
+
+    /// 按给定顺序重排某组分类。
+    pub fn reorder_categories(&self, kind: EntryKind, ids: &[String]) -> LedgerResult<()> {
+        self.with_tx(|conn| {
+            let existing = repo::category_ids_in_order(conn, kind)?;
+            let ordered = apply_order(&existing, ids);
+            for (index, id) in ordered.iter().enumerate() {
+                repo::set_category_sort_order(conn, id, index as i64)?;
+            }
+            Ok(())
+        })
+    }
+
+    // -----------------------------------------------------------------------
+    // 账单
+    // -----------------------------------------------------------------------
+
+    /// 某天的账单（时间倒序）。
+    pub fn list_transactions_by_day(
+        &self,
+        book_id: &str,
+        day: &str,
+    ) -> LedgerResult<Vec<Transaction>> {
+        if !dates::is_valid_day_key(day) {
+            return Err(LedgerError::validation(format!("日期格式不合法：{day}")));
+        }
+        self.with_conn(|conn| repo::list_transactions_by_day(conn, book_id, day))
+    }
+
+    /// 日期区间内的账单（倒序，最多 `limit` 条），明细页按天懒加载用。
+    pub fn list_transactions_range(
+        &self,
+        book_id: &str,
+        from_day: &str,
+        to_day: &str,
+        limit: i64,
+    ) -> LedgerResult<Vec<Transaction>> {
+        if !dates::is_valid_day_key(from_day) || !dates::is_valid_day_key(to_day) {
+            return Err(LedgerError::validation("日期格式不合法"));
+        }
+        self.with_conn(|conn| {
+            repo::list_transactions_range(conn, book_id, from_day, to_day, limit.clamp(1, 200))
+        })
+    }
+
+    pub fn get_transaction(&self, id: &str) -> LedgerResult<Option<Transaction>> {
+        self.with_conn(|conn| repo::get_transaction(conn, id))
+    }
+
+    pub fn create_transaction(&self, input: NewTransaction) -> LedgerResult<Transaction> {
+        validate::amount_cents(input.amount_cents)?;
+        let note = validate::note(&input.note)?;
+        validate::day_and_month(&input.day, &input.month)?;
+        let account_id = normalize_optional_id(input.account_id);
+        self.with_tx(move |conn| {
+            ensure_transaction_refs(
+                conn,
+                &input.book_id,
+                input.kind,
+                &input.category_id,
+                account_id.as_deref(),
+            )?;
+            let now = id::now_ms();
+            let transaction = Transaction {
+                id: id::new_id("tx"),
+                book_id: input.book_id,
+                kind: input.kind,
+                category_id: input.category_id,
+                account_id,
+                amount_cents: input.amount_cents,
+                note,
+                day: input.day,
+                month: input.month,
+                occurred_at_ms: input.occurred_at_ms,
+                created_at_ms: now,
+                updated_at_ms: now,
+            };
+            repo::insert_transaction(conn, &transaction)?;
+            Ok(transaction)
+        })
+    }
+
+    /// 编辑账单（Q3）：账本不变，其余字段整体覆盖。
+    pub fn update_transaction(&self, input: TransactionPatch) -> LedgerResult<()> {
+        validate::amount_cents(input.amount_cents)?;
+        let note = validate::note(&input.note)?;
+        validate::day_and_month(&input.day, &input.month)?;
+        let account_id = normalize_optional_id(input.account_id);
+        self.with_tx(move |conn| {
+            let existing = repo::get_transaction(conn, &input.id)?
+                .ok_or_else(|| LedgerError::not_found(format!("账单不存在：{}", input.id)))?;
+            ensure_transaction_refs(
+                conn,
+                &existing.book_id,
+                input.kind,
+                &input.category_id,
+                account_id.as_deref(),
+            )?;
+            let transaction = Transaction {
+                kind: input.kind,
+                category_id: input.category_id,
+                account_id,
+                amount_cents: input.amount_cents,
+                note,
+                day: input.day,
+                month: input.month,
+                occurred_at_ms: input.occurred_at_ms,
+                updated_at_ms: id::now_ms(),
+                ..existing
+            };
+            repo::update_transaction(conn, &transaction)?;
+            Ok(())
+        })
+    }
+
+    /// 删除账单：附件文件逐张删除 → 删除账单行（附件行级联）→ 删空目录。
+    pub fn delete_transaction(&self, id: &str) -> LedgerResult<()> {
+        let transaction_id = self.with_tx(|conn| {
+            let transaction = repo::get_transaction(conn, id)?
+                .ok_or_else(|| LedgerError::not_found(format!("账单不存在：{id}")))?;
+            let paths = repo::attachment_paths_for_transaction(conn, &transaction.id)?;
+            self.attachments.remove_files(&paths)?;
+            repo::delete_transaction(conn, &transaction.id)?;
+            Ok(transaction.id)
+        })?;
+        self.attachments.remove_transaction_dir(&transaction_id);
+        Ok(())
+    }
+
+    // -----------------------------------------------------------------------
+    // 统计
+    // -----------------------------------------------------------------------
+
+    pub fn month_stats(&self, book_id: &str, month: &str) -> LedgerResult<MonthStats> {
+        self.with_conn(|conn| query::month_stats(conn, book_id, month))
+    }
+
+    pub fn year_summary(&self, book_id: &str, year: i32) -> LedgerResult<YearSummary> {
+        self.with_conn(|conn| query::year_summary(conn, book_id, year))
+    }
+
+    /// 单月占比 / 排行（三种口径）。
+    pub fn month_share_breakdown(
+        &self,
+        book_id: &str,
+        month: &str,
+    ) -> LedgerResult<ShareBreakdown> {
+        self.with_conn(|conn| query::share_breakdown(conn, book_id, month, month))
+    }
+
+    /// 以 `end_month` 结尾、向前 `months` 个月的占比（环形图口径，可跨年）。
+    pub fn period_share_breakdown(
+        &self,
+        book_id: &str,
+        end_month: &str,
+        months: usize,
+    ) -> LedgerResult<ShareBreakdown> {
+        self.with_conn(|conn| {
+            let months = dates::trailing_months(end_month, months.max(1))
+                .ok_or_else(|| LedgerError::validation(format!("月份格式不合法：{end_month}")))?;
+            let from = months
+                .first()
+                .cloned()
+                .ok_or_else(|| LedgerError::validation("月份区间为空"))?;
+            let to = months
+                .last()
+                .cloned()
+                .ok_or_else(|| LedgerError::validation("月份区间为空"))?;
+            query::share_breakdown(conn, book_id, &from, &to)
+        })
+    }
+
+    pub fn transaction_ranks(
+        &self,
+        book_id: &str,
+        month: &str,
+        kind: StatsKind,
+        limit: i64,
+    ) -> LedgerResult<Vec<TransactionRank>> {
+        self.with_conn(|conn| query::transaction_ranks(conn, book_id, month, kind, limit))
+    }
+
+    pub fn day_summaries(&self, book_id: &str, month: &str) -> LedgerResult<Vec<DaySummary>> {
+        self.with_conn(|conn| query::day_summaries(conn, book_id, month))
+    }
+
+    pub fn assets_overview(
+        &self,
+        book_id: &str,
+        until_day: &str,
+        months: usize,
+    ) -> LedgerResult<AssetsOverview> {
+        self.with_conn(|conn| query::assets_overview(conn, book_id, until_day, months))
+    }
+
+    // -----------------------------------------------------------------------
+    // 附件
+    // -----------------------------------------------------------------------
+
+    pub fn list_attachments(&self, transaction_id: &str) -> LedgerResult<Vec<Attachment>> {
+        self.with_conn(|conn| repo::list_attachments(conn, transaction_id))
+    }
+
+    pub fn save_attachment(&self, input: NewAttachment) -> LedgerResult<Attachment> {
+        self.with_tx(|conn| {
+            let transaction = repo::get_transaction(conn, &input.transaction_id)?.ok_or_else(|| {
+                LedgerError::not_found(format!("账单不存在：{}", input.transaction_id))
+            })?;
+            self.attachments
+                .save(conn, &transaction.id, &input.mime, &input.base64)
+        })
+    }
+
+    pub fn read_attachment(&self, attachment_id: &str) -> LedgerResult<AttachmentData> {
+        self.with_conn(|conn| self.attachments.read(conn, attachment_id))
+    }
+
+    pub fn delete_attachment(&self, attachment_id: &str) -> LedgerResult<()> {
+        self.with_tx(|conn| self.attachments.delete(conn, attachment_id))
+    }
+}
+
+/// 打开数据库时的 PRAGMA。
+fn configure(conn: &Connection) -> LedgerResult<()> {
+    conn.execute_batch(
+        "PRAGMA journal_mode = WAL;
+         PRAGMA synchronous = NORMAL;
+         PRAGMA foreign_keys = ON;
+         PRAGMA busy_timeout = 5000;",
+    )?;
+    Ok(())
+}
+
+/// rusqlite 的 `Connection::open` 失败信息里已带路径，这里直接透传。
+fn create_dir(path: &Path) -> LedgerResult<()> {
+    fs::create_dir_all(path).map_err(|error| LedgerError::io_at(path, error))
+}
+
+/// 空字符串按「未指定」处理（前端清空选择时会传空串）。
+fn normalize_optional_id(value: Option<String>) -> Option<String> {
+    value.filter(|id| !id.trim().is_empty())
+}
+
+fn validate_balance(cents: i64, label: &str) -> LedgerResult<()> {
+    if cents.abs() > MAX_AMOUNT_CENTS {
+        return Err(LedgerError::validation(format!("{label}超出上限")));
+    }
+    Ok(())
+}
+
+/// 账单引用的账本 / 分类 / 账户必须存在且相互匹配。
+fn ensure_transaction_refs(
+    conn: &Connection,
+    book_id: &str,
+    kind: EntryKind,
+    category_id: &str,
+    account_id: Option<&str>,
+) -> LedgerResult<()> {
+    if !repo::book_exists(conn, book_id)? {
+        return Err(LedgerError::not_found(format!("账本不存在：{book_id}")));
+    }
+    let category = repo::get_category(conn, category_id)?
+        .ok_or_else(|| LedgerError::not_found(format!("分类不存在：{category_id}")))?;
+    if category.kind != kind {
+        return Err(LedgerError::validation("分类与收支类型不一致"));
+    }
+    if let Some(account_id) = account_id
+        && !repo::account_belongs_to_book(conn, account_id, book_id)?
+    {
+        return Err(LedgerError::validation("账户不属于当前账本"));
+    }
+    Ok(())
+}
+
+/// 把「期望顺序」应用到「现有顺序」上：未列出 / 不存在的 id 保持原相对顺序排后。
+fn apply_order(existing: &[String], requested: &[String]) -> Vec<String> {
+    let mut ordered: Vec<String> = Vec::with_capacity(existing.len());
+    for id in requested {
+        if existing.contains(id) && !ordered.contains(id) {
+            ordered.push(id.clone());
+        }
+    }
+    for id in existing {
+        if !ordered.contains(id) {
+            ordered.push(id.clone());
+        }
+    }
+    ordered
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::TestLedger;
+
+    #[test]
+    fn open_is_idempotent_and_seeds_once() {
+        let temp = tempfile::TempDir::new().expect("temp dir");
+        let first = Ledger::open(temp.path()).expect("first open");
+        let books = first.list_books().expect("books");
+        assert_eq!(books.len(), 1);
+        assert_eq!(books[0].id, seed::DEFAULT_BOOK_ID);
+        let categories = first.list_categories(true).expect("categories");
+        assert_eq!(categories.len(), 47);
+        drop(first);
+
+        let second = Ledger::open(temp.path()).expect("second open");
+        assert_eq!(second.list_books().expect("books").len(), 1);
+        assert_eq!(second.list_categories(true).expect("categories").len(), 47);
+    }
+
+    #[test]
+    fn last_book_cannot_be_deleted() {
+        let ledger = TestLedger::new();
+        let error = ledger.delete_book(seed::DEFAULT_BOOK_ID).expect_err("拒绝");
+        assert!(matches!(error, LedgerError::Validation(_)), "{error:?}");
+    }
+
+    #[test]
+    fn deleting_current_book_moves_pointer_to_remaining_book() {
+        let ledger = TestLedger::new();
+        let extra = ledger
+            .create_book(NewBook {
+                name: "旅行账".to_string(),
+            })
+            .expect("create book");
+        ledger.set_current_book(&extra.id).expect("set current");
+        ledger.delete_book(&extra.id).expect("delete book");
+        assert_eq!(
+            ledger.current_book_id().expect("current").as_deref(),
+            Some(seed::DEFAULT_BOOK_ID)
+        );
+    }
+
+    #[test]
+    fn apply_order_keeps_unlisted_ids_at_the_end() {
+        let existing = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let requested = vec!["c".to_string(), "nope".to_string(), "a".to_string()];
+        assert_eq!(apply_order(&existing, &requested), vec!["c", "a", "b"]);
+    }
+}

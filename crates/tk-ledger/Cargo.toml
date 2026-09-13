@@ -1,0 +1,21 @@
+[package]
+name = "tk-ledger"
+description = "Layer 3 记账数据底座: SQLite 持久化、统计聚合与附件存储"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tk-domain = { path = "../tk-domain" }
+tk-config = { path = "../tk-config" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+rusqlite = { version = "0.37", features = ["bundled"] }
+base64 = "0.22"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

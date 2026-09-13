@@ -5,6 +5,9 @@
 //! 布局:
 //!   <data_root>/
 //!   ├── config/            配置(app-settings.json、migration-report.json…)
+//!   ├── ledger/            记账数据(SQLite 库 + 附件)
+//!   │   ├── ledger.db
+//!   │   └── attachments/   <transaction_id>/<attachment_id>.<ext>
 //!   ├── logs/app/           应用会话日志(按次启动一份)
 //!   ├── state/             应用模块数据
 //!   └── tmp/               中间产物(migration-backup/ 迁移备份, exports/ 导出)
@@ -61,6 +64,21 @@ impl DataPaths {
         self.root.join("state")
     }
 
+    /// 记账数据目录(SQLite 库与附件都在这下面)。
+    pub fn ledger_dir(&self) -> PathBuf {
+        self.root.join("ledger")
+    }
+
+    /// 记账主库。
+    pub fn ledger_db_path(&self) -> PathBuf {
+        self.ledger_dir().join("ledger.db")
+    }
+
+    /// 附件根目录(数据库里存的是相对 data_root 的路径)。
+    pub fn attachments_dir(&self) -> PathBuf {
+        self.ledger_dir().join("attachments")
+    }
+
     pub fn tmp_dir(&self) -> PathBuf {
         self.root.join("tmp")
     }
@@ -90,6 +108,11 @@ mod tests {
         assert_eq!(
             p.migration_backup_dir(),
             PathBuf::from("D:/data/tmp/migration-backup")
+        );
+        assert_eq!(p.ledger_db_path(), PathBuf::from("D:/data/ledger/ledger.db"));
+        assert_eq!(
+            p.attachments_dir(),
+            PathBuf::from("D:/data/ledger/attachments")
         );
     }
 }

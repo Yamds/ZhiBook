@@ -107,20 +107,12 @@ impl Default for AppUiPreferences {
 }
 
 /// 设置页 App 级配置聚合
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../src/core/ipc/generated/domain/")]
 pub struct AppSettings {
     /// 外观偏好
     #[serde(rename = "uiPreferences", default)]
     pub ui_preferences: AppUiPreferences,
-}
-
-impl Default for AppSettings {
-    fn default() -> Self {
-        Self {
-            ui_preferences: AppUiPreferences::default(),
-        }
-    }
 }
 
 impl AppSettings {

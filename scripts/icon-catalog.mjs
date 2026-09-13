@@ -2,7 +2,7 @@
 //
 // 分三块：
 //   UI_ICONS                工程自身 UI 图标（导航 / 控件 / 状态 / 设置项）
-//   DEFAULT_CATEGORY_ICONS  内置分类的默认图标（P3 种子数据会用到同一份名字）
+//   DEFAULT_CATEGORIES      内置分类（稳定 id + 名称 + 默认图标），Rust 种子数据同源
 //   PICKER_GROUPS           分类图标选择器的分组目录（中文分组 + 别名）
 //
 // 新增图标：写进任意一块 → 运行 `pnpm run icons`。脚本会：
@@ -10,6 +10,7 @@
 //   2. 解析 mdi 别名（alias → parent），保证渲染时一定有 body
 //   3. 生成 src/assets/icons/mdi-subset.json（离线渲染用）
 //   4. 生成 src/core/design/icons.generated.ts（IconName 联合类型 + 选择器目录）
+//   5. 生成 crates/tk-ledger/src/seed_categories.generated.rs（内置分类种子数据）
 //
 // 图标名不带 `mdi:` 前缀，脚本统一补；这样目录文件里不会出现前缀笔误。
 
@@ -64,58 +65,67 @@ export const UI_ICONS = {
 };
 
 /** 内置分类默认图标：与 BRD 第 6 章的推荐表一一对应。 */
-export const DEFAULT_CATEGORY_ICONS = {
-    expense: {
-        餐饮: 'noodles',
-        购物: 'cart-outline',
-        日用: 'paper-roll-outline',
-        交通: 'bus',
-        蔬菜: 'carrot',
-        水果: 'food-apple',
-        零食: 'candy',
-        运动: 'run',
-        娱乐: 'gamepad-variant-outline',
-        通讯: 'phone-outline',
-        服饰: 'tshirt-crew-outline',
-        美容: 'lipstick',
-        住房: 'home-city-outline',
-        家庭: 'sofa-outline',
-        社交: 'account-group-outline',
-        旅行: 'bag-suitcase-outline',
-        烟酒: 'glass-wine',
-        数码: 'laptop',
-        汽车: 'car',
-        医疗: 'medical-bag',
-        书籍: 'book-open-page-variant-outline',
-        学习: 'school-outline',
-        宠物: 'paw',
-        礼金: 'cash-multiple',
-        礼品: 'gift-outline',
-        办公: 'briefcase-outline',
-        维修: 'wrench-outline',
-        捐赠: 'hand-heart-outline',
-        彩票: 'ticket-percent',
-        红包: 'gift-open-outline',
-        快递: 'package-variant-closed',
-        其它: 'dots-horizontal-circle-outline',
-        还款: 'cash-refund',
-        借出: 'hand-coin-outline',
-        饮品: 'coffee',
-        追星: 'star-outline',
-        游戏: 'controller-classic-outline',
-    },
-    income: {
-        工资: 'wallet-outline',
-        红包: 'gift-open-outline',
-        租金: 'home-currency-usd',
-        礼金: 'cash-multiple',
-        分红: 'chart-donut',
-        理财: 'finance',
-        年终奖: 'trophy-outline',
-        其它: 'dots-horizontal-circle-outline',
-        借入: 'hand-coin-outline',
-        还款: 'cash-refund',
-    },
+/**
+ * 内置分类（顺序即宫格顺序）。
+ *
+ * - id：稳定主键，种子数据落库后不得改名（历史账单按它关联）
+ * - name：展示名（同组内唯一）
+ * - icon：不带 `mdi:` 前缀，生成脚本统一补
+ *
+ * 数量基线：支出 37 / 收入 10（见 BRD 4.1 FR-ADD-4/5）。
+ */
+export const DEFAULT_CATEGORIES = {
+    expense: [
+        { id: 'food', name: '餐饮', icon: 'noodles' },
+        { id: 'shopping', name: '购物', icon: 'cart-outline' },
+        { id: 'daily', name: '日用', icon: 'paper-roll-outline' },
+        { id: 'transport', name: '交通', icon: 'bus' },
+        { id: 'vegetable', name: '蔬菜', icon: 'carrot' },
+        { id: 'fruit', name: '水果', icon: 'food-apple' },
+        { id: 'snack', name: '零食', icon: 'candy' },
+        { id: 'sport', name: '运动', icon: 'run' },
+        { id: 'entertainment', name: '娱乐', icon: 'gamepad-variant-outline' },
+        { id: 'telecom', name: '通讯', icon: 'phone-outline' },
+        { id: 'clothing', name: '服饰', icon: 'tshirt-crew-outline' },
+        { id: 'beauty', name: '美容', icon: 'lipstick' },
+        { id: 'housing', name: '住房', icon: 'home-city-outline' },
+        { id: 'family', name: '家庭', icon: 'sofa-outline' },
+        { id: 'social', name: '社交', icon: 'account-group-outline' },
+        { id: 'travel', name: '旅行', icon: 'bag-suitcase-outline' },
+        { id: 'tobacco_alcohol', name: '烟酒', icon: 'glass-wine' },
+        { id: 'digital', name: '数码', icon: 'laptop' },
+        { id: 'car', name: '汽车', icon: 'car' },
+        { id: 'medical', name: '医疗', icon: 'medical-bag' },
+        { id: 'books', name: '书籍', icon: 'book-open-page-variant-outline' },
+        { id: 'study', name: '学习', icon: 'school-outline' },
+        { id: 'pet', name: '宠物', icon: 'paw' },
+        { id: 'gift_money', name: '礼金', icon: 'cash-multiple' },
+        { id: 'gift', name: '礼品', icon: 'gift-outline' },
+        { id: 'office', name: '办公', icon: 'briefcase-outline' },
+        { id: 'repair', name: '维修', icon: 'wrench-outline' },
+        { id: 'donate', name: '捐赠', icon: 'hand-heart-outline' },
+        { id: 'lottery', name: '彩票', icon: 'ticket-percent' },
+        { id: 'red_packet', name: '红包', icon: 'gift-open-outline' },
+        { id: 'express', name: '快递', icon: 'package-variant-closed' },
+        { id: 'other', name: '其它', icon: 'dots-horizontal-circle-outline' },
+        { id: 'repay', name: '还款', icon: 'cash-refund' },
+        { id: 'lend_out', name: '借出', icon: 'hand-coin-outline' },
+        { id: 'drink', name: '饮品', icon: 'coffee' },
+        { id: 'fandom', name: '追星', icon: 'star-outline' },
+        { id: 'game', name: '游戏', icon: 'controller-classic-outline' },
+    ],
+    income: [
+        { id: 'salary', name: '工资', icon: 'wallet-outline' },
+        { id: 'red_packet', name: '红包', icon: 'gift-open-outline' },
+        { id: 'rent', name: '租金', icon: 'home-currency-usd' },
+        { id: 'gift_money', name: '礼金', icon: 'cash-multiple' },
+        { id: 'dividend', name: '分红', icon: 'chart-donut' },
+        { id: 'invest', name: '理财', icon: 'finance' },
+        { id: 'bonus', name: '年终奖', icon: 'trophy-outline' },
+        { id: 'other', name: '其它', icon: 'dots-horizontal-circle-outline' },
+        { id: 'borrow_in', name: '借入', icon: 'hand-coin-outline' },
+        { id: 'repay', name: '还款', icon: 'cash-refund' },
+    ],
 };
 
 /**

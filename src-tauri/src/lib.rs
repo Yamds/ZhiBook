@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use tauri::{Emitter, Manager};
 use tk_domain::{AppSettings, BootstrapSnapshot};
+use tk_ledger::Ledger;
 use tk_traits::{BroadcastEventBus, EventBus, EventFilter};
 use tokio::sync::RwLock;
 
@@ -19,6 +20,9 @@ pub struct AppState {
     pub(crate) data_root: PathBuf,
     pub(crate) snapshot: BootstrapSnapshot,
     pub(crate) app_settings: Arc<RwLock<AppSettings>>,
+    /// 记账库句柄。打开失败时保留错误信息，命令层把它转换成可展示的提示，
+    /// 而不是让整个应用启动失败。
+    pub(crate) ledger: Result<Arc<Ledger>, String>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -30,10 +34,19 @@ pub fn run() {
             app_log::init(&data_root);
             let snapshot = bootstrap::build_snapshot_for_data_root(&data_root);
             let settings = commands::app_settings::read_app_settings(&data_root);
+            let ledger = match Ledger::open(&data_root) {
+                Ok(ledger) => Ok(Arc::new(ledger)),
+                Err(error) => {
+                    let message = error.to_string();
+                    app_log::write_session_line("ERROR", "ledger_open", &message);
+                    Err(message)
+                }
+            };
             app.manage(AppState {
                 data_root,
                 snapshot,
                 app_settings: Arc::new(RwLock::new(settings)),
+                ledger,
             });
 
             // 宿主 EventBus → WebView 事件桥。业务插件/模块发布领域事件后，
@@ -65,6 +78,40 @@ pub fn run() {
             commands::exit::prepare_exit,
             commands::exit::request_exit_app,
             commands::app_log::tail_app_log,
+            // 记账数据底座（books / accounts / categories / transactions / stats / attachments）
+            commands::ledger::list_books,
+            commands::ledger::get_current_book,
+            commands::ledger::create_book,
+            commands::ledger::update_book,
+            commands::ledger::delete_book,
+            commands::ledger::set_current_book,
+            commands::ledger::list_accounts,
+            commands::ledger::create_account,
+            commands::ledger::update_account,
+            commands::ledger::delete_account,
+            commands::ledger::reorder_accounts,
+            commands::ledger::list_categories,
+            commands::ledger::create_category,
+            commands::ledger::update_category,
+            commands::ledger::hide_category,
+            commands::ledger::reorder_categories,
+            commands::ledger::list_transactions_by_day,
+            commands::ledger::list_transactions_range,
+            commands::ledger::get_transaction,
+            commands::ledger::create_transaction,
+            commands::ledger::update_transaction,
+            commands::ledger::delete_transaction,
+            commands::ledger::get_month_stats,
+            commands::ledger::get_year_summary,
+            commands::ledger::get_month_shares,
+            commands::ledger::get_period_shares,
+            commands::ledger::get_transaction_ranks,
+            commands::ledger::list_day_summaries,
+            commands::ledger::get_assets_overview,
+            commands::ledger::list_attachments,
+            commands::ledger::save_attachment,
+            commands::ledger::read_attachment,
+            commands::ledger::delete_attachment,
         ])
         .build(tauri::generate_context!());
 
