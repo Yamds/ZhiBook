@@ -115,5 +115,3 @@ export const ledgerService = {
     readAttachment: (id: string) => call<AttachmentData>('read_attachment', { id }),
     deleteAttachment: (id: string) => call<void>('delete_attachment', { id }),
 };
-
-export type LedgerService = typeof ledgerService;

@@ -1,4 +1,6 @@
-// 图标目录（手工维护）：Iconify MDI 集合的精选子集。
+// 图标目录（手工维护）：Iconify 精选子集，共两个集合：
+//   mdi            工程 UI 图标 + 内置分类 + 绝大多数选择器候选（默认集合）
+//   simple-icons   仅支付 / 消费品牌图标（MDI 没有品牌图标，见 PICKER_GROUPS 的「支付品牌」）
 //
 // 分三块：
 //   UI_ICONS                工程自身 UI 图标（导航 / 控件 / 状态 / 设置项）
@@ -6,13 +8,14 @@
 //   PICKER_GROUPS           分类图标选择器的分组目录（中文分组 + 别名）
 //
 // 新增图标：写进任意一块 → 运行 `pnpm run icons`。脚本会：
-//   1. 校验每个名字都存在于 @iconify-json/mdi（不存在就报错退出）
-//   2. 解析 mdi 别名（alias → parent），保证渲染时一定有 body
-//   3. 生成 src/assets/icons/mdi-subset.json（离线渲染用）
+//   1. 校验每个名字都存在于对应集合（不存在就报错退出）
+//   2. 解析别名（alias → parent），保证渲染时一定有 body
+//   3. 生成 src/assets/icons/mdi-subset.json 与 si-subset.json（离线渲染用）
 //   4. 生成 src/core/design/icons.generated.ts（IconName 联合类型 + 选择器目录）
 //   5. 生成 crates/tk-ledger/src/seed_categories.generated.rs（内置分类种子数据）
 //
-// 图标名不带 `mdi:` 前缀，脚本统一补；这样目录文件里不会出现前缀笔误。
+// mdi 图标名不带前缀，脚本统一补 `mdi:`；simple-icons 分组用 `collection` 字段切换集合，
+// 名字不带前缀，脚本补 `simple-icons:`。这样目录文件里不会出现前缀笔误。
 
 /** 工程 UI 图标。 */
 export const UI_ICONS = {
@@ -149,7 +152,6 @@ export const PICKER_GROUPS = [
             'cash-fast', 'cash-register', 'coins-outline', 'piggy-bank-outline', 'safe-square-outline',
             // 手机支付 / 扫码
             'qrcode-scan', 'contactless-payment', 'account-payment-outline', 'payment', 'cellphone',
-            'wechat',
             // 币种 / 借贷 / 票据
             'currency-cny', 'hand-coin-outline', 'cash-refund', 'receipt-text-outline',
             'percent-outline', 'chart-line', 'storefront-outline',
@@ -175,12 +177,11 @@ export const PICKER_GROUPS = [
             'coins-outline': ['硬币', '零钱'],
             'piggy-bank-outline': ['存钱罐', '储蓄'],
             'safe-square-outline': ['保险箱', '存款'],
-            'qrcode-scan': ['支付宝', '扫码支付', '二维码', '收款码'],
+            'qrcode-scan': ['扫码支付', '二维码', '收款码'],
             'contactless-payment': ['闪付', 'NFC', '云闪付'],
             'account-payment-outline': ['支付', '付款', '网银'],
             payment: ['支付', '付款'],
             cellphone: ['手机', '手机银行'],
-            wechat: ['微信', '微信支付'],
             'currency-cny': ['人民币', '钱'],
             'hand-coin-outline': ['借出', '外借'],
             'cash-refund': ['还款', '退款'],
@@ -188,6 +189,24 @@ export const PICKER_GROUPS = [
             'percent-outline': ['利率', '手续费'],
             'chart-line': ['收益', '理财'],
             'storefront-outline': ['商户', '店铺'],
+        },
+    },
+    {
+        label: '支付品牌',
+        collection: 'simple-icons',
+        icons: [
+            'alipay', 'wechat', 'visa', 'mastercard', 'applepay', 'googlepay', 'paypal', 'stripe', 'qq',
+        ],
+        aliases: {
+            alipay: ['支付宝'],
+            wechat: ['微信', '微信支付'],
+            visa: ['Visa', '维萨'],
+            mastercard: ['万事达', '万事达卡'],
+            applepay: ['Apple Pay', '苹果支付'],
+            googlepay: ['Google Pay', '谷歌支付'],
+            paypal: ['PayPal', '贝宝'],
+            stripe: ['Stripe'],
+            qq: ['QQ', '腾讯QQ'],
         },
     },
     {

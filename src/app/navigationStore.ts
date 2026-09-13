@@ -55,11 +55,6 @@ export function navigateTo(screen: AppScreen, intent?: NavigationIntent): void {
     navigationStore.setState({ screen, intent: intent ?? null, seq: state.seq + 1 });
 }
 
-/** 回到首页（返回键与页面内跳转共用）。 */
-export function goHome(): void {
-    navigateTo(HOME_ROUTE);
-}
-
 /**
  * 启动时直接落位到某个页签（不产生导航意图、不触发页面过渡）。
  *

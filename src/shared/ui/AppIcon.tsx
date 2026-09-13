@@ -5,17 +5,20 @@
 //   2. 图标名只能来自 `icons.generated.ts` 的 `IconName` 联合类型，
 //      写错名字编译期就报错；
 //   3. 图标数据在构建期由 `scripts/build-icon-subset.mjs` 从 `@iconify-json/mdi`
-//      抽取成离线子集，运行时 `addCollection` 注册一次，不请求 iconify API。
+//      （UI / 分类）与 `@iconify-json/simple-icons`（支付品牌）抽取成离线子集，
+//      运行时 `addCollection` 注册一次，不请求 iconify API。
 //
 // 想新增图标：写进 scripts/icon-catalog.mjs 后执行 `pnpm run icons`。
 
 import { addCollection, Icon } from '@iconify/react';
 import mdiSubset from '../../assets/icons/mdi-subset.json';
+import siSubset from '../../assets/icons/si-subset.json';
 import { cn } from '../utils/cn';
 import type { IconName } from '../../core/design/icons';
 
 // 模块初始化时注册图标集：保证首帧就能渲染，不出现空图标闪一下。
 addCollection(mdiSubset as unknown as Parameters<typeof addCollection>[0]);
+addCollection(siSubset as unknown as Parameters<typeof addCollection>[0]);
 
 export interface AppIconProps {
     name: IconName;

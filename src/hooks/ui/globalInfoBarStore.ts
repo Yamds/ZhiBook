@@ -145,4 +145,3 @@ export const globalInfoBarStore = {
 // 导出同名顶层方法供非 React 代码直接调用（service / 普通 .ts 文件）。
 // React 组件 / hook 通常用 useGlobalInfoBars()，多一层 useCallback 稳定引用。
 export const pushInfoBar = globalInfoBarStore.push;
-export const dismissInfoBar = globalInfoBarStore.remove;

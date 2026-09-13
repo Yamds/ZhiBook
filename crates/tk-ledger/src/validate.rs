@@ -83,9 +83,13 @@ pub fn color(value: &str) -> LedgerResult<()> {
     }
 }
 
-/// 图标名：必须是 Iconify 的 MDI 名字（`mdi:xxx`），保证渲染端一定能取到 body。
+/// 图标名：必须是渲染端已离线注册的 Iconify 集合名字（`mdi:xxx` / `simple-icons:xxx`），
+/// 与前端 `IconName` 的集合保持一致，保证渲染端一定能取到 body。
 pub fn icon_name(value: &str) -> LedgerResult<()> {
-    let name = value.strip_prefix("mdi:").unwrap_or("");
+    let name = value
+        .strip_prefix("mdi:")
+        .or_else(|| value.strip_prefix("simple-icons:"))
+        .unwrap_or("");
     let valid = !name.is_empty()
         && name
             .chars()
@@ -94,7 +98,7 @@ pub fn icon_name(value: &str) -> LedgerResult<()> {
         Ok(())
     } else {
         Err(LedgerError::validation(format!(
-            "图标名不合法：{value}（应为 mdi: 前缀的 Iconify 名字）"
+            "图标名不合法：{value}（应为 mdi: 或 simple-icons: 前缀的 Iconify 名字）"
         )))
     }
 }
@@ -210,11 +214,14 @@ mod tests {
     }
 
     #[test]
-    fn icon_name_requires_mdi_prefix() {
+    fn icon_name_requires_known_collection_prefix() {
         assert!(icon_name("mdi:noodles").is_ok());
+        assert!(icon_name("simple-icons:alipay").is_ok());
         assert!(icon_name("noodles").is_err());
         assert!(icon_name("mdi:Noodles").is_err());
         assert!(icon_name("mdi:").is_err());
+        assert!(icon_name("simple-icons:").is_err());
+        assert!(icon_name("simple-icons:Alipay").is_err());
         assert!(icon_name("lucide:apple").is_err());
     }
 

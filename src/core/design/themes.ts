@@ -43,7 +43,7 @@ export interface ThemeDefinition {
     readonly flat: boolean;
     /**
      * 预览色块。**必须与 `tokens.css` 里该主题的真实取值一致**：
-     * `canvas` 还兼任「启动瞬间的底色兜底」（见 `surfaceCanvas.ts`）。
+     * `canvas` 同时用于设置页主题卡片的底色预览。
      */
     readonly preview: ThemePreview;
 }

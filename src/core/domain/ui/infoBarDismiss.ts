@@ -9,9 +9,6 @@ export const INFOBAR_DISMISS_SLIDER_MIN = 1000;
 export const INFOBAR_DISMISS_SLIDER_MAX = 60_000;
 export const INFOBAR_DISMISS_SLIDER_STEP = 100;
 
-/** @deprecated 使用 INFOBAR_DISMISS_SLIDER_MAX */
-export const INFOBAR_DISMISS_MS_MAX = INFOBAR_DISMISS_SLIDER_MAX;
-
 export type InfoBarDismissPrefs = {
     infoBarDismissInfoMs: number;
     infoBarDismissSuccessMs: number;
@@ -28,15 +25,6 @@ export const DEFAULT_INFOBAR_DISMISS: InfoBarDismissPrefs = {
     infoBarDismissInfoMs: DEFAULT_INFOBAR_DISMISS_WHEN_ENABLED.infoBarDismissInfoMs,
     infoBarDismissSuccessMs: DEFAULT_INFOBAR_DISMISS_WHEN_ENABLED.infoBarDismissSuccessMs,
     infoBarDismissWarningMs: DEFAULT_INFOBAR_DISMISS_WHEN_ENABLED.infoBarDismissWarningMs,
-};
-
-export type InfoBarDismissDraftSlice = {
-    infoBarDismissInfoEnabled: boolean;
-    infoBarDismissInfoMs: number;
-    infoBarDismissSuccessEnabled: boolean;
-    infoBarDismissSuccessMs: number;
-    infoBarDismissWarningEnabled: boolean;
-    infoBarDismissWarningMs: number;
 };
 
 export function clampInfoBarDismissSliderMs(raw: unknown): number {
@@ -70,50 +58,6 @@ export function infoBarDismissFromUiPreferences(
         infoBarDismissInfoMs: toMs(ui.infoBarDismissInfoMs),
         infoBarDismissSuccessMs: toMs(ui.infoBarDismissSuccessMs),
         infoBarDismissWarningMs: toMs(ui.infoBarDismissWarningMs),
-    };
-}
-
-export function infoBarDismissDraftFromStored(
-    prefs: InfoBarDismissPrefs,
-): InfoBarDismissDraftSlice {
-    const msOrDefault = (
-        stored: number,
-        fallback: number,
-    ): number =>
-        stored > 0 ? clampInfoBarDismissSliderMs(stored) : fallback;
-
-    return {
-        infoBarDismissInfoEnabled: prefs.infoBarDismissInfoMs > 0,
-        infoBarDismissInfoMs: msOrDefault(
-            prefs.infoBarDismissInfoMs,
-            DEFAULT_INFOBAR_DISMISS_WHEN_ENABLED.infoBarDismissInfoMs,
-        ),
-        infoBarDismissSuccessEnabled: prefs.infoBarDismissSuccessMs > 0,
-        infoBarDismissSuccessMs: msOrDefault(
-            prefs.infoBarDismissSuccessMs,
-            DEFAULT_INFOBAR_DISMISS_WHEN_ENABLED.infoBarDismissSuccessMs,
-        ),
-        infoBarDismissWarningEnabled: prefs.infoBarDismissWarningMs > 0,
-        infoBarDismissWarningMs: msOrDefault(
-            prefs.infoBarDismissWarningMs,
-            DEFAULT_INFOBAR_DISMISS_WHEN_ENABLED.infoBarDismissWarningMs,
-        ),
-    };
-}
-
-export function infoBarDismissPrefsFromDraft(
-    draft: InfoBarDismissDraftSlice,
-): InfoBarDismissPrefs {
-    return {
-        infoBarDismissInfoMs: draft.infoBarDismissInfoEnabled
-            ? clampInfoBarDismissSliderMs(draft.infoBarDismissInfoMs)
-            : INFOBAR_DISMISS_MS_OFF,
-        infoBarDismissSuccessMs: draft.infoBarDismissSuccessEnabled
-            ? clampInfoBarDismissSliderMs(draft.infoBarDismissSuccessMs)
-            : INFOBAR_DISMISS_MS_OFF,
-        infoBarDismissWarningMs: draft.infoBarDismissWarningEnabled
-            ? clampInfoBarDismissSliderMs(draft.infoBarDismissWarningMs)
-            : INFOBAR_DISMISS_MS_OFF,
     };
 }
 

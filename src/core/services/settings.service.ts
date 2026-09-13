@@ -12,8 +12,6 @@ import { normalizeRadiusStyle } from '../design/radius';
 import { normalizeThemeValue } from '../design/themes';
 import { DEFAULT_STARTUP_TAB, normalizeStartupTab } from '../domain/ui/startupTab';
 
-export type BackendSettings = AppSettings;
-
 export const DEFAULT_UI_PREFERENCES: AppUiPreferences = {
     theme: 'auto',
     startupTab: DEFAULT_STARTUP_TAB,

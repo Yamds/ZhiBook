@@ -1,10 +1,10 @@
 // 由 scripts/build-icon-subset.mjs 生成，请勿手改。
 // 重新生成：pnpm run icons（目录在 scripts/icon-catalog.mjs）
 //
-// mdi 全集有 7638 个图标，这里只保留精选子集，
-// 渲染数据见 src/assets/icons/mdi-subset.json。
+// mdi 全集有 7638 个图标、simple-icons 有 3733 个，
+// 这里只保留精选子集：渲染数据见 src/assets/icons/mdi-subset.json 与 si-subset.json。
 
-/** 工程内允许使用的图标名（Iconify name，形如 mdi:noodles）。 */
+/** 工程内允许使用的图标名（Iconify name，形如 mdi:noodles / simple-icons:alipay）。 */
 export type IconName =
     | 'mdi:account-group-outline'
     | 'mdi:account-heart-outline'
@@ -344,13 +344,21 @@ export type IconName =
     | 'mdi:water-outline'
     | 'mdi:weather-night'
     | 'mdi:weather-sunny'
-    | 'mdi:wechat'
     | 'mdi:weight-lifter'
     | 'mdi:wheelchair-accessibility'
     | 'mdi:whiteboard'
     | 'mdi:window-closed-variant'
     | 'mdi:wrench-outline'
-    | 'mdi:yoga';
+    | 'mdi:yoga'
+    | 'simple-icons:alipay'
+    | 'simple-icons:applepay'
+    | 'simple-icons:googlepay'
+    | 'simple-icons:mastercard'
+    | 'simple-icons:paypal'
+    | 'simple-icons:qq'
+    | 'simple-icons:stripe'
+    | 'simple-icons:visa'
+    | 'simple-icons:wechat';
 
 /** IconName 的运行时清单（校验 IPC 传回的图标名时用）。 */
 export const ICON_NAMES: readonly IconName[] = [
@@ -692,13 +700,21 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:water-outline',
     'mdi:weather-night',
     'mdi:weather-sunny',
-    'mdi:wechat',
     'mdi:weight-lifter',
     'mdi:wheelchair-accessibility',
     'mdi:whiteboard',
     'mdi:window-closed-variant',
     'mdi:wrench-outline',
     'mdi:yoga',
+    'simple-icons:alipay',
+    'simple-icons:applepay',
+    'simple-icons:googlepay',
+    'simple-icons:mastercard',
+    'simple-icons:paypal',
+    'simple-icons:qq',
+    'simple-icons:stripe',
+    'simple-icons:visa',
+    'simple-icons:wechat',
 ];
 
 export interface IconCatalogEntry {
@@ -754,6 +770,7 @@ export const UI_ICONS = {
 /** 选择器分组顺序。 */
 export const ICON_GROUPS: readonly string[] = [
     "支付与账户",
+    "支付品牌",
     "餐饮",
     "购物",
     "日用",
@@ -797,12 +814,11 @@ export const ICON_CATALOG: readonly IconCatalogEntry[] = [
     { name: "mdi:coins-outline", group: "支付与账户", aliases: ["硬币","零钱"] },
     { name: "mdi:piggy-bank-outline", group: "支付与账户", aliases: ["存钱罐","储蓄"] },
     { name: "mdi:safe-square-outline", group: "支付与账户", aliases: ["保险箱","存款"] },
-    { name: "mdi:qrcode-scan", group: "支付与账户", aliases: ["支付宝","扫码支付","二维码","收款码"] },
+    { name: "mdi:qrcode-scan", group: "支付与账户", aliases: ["扫码支付","二维码","收款码"] },
     { name: "mdi:contactless-payment", group: "支付与账户", aliases: ["闪付","NFC","云闪付"] },
     { name: "mdi:account-payment-outline", group: "支付与账户", aliases: ["支付","付款","网银"] },
     { name: "mdi:payment", group: "支付与账户", aliases: ["支付","付款"] },
     { name: "mdi:cellphone", group: "支付与账户", aliases: ["手机","手机银行"] },
-    { name: "mdi:wechat", group: "支付与账户", aliases: ["微信","微信支付"] },
     { name: "mdi:currency-cny", group: "支付与账户", aliases: ["人民币","钱"] },
     { name: "mdi:hand-coin-outline", group: "支付与账户", aliases: ["借出","外借"] },
     { name: "mdi:cash-refund", group: "支付与账户", aliases: ["还款","退款"] },
@@ -810,6 +826,15 @@ export const ICON_CATALOG: readonly IconCatalogEntry[] = [
     { name: "mdi:percent-outline", group: "支付与账户", aliases: ["利率","手续费"] },
     { name: "mdi:chart-line", group: "支付与账户", aliases: ["收益","理财"] },
     { name: "mdi:storefront-outline", group: "支付与账户", aliases: ["商户","店铺"] },
+    { name: "simple-icons:alipay", group: "支付品牌", aliases: ["支付宝"] },
+    { name: "simple-icons:wechat", group: "支付品牌", aliases: ["微信","微信支付"] },
+    { name: "simple-icons:visa", group: "支付品牌", aliases: ["Visa","维萨"] },
+    { name: "simple-icons:mastercard", group: "支付品牌", aliases: ["万事达","万事达卡"] },
+    { name: "simple-icons:applepay", group: "支付品牌", aliases: ["Apple Pay","苹果支付"] },
+    { name: "simple-icons:googlepay", group: "支付品牌", aliases: ["Google Pay","谷歌支付"] },
+    { name: "simple-icons:paypal", group: "支付品牌", aliases: ["PayPal","贝宝"] },
+    { name: "simple-icons:stripe", group: "支付品牌", aliases: ["Stripe"] },
+    { name: "simple-icons:qq", group: "支付品牌", aliases: ["QQ","腾讯QQ"] },
     { name: "mdi:noodles", group: "餐饮", aliases: ["面","饭"] },
     { name: "mdi:rice", group: "餐饮", aliases: [] },
     { name: "mdi:food-apple", group: "餐饮", aliases: [] },

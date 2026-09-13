@@ -5,6 +5,7 @@
 
 import type { ReactNode } from 'react';
 import { cn } from '../utils/cn';
+import { useMotion } from '../../hooks/preferences/useMotion';
 
 export interface RankRowProps {
     leading?: ReactNode;
@@ -29,6 +30,7 @@ export function RankRow({
     onClick,
     className,
 }: RankRowProps) {
+    const motion = useMotion();
     const width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
     const interactive = typeof onClick === 'function';
 
@@ -44,7 +46,7 @@ export function RankRow({
             </div>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-pill bg-inset">
                 <div
-                    className="h-full rounded-pill transition-[width] duration-300 ease-out"
+                    className={cn('h-full rounded-pill', motion.enabled && 'transition-[width] duration-300 ease-out')}
                     style={{ width, background: color ?? 'var(--brand-500)' }}
                 />
             </div>

@@ -6,6 +6,7 @@
 import type { ReactNode } from 'react';
 import { computeDonutArcs } from './geometry';
 import { cn } from '../utils/cn';
+import { useMotion } from '../../hooks/preferences/useMotion';
 
 export interface DonutChartSlice {
     readonly key: string;
@@ -38,6 +39,7 @@ export function DonutChart({
     emptyText = '暂无数据',
     className,
 }: DonutChartProps) {
+    const motion = useMotion();
     const arcs = computeDonutArcs(
         slices.map((slice) => ({ key: slice.key, value: slice.value })),
         { size, thickness, gapDeg: 2 },
@@ -70,7 +72,7 @@ export function DonutChart({
                             d={arc.path}
                             fill={colorOf(arc.key)}
                             className={cn(
-                                'transition-opacity duration-200 ease-out',
+                                motion.enabled && 'transition-opacity duration-200 ease-out',
                                 dimmed ? 'opacity-30' : 'opacity-100',
                                 onSelect && 'cursor-pointer',
                             )}

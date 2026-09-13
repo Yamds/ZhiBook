@@ -1,6 +1,5 @@
 export type { AppSettings } from './generated/domain/AppSettings';
 export type { AppUiPreferences } from './generated/domain/AppUiPreferences';
-export type { BootstrapSnapshot } from './generated/domain/BootstrapSnapshot';
 
 // 记账域类型（Rust `crates/tk-domain/src/ledger.rs` 定义，pnpm run ts-bindings 生成）
 export type { Account } from './generated/domain/Account';

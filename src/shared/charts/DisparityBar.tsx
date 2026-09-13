@@ -4,6 +4,7 @@
 
 import { cn } from '../utils/cn';
 import { formatMoney } from '../../core/domain/money';
+import { useMotion } from '../../hooks/preferences/useMotion';
 
 export interface DisparityBarProps {
     label: string;
@@ -20,13 +21,14 @@ const TONE_FILL: Record<DisparityBarProps['tone'], string> = {
 };
 
 export function DisparityBar({ label, valueCents, maxCents, tone, className }: DisparityBarProps) {
+    const motion = useMotion();
     const ratio = maxCents > 0 ? Math.max(0, Math.min(1, valueCents / maxCents)) : 0;
     return (
         <div className={cn('flex items-center gap-2.5', className)}>
             <span className="w-12 shrink-0 text-[12px] text-text-secondary">{label}</span>
             <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-pill bg-inset">
                 <div
-                    className="h-full rounded-pill transition-[width] duration-300 ease-out"
+                    className={cn('h-full rounded-pill', motion.enabled && 'transition-[width] duration-300 ease-out')}
                     style={{ width: `${ratio * 100}%`, background: TONE_FILL[tone] }}
                 />
             </div>

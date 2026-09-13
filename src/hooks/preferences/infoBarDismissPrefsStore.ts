@@ -1,6 +1,5 @@
 // InfoBar 自动关闭偏好（来自 app-settings.uiPreferences，保存设置后更新）。
 
-import { useSyncExternalStore } from 'react';
 import {
     DEFAULT_INFOBAR_DISMISS,
     infoBarDismissFromUiPreferences,
@@ -33,11 +32,3 @@ export const infoBarDismissPrefsStore = {
         notify();
     },
 };
-
-export function useInfoBarDismissPrefs(): InfoBarDismissPrefs {
-    return useSyncExternalStore(
-        infoBarDismissPrefsStore.subscribe,
-        infoBarDismissPrefsStore.getSnapshot,
-        infoBarDismissPrefsStore.getSnapshot,
-    );
-}
