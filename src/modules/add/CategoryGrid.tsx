@@ -1,12 +1,14 @@
 // 分类宫格：一排 4 个、一页 3 排（12 项），末尾固定「+」卡位。
 //
 // 手势（自绘，不用原生滚动，保证「跟手 + 一次只过一页」）：
-//   - 横向拖动 → 翻页：1:1 跟手，首尾页带阻尼，松手最多翻一页（位移 1/4 页或快甩）；
+//   - 横向拖动 → 翻页：1:1 跟手、首尾阻尼、松手最多翻一页（位移过 1/4 页或快甩）；
 //   - 长按 500ms（位移 <8px）→ 普通模式进编辑模式；编辑模式下拾起该项拖动排序；
-//   - 编辑模式也能左右翻页（不再依赖原生滚动，也不再有 touch-action 拦截）；
-//   - 拖动排序时目标位置及之后的格子按「挪一格」动画避让（行尾 → 下一行开头）。
+//   - 编辑模式也能左右翻页（不依赖原生滚动，也不锁 touch-action）；
+//   - 拖动排序：拖动项画在 **body 上的浮层**里（跟手且不受翻页裁剪影响），
+//     其余格子按实测几何「挪一格」避让（行尾 → 下一行开头），空位用虚线提示。
 //
-// 状态（BRD FR-ADD-1~9）：普通点选 / 编辑（× 删除 + 「+」新建）/ 拖动排序（松手即存）。
+// 几何全部从真实格子量（getBoundingClientRect 两两相减）：宫格有 px-3 与 gap，
+// 用「容器宽 ÷ 列数」会让跨行位移积累几十 px 偏差。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Category, EntryKind } from '../../core/ipc/types';
@@ -15,6 +17,7 @@ import { UI_ICONS, toIconName } from '../../core/design/icons';
 import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import { LONG_PRESS_DELAY_MS, LONG_PRESS_MOVE_TOLERANCE_PX } from '../../hooks/ui/useLongPress';
 import { AppIcon } from '../../shared/ui/AppIcon';
+import { BodyPortal } from '../../shared/ui/BodyPortal';
 import { cn } from '../../shared/utils/cn';
 import {
     GRID_COLUMNS,
@@ -31,11 +34,12 @@ import {
     paginate,
     resolvePageAfterRelease,
     type GridEntry,
+    type GridMetrics,
 } from './addPage.logic';
 
 /** 拖动到边缘后每次自动翻页的最小间隔。 */
 const AUTO_PAGE_INTERVAL_MS = 450;
-/** 翻页 / 回弹动画时长（关掉动效时由 CSS 媒体查询兜底，功能不受影响）。 */
+/** 翻页 / 回弹动画时长。 */
 const PAGE_TRANSITION = 'transform 220ms cubic-bezier(0.33, 1, 0.68, 1)';
 
 export interface CategoryGridProps {
@@ -43,31 +47,28 @@ export interface CategoryGridProps {
     categories: ReadonlyArray<Category>;
     selectedId: string | null;
     editing: boolean;
-    /** 编辑模式工具栏上的按钮是否禁用（拖动提交中）。 */
     busy?: boolean;
     onSelect: (categoryId: string) => void;
-    /** 普通模式下长按：进入编辑模式。 */
     onEnterEditing: () => void;
-    /** 编辑模式下点击分类：打开分类编辑器。 */
     onEditCategory: (category: Category) => void;
     onDeleteCategory: (category: Category) => void;
     onCreateCategory: () => void;
     onExitEditing: () => void;
-    /** 拖动结束：提交该组的新顺序。 */
     onReorder: (orderedIds: string[]) => void;
 }
 
 interface DragState {
     entryIndex: number;
     pointerId: number;
-    startX: number;
-    startY: number;
+    /** 手指相对格子左上角的偏移：浮层按它对齐，保证「抓哪跟哪」。 */
+    grabOffsetX: number;
+    grabOffsetY: number;
     x: number;
     y: number;
-    /** 拖起时测得的格子 / 页宽（落点换算与避让动画用）。 */
-    cellWidth: number;
-    cellHeight: number;
-    pageWidth: number;
+    metrics: GridMetrics;
+    /** 第 1 个格子相对容器左上角的偏移（空位提示用，避免渲染期读 DOM）。 */
+    originInContainerX: number;
+    originInContainerY: number;
 }
 
 interface GestureState {
@@ -82,6 +83,40 @@ interface GestureState {
     velocity: number;
     axis: 'h' | 'v' | null;
     mode: 'press' | 'pan' | 'drag' | 'idle';
+}
+
+/** 从真实格子量出宫格几何（两两相减，含 gap）；量不到就用容器尺寸估算。 */
+function measureGrid(container: HTMLElement): GridMetrics {
+    const rect = container.getBoundingClientRect();
+    const cells = Array.from(
+        container.querySelectorAll<HTMLElement>('[data-entry-index]'),
+    ).slice(0, GRID_PAGE_SIZE);
+    const first = cells[0];
+    const second = cells[1];
+    const below = cells[GRID_COLUMNS];
+    if (!first || !second) {
+        // 格子太少（分类被删到只剩几个）时回退到容器估算
+        const cellWidth = rect.width / GRID_COLUMNS;
+        return {
+            originLeft: rect.left,
+            originTop: rect.top,
+            cellWidth,
+            cellHeight: rect.height / GRID_ROWS,
+            pitchX: cellWidth,
+            pitchY: rect.height / GRID_ROWS,
+        };
+    }
+    const a = first.getBoundingClientRect();
+    const b = second.getBoundingClientRect();
+    const c = below?.getBoundingClientRect();
+    return {
+        originLeft: a.left,
+        originTop: a.top,
+        cellWidth: a.width,
+        cellHeight: a.height,
+        pitchX: b.left - a.left || a.width,
+        pitchY: c ? c.top - a.top : a.height,
+    };
 }
 
 export function CategoryGrid({
@@ -125,7 +160,6 @@ export function CategoryGrid({
     const editingRef = useRef(editing);
     editingRef.current = editing;
 
-    // 分类变少（删除 / 翻页后）时收敛页码
     useEffect(() => {
         if (pageIndex > pageCount - 1) setPageIndex(Math.max(0, pageCount - 1));
     }, [pageCount, pageIndex]);
@@ -161,7 +195,7 @@ export function CategoryGrid({
         onReorder(ids);
     }, [entries, onReorder]);
 
-    // 拖动期间：非被动 touchmove 阻止浏览器接管手势（touch-action 已放开 pan-y 给外层滚动）
+    // 拖动期间阻止浏览器接管手势（容器是 touch-action: pan-y，纵向仍归外层滚动）
     useEffect(() => {
         if (!drag) return;
         const container = containerRef.current;
@@ -174,16 +208,13 @@ export function CategoryGrid({
 
     const updateDrag = useCallback(
         (clientX: number, clientY: number) => {
-            const container = containerRef.current;
             const current = dragRef.current;
-            if (!container || !current) return;
-            const next: DragState = { ...current, x: clientX, y: clientY };
-            dragRef.current = next;
-            setDrag(next);
+            if (!current) return;
+            setDrag({ ...current, x: clientX, y: clientY });
 
-            const rect = container.getBoundingClientRect();
-            // 自绘翻页：可见页就是 pageIndex
-            const localIndex = dropIndexAt({ x: clientX, y: clientY }, rect);
+            const container = containerRef.current;
+            if (!container) return;
+            const localIndex = dropIndexAt({ x: clientX, y: clientY }, current.metrics);
             const target = Math.min(
                 Math.max(0, pageIndex * GRID_PAGE_SIZE + localIndex),
                 entries.length - 1,
@@ -191,7 +222,7 @@ export function CategoryGrid({
             dropIndexRef.current = target;
             setDropIndex(target);
 
-            // 拖到左右边缘自动翻页（一次一页，带最小间隔）
+            const rect = container.getBoundingClientRect();
             const direction = autoPageDirection({ x: clientX }, rect, pageCount);
             const now = Date.now();
             if (direction !== 0 && now - lastAutoPageRef.current > AUTO_PAGE_INTERVAL_MS) {
@@ -205,8 +236,7 @@ export function CategoryGrid({
     const handlePointerDown = useCallback(
         (event: React.PointerEvent<HTMLDivElement>) => {
             if (event.pointerType === 'mouse' && event.button !== 0) return;
-            const target = event.target as HTMLElement;
-            const cell = target.closest('[data-entry-index]');
+            const cell = (event.target as HTMLElement).closest('[data-entry-index]');
             const entryIndex = cell ? Number(cell.getAttribute('data-entry-index')) : null;
             const isCategoryCell = cell?.getAttribute('data-cell-kind') === 'category';
 
@@ -234,21 +264,22 @@ export function CategoryGrid({
                     if (!gesture || gesture.mode !== 'press') return;
                     suppressClickRef.current = true;
                     if (editingRef.current) {
-                        // 拾起拖动：记下格子尺寸用于落点换算与避让动画
                         const container = containerRef.current;
-                        const width = container?.clientWidth ?? 0;
-                        const height = container?.clientHeight ?? 0;
+                        const cellRect = cell?.getBoundingClientRect();
+                        const containerRect = container?.getBoundingClientRect();
+                        if (!container || !cellRect || !containerRect) return;
+                        const metrics = measureGrid(container);
                         gesture.mode = 'drag';
                         const next: DragState = {
                             entryIndex: gesture.entryIndex ?? 0,
                             pointerId: gesture.pointerId,
-                            startX: gesture.startX,
-                            startY: gesture.startY,
+                            grabOffsetX: gesture.startX - cellRect.left,
+                            grabOffsetY: gesture.startY - cellRect.top,
                             x: gesture.startX,
                             y: gesture.startY,
-                            cellWidth: width / GRID_COLUMNS,
-                            cellHeight: height / GRID_ROWS,
-                            pageWidth: width,
+                            metrics,
+                            originInContainerX: metrics.originLeft - containerRect.left,
+                            originInContainerY: metrics.originTop - containerRect.top,
                         };
                         dragRef.current = next;
                         dropIndexRef.current = next.entryIndex;
@@ -319,14 +350,9 @@ export function CategoryGrid({
         }
         if (gesture.mode === 'pan') {
             const width = containerRef.current?.clientWidth ?? 0;
-            const nextPage = resolvePageAfterRelease(
-                pageIndex,
-                gesture.dx,
-                width,
-                gesture.velocity,
-                pageCount,
+            setPageIndex(
+                resolvePageAfterRelease(pageIndex, gesture.dx, width, gesture.velocity, pageCount),
             );
-            setPageIndex(nextPage);
             setPanDx(0);
         }
     }, [clearPressTimer, finishDrag, pageCount, pageIndex]);
@@ -347,14 +373,28 @@ export function CategoryGrid({
         [editing, onCreateCategory, onEditCategory, onSelect],
     );
 
-    const goToPage = useCallback(
-        (index: number) => {
-            setPageIndex(Math.min(Math.max(0, index), Math.max(0, pageCount - 1)));
-        },
-        [pageCount],
-    );
+    // 拖动浮层：挂在 body 上（不受宫格裁剪 / 翻页动画影响）
+    const draggedEntry = drag ? entries[drag.entryIndex] : undefined;
+    const draggedColors =
+        draggedEntry?.type === 'category'
+            ? categoryColors(draggedEntry.category.color, brand, surface)
+            : null;
 
-    const offset = -pageIndex * 100;
+    // 空位提示：同页拖动时，落点那一格是空的（格子已经挪走），在容器上画虚线圆
+    const hole = useMemo(() => {
+        if (!drag || dropIndex === null) return null;
+        if (!isSamePage(drag.entryIndex, dropIndex)) return null;
+        if (Math.floor(dropIndex / GRID_PAGE_SIZE) !== pageIndex) return null;
+        const slot = dropIndex % GRID_PAGE_SIZE;
+        const column = slot % GRID_COLUMNS;
+        const row = Math.floor(slot / GRID_COLUMNS);
+        return {
+            left: drag.originInContainerX + column * drag.metrics.pitchX,
+            top: drag.originInContainerY + row * drag.metrics.pitchY,
+            width: drag.metrics.cellWidth,
+            height: drag.metrics.cellHeight,
+        };
+    }, [drag, dropIndex, pageIndex]);
 
     return (
         <div className="flex min-h-0 flex-col">
@@ -388,75 +428,51 @@ export function CategoryGrid({
                 onPointerUp={endGesture}
                 onPointerCancel={endGesture}
                 onContextMenu={(event) => event.preventDefault()}
-                onClick={(event) => {
-                    // FR-ADD-9：选择模式下点空白区退出
-                    if (!editing) return;
-                    if ((event.target as HTMLElement).closest('[data-entry-index]')) return;
-                    onExitEditing();
-                }}
-                className="touch-pan-y select-none overflow-hidden"
+                className="relative touch-pan-y select-none overflow-hidden"
             >
                 <div
                     className="flex"
                     style={{
-                        transform: `translate3d(calc(${offset}% + ${panDx}px), 0, 0)`,
-                        // 拖动中翻页要瞬移，否则拖动项会比手指慢半拍
-                        transition: panDx === 0 && !drag ? PAGE_TRANSITION : 'none',
+                        transform: `translate3d(calc(${-pageIndex * 100}% + ${panDx}px), 0, 0)`,
+                        transition: panDx === 0 ? PAGE_TRANSITION : 'none',
                     }}
                 >
                     {pages.map((page, index) => (
                         <div
                             key={index}
-                            className="grid w-full shrink-0 grid-cols-4 auto-rows-[64px] gap-x-1 gap-y-0.5 px-3"
+                            className="grid w-full shrink-0 grid-cols-4 auto-rows-[88px] gap-x-1 px-3"
                         >
                             {page.map((entry, cellIndex) => {
                                 const entryIndex = index * GRID_PAGE_SIZE + cellIndex;
                                 const isDragged = drag?.entryIndex === entryIndex;
-                                const isDropTarget =
-                                    drag !== null && dropIndex === entryIndex && !isDragged;
                                 const shift =
                                     drag && isSamePage(drag.entryIndex, dropIndex ?? -1)
                                         ? avoidanceOffset(
                                               entryIndex,
                                               drag.entryIndex,
                                               dropIndex ?? drag.entryIndex,
-                                              drag.cellWidth,
-                                              drag.cellHeight,
+                                              drag.metrics,
                                           )
-                                        : null;
-                                const dragDelta =
-                                    isDragged && drag
-                                        ? {
-                                              // 翻页时把拖动项平移回可见页，保证它一直在手指下
-                                              x:
-                                                  drag.x -
-                                                  drag.startX +
-                                                  (Math.floor(drag.entryIndex / GRID_PAGE_SIZE) -
-                                                      pageIndex) *
-                                                      drag.pageWidth,
-                                              y: drag.y - drag.startY,
-                                          }
                                         : null;
                                 const palette =
                                     entry.type === 'add'
                                         ? null
                                         : categoryColors(entry.category.color, brand, surface);
-                                const transform = dragDelta
-                                    ? `translate3d(${dragDelta.x}px, ${dragDelta.y}px, 0) scale(1.08)`
-                                    : shift
-                                      ? `translate3d(${shift.x}px, ${shift.y}px, 0)`
-                                      : undefined;
 
                                 return (
                                     <div
                                         key={entry.type === 'add' ? '__add__' : entry.category.id}
                                         data-entry-index={entryIndex}
                                         data-cell-kind={entry.type === 'add' ? 'add' : 'category'}
-                                        style={{ transform, zIndex: dragDelta ? 30 : undefined }}
+                                        style={{
+                                            transform: shift
+                                                ? `translate3d(${shift.x}px, ${shift.y}px, 0)`
+                                                : undefined,
+                                        }}
                                         className={cn(
                                             'relative flex items-center justify-center',
-                                            shift && !dragDelta && 'transition-transform duration-150',
-                                            dragDelta && 'opacity-95',
+                                            shift && 'transition-transform duration-200 ease-out',
+                                            isDragged && 'opacity-0',
                                         )}
                                     >
                                         {entry.type === 'add' || !palette ? (
@@ -466,8 +482,6 @@ export function CategoryGrid({
                                                 category={entry.category}
                                                 selected={entry.category.id === selectedId}
                                                 editing={editing}
-                                                dropTarget={isDropTarget}
-                                                dragging={Boolean(dragDelta)}
                                                 foreground={palette.foreground}
                                                 background={palette.background}
                                                 onClick={() => handleCellClick(entry)}
@@ -480,17 +494,33 @@ export function CategoryGrid({
                         </div>
                     ))}
                 </div>
+
+                {hole ? (
+                    <div
+                        className="pointer-events-none absolute"
+                        style={{
+                            left: hole.left,
+                            top: hole.top,
+                            width: hole.width,
+                            height: hole.height,
+                        }}
+                    >
+                        <span className="flex h-full w-full items-center justify-center">
+                            <span className="inline-flex h-13 w-13 rounded-full border-2 border-dashed border-brand/70" />
+                        </span>
+                    </div>
+                ) : null}
             </div>
 
             {pageCount > 1 ? (
-                <div className="flex items-center justify-center gap-1.5 pt-1.5">
+                <div className="flex items-center justify-center gap-1.5 pt-2">
                     {pages.map((_, index) => (
                         <button
                             key={index}
                             type="button"
                             aria-label={`第 ${index + 1} 页`}
                             aria-current={index === pageIndex}
-                            onClick={() => goToPage(index)}
+                            onClick={() => setPageIndex(Math.min(Math.max(0, index), pageCount - 1))}
                             className={cn(
                                 'h-1.5 rounded-pill transition-[width,background-color] duration-200',
                                 index === pageIndex ? 'w-4 bg-brand' : 'w-1.5 bg-border-strong',
@@ -498,6 +528,35 @@ export function CategoryGrid({
                         />
                     ))}
                 </div>
+            ) : null}
+
+            {drag && draggedEntry?.type === 'category' && draggedColors ? (
+                <BodyPortal>
+                    <div
+                        className="pointer-events-none fixed z-50"
+                        style={{
+                            left: drag.x - drag.grabOffsetX,
+                            top: drag.y - drag.grabOffsetY,
+                            width: drag.metrics.cellWidth,
+                            height: drag.metrics.cellHeight,
+                        }}
+                    >
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 rounded-lg bg-surface shadow-popover">
+                            <span
+                                className="inline-flex h-13 w-13 items-center justify-center rounded-full"
+                                style={{
+                                    background: draggedColors.background,
+                                    color: draggedColors.foreground,
+                                }}
+                            >
+                                <AppIcon name={toIconName(draggedEntry.category.iconName)} size={28} />
+                            </span>
+                            <span className="max-w-full truncate text-[12.5px] font-medium text-text">
+                                {draggedEntry.category.name}
+                            </span>
+                        </div>
+                    </div>
+                </BodyPortal>
             ) : null}
         </div>
     );
@@ -507,8 +566,6 @@ interface CategoryCellProps {
     category: Category;
     selected: boolean;
     editing: boolean;
-    dropTarget: boolean;
-    dragging: boolean;
     foreground: string;
     background: string;
     onClick: () => void;
@@ -519,8 +576,6 @@ function CategoryCell({
     category,
     selected,
     editing,
-    dropTarget,
-    dragging,
     foreground,
     background,
     onClick,
@@ -531,21 +586,17 @@ function CategoryCell({
             type="button"
             onClick={onClick}
             aria-pressed={selected}
-            className={cn(
-                'group flex w-full flex-col items-center gap-1 rounded-md px-0.5 pt-1.5 pb-1',
-                dragging ? 'shadow-popover' : 'active:bg-inset',
-            )}
+            className="group flex w-full flex-col items-center gap-1.5 rounded-md py-1 active:bg-inset"
         >
             <span
                 className={cn(
-                    'relative inline-flex h-10 w-10 items-center justify-center rounded-full',
-                    'transition-[box-shadow,transform] duration-150',
+                    'relative inline-flex h-13 w-13 items-center justify-center rounded-full',
+                    'transition-shadow duration-150',
                     selected && 'ring-2 ring-brand ring-offset-2 ring-offset-surface',
-                    dropTarget && 'outline-2 outline-dashed outline-offset-2 outline-brand',
                 )}
                 style={{ background, color: foreground }}
             >
-                <AppIcon name={toIconName(category.iconName)} size={20} />
+                <AppIcon name={toIconName(category.iconName)} size={27} />
                 {editing ? (
                     <span
                         role="button"
@@ -555,15 +606,15 @@ function CategoryCell({
                             event.stopPropagation();
                             onDelete();
                         }}
-                        className="absolute -top-1 -right-1 inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-danger text-white shadow-card"
+                        className="absolute -top-1 -right-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-danger text-white shadow-card"
                     >
-                        <AppIcon name={UI_ICONS.close} size={12} />
+                        <AppIcon name={UI_ICONS.close} size={13} />
                     </span>
                 ) : null}
             </span>
             <span
                 className={cn(
-                    'max-w-full truncate text-[11.5px] leading-tight',
+                    'max-w-full truncate text-[12.5px] leading-tight',
                     selected ? 'font-medium text-text' : 'text-text-secondary',
                 )}
             >
@@ -579,12 +630,12 @@ function AddCard({ onClick }: { onClick: () => void }) {
             type="button"
             onClick={onClick}
             aria-label="新增自定义分类"
-            className="flex w-full flex-col items-center gap-1 rounded-md px-0.5 pt-1.5 pb-1 active:bg-inset"
+            className="flex w-full flex-col items-center gap-1.5 rounded-md py-1 active:bg-inset"
         >
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border-strong text-text-tertiary">
-                <AppIcon name={UI_ICONS.plus} size={20} />
+            <span className="inline-flex h-13 w-13 items-center justify-center rounded-full border border-dashed border-border-strong text-text-tertiary">
+                <AppIcon name={UI_ICONS.plus} size={26} />
             </span>
-            <span className="text-[11.5px] leading-tight text-text-tertiary">新增</span>
+            <span className="text-[12.5px] leading-tight text-text-tertiary">新增</span>
         </button>
     );
 }

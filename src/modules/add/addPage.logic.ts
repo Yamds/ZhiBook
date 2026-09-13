@@ -36,6 +36,25 @@ export interface GridRect {
 }
 
 /**
+ * 宫格实测几何。
+ *
+ * 必须从真实格子量（`getBoundingClientRect` 两两相减），不能用
+ * 「容器宽 ÷ 列数」：宫格有 `px-3` 内边距与 `gap-x-1` 列间距，
+ * 直接用容器尺寸会让「挪一格」的位移积累偏差（行尾换行会偏几十 px）。
+ */
+export interface GridMetrics {
+    /** 第 1 个格子的左上角（视口坐标）。 */
+    readonly originLeft: number;
+    readonly originTop: number;
+    /** 单个格子的尺寸。 */
+    readonly cellWidth: number;
+    readonly cellHeight: number;
+    /** 相邻格子的间距（含 gap）。 */
+    readonly pitchX: number;
+    readonly pitchY: number;
+}
+
+/**
  * 组宫格条目：某一组的分类（已按 sortOrder 排好）+ 末尾的「+」。
  *
  * 「+」永远排在**最后一页的最后一项**：分类数量刚好整除时，它单独占一页。
@@ -83,20 +102,21 @@ function clampIndex(index: number, length: number): number {
 /**
  * 由拖动中的指针位置算出落点下标（页内下标，0..columns*rows-1）。
  *
- * 超出宫格区域时按行列夹取，因此拖到页外也能得到合理落点。
+ * 取「离指针最近的格子」（四舍五入），拖到宫格外则夹到首/末格。
  */
 export function dropIndexAt(
     point: { x: number; y: number },
-    rect: GridRect,
+    metrics: GridMetrics,
     columns = GRID_COLUMNS,
     rows = GRID_ROWS,
 ): number {
-    if (columns <= 0 || rows <= 0) return 0;
-    const cellWidth = rect.width / columns;
-    const cellHeight = rect.height / rows;
-    if (cellWidth <= 0 || cellHeight <= 0) return 0;
-    const column = clamp(Math.floor((point.x - rect.left) / cellWidth), 0, columns - 1);
-    const row = clamp(Math.floor((point.y - rect.top) / cellHeight), 0, rows - 1);
+    if (columns <= 0 || rows <= 0 || metrics.pitchX <= 0 || metrics.pitchY <= 0) return 0;
+    const column = clamp(
+        Math.round((point.x - metrics.originLeft) / metrics.pitchX),
+        0,
+        columns - 1,
+    );
+    const row = clamp(Math.round((point.y - metrics.originTop) / metrics.pitchY), 0, rows - 1);
     return row * columns + column;
 }
 
@@ -170,26 +190,25 @@ export function resolvePageAfterRelease(
 // ---------------------------------------------------------------------------
 
 /**
- * 单个格子往前 / 往后挪一格的位移。
+ * 单个格子往前 / 往后挪一格的位移（用实测间距，含 gap）。
  *
  * 行首往前挪会回到上一行末尾，行尾往后挪会去下一行开头。
  */
 export function oneSlotOffset(
     entryIndex: number,
     direction: -1 | 1,
-    cellWidth: number,
-    cellHeight: number,
+    metrics: GridMetrics,
     columns = GRID_COLUMNS,
 ): { x: number; y: number } {
     const column = entryIndex % columns;
     if (direction === -1) {
         return column > 0
-            ? { x: -cellWidth, y: 0 }
-            : { x: (columns - 1) * cellWidth, y: -cellHeight };
+            ? { x: -metrics.pitchX, y: 0 }
+            : { x: (columns - 1) * metrics.pitchX, y: -metrics.pitchY };
     }
     return column < columns - 1
-        ? { x: cellWidth, y: 0 }
-        : { x: -(columns - 1) * cellWidth, y: cellHeight };
+        ? { x: metrics.pitchX, y: 0 }
+        : { x: -(columns - 1) * metrics.pitchX, y: metrics.pitchY };
 }
 
 /**
@@ -206,19 +225,18 @@ export function avoidanceOffset(
     entryIndex: number,
     sourceIndex: number,
     dropIndex: number,
-    cellWidth: number,
-    cellHeight: number,
+    metrics: GridMetrics,
     columns = GRID_COLUMNS,
 ): { x: number; y: number } | null {
     if (entryIndex === sourceIndex || sourceIndex === dropIndex) return null;
     if (sourceIndex < dropIndex) {
         if (entryIndex > sourceIndex && entryIndex <= dropIndex) {
-            return oneSlotOffset(entryIndex, -1, cellWidth, cellHeight, columns);
+            return oneSlotOffset(entryIndex, -1, metrics, columns);
         }
         return null;
     }
     if (entryIndex >= dropIndex && entryIndex < sourceIndex) {
-        return oneSlotOffset(entryIndex, 1, cellWidth, cellHeight, columns);
+        return oneSlotOffset(entryIndex, 1, metrics, columns);
     }
     return null;
 }

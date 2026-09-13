@@ -20,9 +20,9 @@ const DIGIT_ROWS: ReadonlyArray<ReadonlyArray<KeypadKey>> = [
 ];
 
 const KEY_CLASS =
-    'flex h-[52px] items-center justify-center rounded-md text-[26px] font-semibold text-text tabular-nums active:bg-inset';
+    'flex h-[58px] items-center justify-center rounded-md text-[30px] font-semibold text-text tabular-nums active:bg-inset';
 const OPERATOR_CLASS =
-    'flex h-[52px] items-center justify-center rounded-md text-[28px] font-medium text-text tabular-nums active:bg-inset';
+    'flex h-[58px] items-center justify-center rounded-md text-[33px] font-medium text-text tabular-nums active:bg-inset';
 
 export interface KeypadProps {
     /** 日期键上的文案（如「今天」「09-08」）。 */
@@ -74,9 +74,9 @@ export function Keypad({
                 <button
                     type="button"
                     onClick={onPickDate}
-                    className="flex flex-col items-center justify-center rounded-md bg-inset px-1 text-[12.5px] font-medium text-text-secondary active:bg-muted"
+                    className="flex flex-col items-center justify-center rounded-md bg-inset px-1 text-[13.5px] font-medium text-text-secondary active:bg-muted"
                 >
-                    <AppIcon name={UI_ICONS.calendarToday} size={16} className="mb-0.5" />
+                    <AppIcon name={UI_ICONS.calendarToday} size={18} className="mb-0.5" />
                     <span className="max-w-full truncate tabular-nums">{dateLabel}</span>
                 </button>
                 <button type="button" className={OPERATOR_CLASS} onClick={() => onKey('+')}>
@@ -90,7 +90,7 @@ export function Keypad({
                     onClick={onSubmit}
                     disabled={submitting}
                     className={cn(
-                        'flex items-center justify-center rounded-md text-[17px] font-semibold',
+                        'flex items-center justify-center rounded-md text-[19px] font-semibold',
                         canSubmit
                             ? 'bg-brand text-white shadow-card active:opacity-90'
                             : 'bg-inset text-text-disabled active:bg-muted',

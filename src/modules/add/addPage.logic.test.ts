@@ -19,7 +19,20 @@ import {
     occurredAtMs,
     shortDateLabel,
     paginate,
+    type GridMetrics,
 } from './addPage.logic';
+
+/** 测试用宫格实测几何；默认 4×3、格子 100×100、间距 100。 */
+function gridMetrics(
+    originLeft = 0,
+    originTop = 0,
+    cellWidth = 100,
+    cellHeight = 100,
+    pitchX = 100,
+    pitchY = 100,
+): GridMetrics {
+    return { originLeft, originTop, cellWidth, cellHeight, pitchX, pitchY };
+}
 
 function category(id: string, kind: EntryKind, sortOrder: number): Category {
     return {
@@ -94,7 +107,8 @@ describe('moveItem', () => {
 });
 
 describe('dropIndexAt', () => {
-    const rect = { left: 0, top: 0, width: 400, height: 300 }; // 4 列 × 3 行 → 单元格 100×100
+    // 4 列 × 3 行，格子 100×100、间距 100（无 gap 的理想情形）
+    const rect = gridMetrics();
 
     it('按行列换算落点下标', () => {
         expect(dropIndexAt({ x: 10, y: 10 }, rect)).toBe(0);
@@ -109,13 +123,14 @@ describe('dropIndexAt', () => {
     });
 
     it('有偏移的容器（非零 left/top）也正确', () => {
-        const offset = { left: 16, top: 120, width: 400, height: 300 };
+        const offset = gridMetrics(16, 120);
         expect(dropIndexAt({ x: 20, y: 130 }, offset)).toBe(0);
         expect(dropIndexAt({ x: 20, y: 130 + 210 }, offset)).toBe(8);
     });
 });
 
 describe('autoPageDirection', () => {
+    // 自动翻页只看容器可视区（left/width），与格子间距无关
     const rect = { left: 0, top: 0, width: 400, height: 300 };
 
     it('靠近左右边缘时给出翻页方向', () => {
@@ -229,41 +244,42 @@ describe('resolvePageAfterRelease', () => {
 });
 
 describe('oneSlotOffset / avoidanceOffset', () => {
-    const cellWidth = 100;
-    const cellHeight = 68;
+    // 实测几何：格子 74×66、间距 78/68（模拟真实 px-3 + gap）
+    const metrics = gridMetrics(0, 0, 74, 66, 78, 68);
 
-    it('行内往前 / 往后挪一格', () => {
-        expect(oneSlotOffset(0, 1, cellWidth, cellHeight)).toEqual({ x: 100, y: 0 });
-        expect(oneSlotOffset(2, -1, cellWidth, cellHeight)).toEqual({ x: -100, y: 0 });
+    it('行内往前 / 往后挪一格（位移用实测间距，不是格子宽）', () => {
+        expect(oneSlotOffset(0, 1, metrics)).toEqual({ x: 78, y: 0 });
+        expect(oneSlotOffset(2, -1, metrics)).toEqual({ x: -78, y: 0 });
     });
 
     it('行尾往后挪 = 下一行开头；行首往前挪 = 上一行末尾', () => {
+        // 用 74 宽 / 78 间距验证不会积累偏差
         // 第一行末尾（行 0 列 3）→ 第二行开头
-        expect(oneSlotOffset(3, 1, cellWidth, cellHeight)).toEqual({ x: -300, y: 68 });
+        expect(oneSlotOffset(3, 1, metrics)).toEqual({ x: -234, y: 68 });
         // 第二行开头（行 1 列 0）→ 第一行末尾
-        expect(oneSlotOffset(4, -1, cellWidth, cellHeight)).toEqual({ x: 300, y: -68 });
+        expect(oneSlotOffset(4, -1, metrics)).toEqual({ x: 234, y: -68 });
     });
 
     it('往后拖：区间内的格子往前补位', () => {
-        expect(avoidanceOffset(2, 2, 5, cellWidth, cellHeight)).toBeNull(); // 拖动项自己
-        expect(avoidanceOffset(3, 2, 5, cellWidth, cellHeight)).toEqual({ x: -100, y: 0 });
-        expect(avoidanceOffset(5, 2, 5, cellWidth, cellHeight)).toEqual({ x: -100, y: 0 });
-        expect(avoidanceOffset(6, 2, 5, cellWidth, cellHeight)).toBeNull();
-        expect(avoidanceOffset(1, 2, 5, cellWidth, cellHeight)).toBeNull();
+        expect(avoidanceOffset(2, 2, 5, metrics)).toBeNull(); // 拖动项自己
+        expect(avoidanceOffset(3, 2, 5, metrics)).toEqual({ x: -78, y: 0 });
+        expect(avoidanceOffset(5, 2, 5, metrics)).toEqual({ x: -78, y: 0 });
+        expect(avoidanceOffset(6, 2, 5, metrics)).toBeNull();
+        expect(avoidanceOffset(1, 2, 5, metrics)).toBeNull();
     });
 
     it('往前拖：区间内的格子往后让位', () => {
-        expect(avoidanceOffset(5, 5, 2, cellWidth, cellHeight)).toBeNull();
-        expect(avoidanceOffset(4, 5, 2, cellWidth, cellHeight)).toEqual({ x: 100, y: 0 });
-        expect(avoidanceOffset(2, 5, 2, cellWidth, cellHeight)).toEqual({ x: 100, y: 0 });
-        expect(avoidanceOffset(1, 5, 2, cellWidth, cellHeight)).toBeNull();
-        expect(avoidanceOffset(6, 5, 2, cellWidth, cellHeight)).toBeNull();
+        expect(avoidanceOffset(5, 5, 2, metrics)).toBeNull();
+        expect(avoidanceOffset(4, 5, 2, metrics)).toEqual({ x: 78, y: 0 });
+        expect(avoidanceOffset(2, 5, 2, metrics)).toEqual({ x: 78, y: 0 });
+        expect(avoidanceOffset(1, 5, 2, metrics)).toBeNull();
+        expect(avoidanceOffset(6, 5, 2, metrics)).toBeNull();
     });
 
     it('原地或越界不动', () => {
-        expect(avoidanceOffset(3, 3, 3, cellWidth, cellHeight)).toBeNull();
-        expect(avoidanceOffset(3, 2, 0, cellWidth, cellHeight)).toBeNull(); // 区间外
-        expect(avoidanceOffset(1, 2, 0, cellWidth, cellHeight)).toEqual({ x: 100, y: 0 });
+        expect(avoidanceOffset(3, 3, 3, metrics)).toBeNull();
+        expect(avoidanceOffset(3, 2, 0, metrics)).toBeNull(); // 区间外
+        expect(avoidanceOffset(1, 2, 0, metrics)).toEqual({ x: 78, y: 0 });
     });
 
     it('isSamePage 判断是否同页', () => {

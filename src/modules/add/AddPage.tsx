@@ -369,7 +369,7 @@ export function AddPage() {
 
     return (
         <section className="flex h-full min-h-0 flex-col">
-            <div className="flex shrink-0 items-center gap-2 px-3 pt-4">
+            <div className="flex shrink-0 items-center gap-2 px-3 pt-5">
                 <SegmentedControl
                     className="flex-1"
                     items={[
