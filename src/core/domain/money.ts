@@ -63,6 +63,41 @@ export function formatSignedBalance(cents: number): string {
     return `${value > 0 ? '+' : '-'} ${formatMoney(Math.abs(value))}`;
 }
 
+/**
+ * 紧凑金额（日历格子等窄空间用）：只返回数值部分，**不带货币符号与正负号**
+ * （符号由调用方按收入 / 支出决定），并在金额变大时缩写：
+ *
+ *   ¥ 0.40  → `0.4`      （小于 100 元保留两位小数，去掉多余的 0）
+ *   ¥ 12.00 → `12`
+ *   ¥ 1,234 → `1,234`    （100 元 ~ 1 万元取整到元）
+ *   ¥ 12,000 → `1.2万`
+ *   ¥ 100,000,000 → `1亿`
+ *
+ * 注意：元位取整只发生在缩写档，避免 `¥ 0.40` 被显示成 `0`。
+ */
+export function formatCompactAmount(cents: number): string {
+    const value = Number.isFinite(cents) ? Math.abs(Math.trunc(cents)) : 0;
+    if (value === 0) return '0';
+    const yuan = value / 100;
+    if (yuan >= YI_FROM_YUAN) return `${compactScaled(yuan, 1e8)}亿`;
+    if (yuan >= WAN_FROM_YUAN) return `${compactScaled(yuan, 1e4)}万`;
+    if (yuan < 100) return formatCents(value).replace(/\.?0+$/, '');
+    return groupThousands(String(Math.round(yuan)));
+}
+
+/** 缩写档的整数部分：≥ 100 个单位时收敛成整数并加千分位，否则保留一位小数。 */
+function compactScaled(yuan: number, unit: number): string {
+    const scaled = yuan / unit;
+    return scaled >= 100
+        ? groupThousands(String(Math.round(scaled)))
+        : scaled.toFixed(1).replace(/\.0$/, '');
+}
+
+/** 进入「万」档次的门槛（元）：再小一位小数也不会进位成 10000 万。 */
+const WAN_FROM_YUAN = 9_999.5;
+/** 进入「亿」档次的门槛（元）= 9999.5 万，避免出现 `10,000万`。 */
+const YI_FROM_YUAN = WAN_FROM_YUAN * 10_000;
+
 /** 金额是否可提交：正数且不超过上限。 */
 export function isSubmittableAmount(cents: number): boolean {
     return Number.isInteger(cents) && cents > 0 && cents <= MAX_AMOUNT_CENTS;

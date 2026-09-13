@@ -9,7 +9,7 @@
     display: flex;
     min-height: 0;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
     /* 顶部留白 = 立绘伸出卡片的量（下沿间距 + 高出量）+ 顶部呼吸区。
        绝对定位的 bottom 是相对卡片 padding box 的，所以伸出量是
        【--mascot-lift + --mascot-foot】而不是只有 --mascot-lift：
@@ -83,33 +83,7 @@
     user-select: none;
 }
 
-/* 日历槽位：P7 接入月历后替换掉这块占位。 */
-.calendarSlot {
-    display: flex;
-    min-height: 220px;
-    flex: 1;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border: 1px dashed var(--border-subtle);
-    border-radius: var(--radius-lg);
-    background: var(--surface-card);
-    box-shadow: var(--shadow-sm);
-}
-
-.slotTitle {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.slotHint {
-    margin: 0;
-    color: var(--text-tertiary);
-    font-size: 12px;
-}
+/* 日历槽位样式已由 CalendarPanel（Tailwind token）接管，这里只留时间卡片。 */
 
 @media (max-width: 760px) {
     .clockCopy strong { font-size: 46px; }

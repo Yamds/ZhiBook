@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     MAX_AMOUNT_CENTS,
     formatCents,
+    formatCompactAmount,
     formatMoney,
     formatSignedBalance,
     formatSignedMoney,
@@ -10,6 +11,40 @@ import {
     tryAppendKeypadKey,
     type KeypadKey,
 } from './money';
+
+describe('紧凑金额（formatCompactAmount）', () => {
+    it('小于 100 元保留小数，避免被取整成 0', () => {
+        expect(formatCompactAmount(0)).toBe('0');
+        expect(formatCompactAmount(40)).toBe('0.4');
+        expect(formatCompactAmount(5)).toBe('0.05');
+        expect(formatCompactAmount(550)).toBe('5.5');
+        expect(formatCompactAmount(1200)).toBe('12');
+        expect(formatCompactAmount(9999)).toBe('99.99');
+    });
+
+    it('100 元 ~ 1 万元取整到元并带千分位', () => {
+        expect(formatCompactAmount(10000)).toBe('100');
+        expect(formatCompactAmount(123450)).toBe('1,235');
+        expect(formatCompactAmount(999949)).toBe('9,999');
+    });
+
+    it('1 万元起缩写为万，1 亿起缩写为亿', () => {
+        expect(formatCompactAmount(1000000)).toBe('1万');
+        expect(formatCompactAmount(1200000)).toBe('1.2万');
+        expect(formatCompactAmount(12345678)).toBe('12.3万');
+        expect(formatCompactAmount(10_000_000)).toBe('10万');
+        expect(formatCompactAmount(1_000_000_000)).toBe('1,000万');
+        // 9999.5 万 = 99,995,000 元：再进位就会变成 `10,000万`，所以从里改走亿
+        expect(formatCompactAmount(99_994_000_00)).toBe('9,999万');
+        expect(formatCompactAmount(99_995_000_00)).toBe('1亿');
+        expect(formatCompactAmount(MAX_AMOUNT_CENTS)).toBe('10亿');
+    });
+
+    it('负数按量级缩写（符号由调用方给）', () => {
+        expect(formatCompactAmount(-550)).toBe('5.5');
+        expect(formatCompactAmount(-1200000)).toBe('1.2万');
+    });
+});
 
 describe('结余金额（formatSignedBalance）', () => {
     it('正负都有符号，零不带符号', () => {
