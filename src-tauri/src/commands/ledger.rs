@@ -198,6 +198,19 @@ pub async fn list_transactions_range(
 }
 
 #[tauri::command]
+pub async fn search_transactions(
+    state: State<'_, AppState>,
+    book_id: String,
+    keyword: String,
+    limit: i64,
+) -> CommandResult<Vec<Transaction>> {
+    run(handle(&state)?, move |ledger| {
+        ledger.search_transactions(&book_id, &keyword, limit)
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn get_transaction(
     state: State<'_, AppState>,
     id: String,

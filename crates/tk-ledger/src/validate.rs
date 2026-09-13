@@ -119,6 +119,37 @@ pub fn day_and_month(day: &str, month: &str) -> LedgerResult<()> {
     Ok(())
 }
 
+/// 搜索关键字最大字符数（明细页 FR-DET-10；过长关键字没有实际意义）。
+pub const SEARCH_KEYWORD_MAX: usize = 32;
+
+/// 搜索关键字 → SQLite `LIKE` 模式：转义 `\` `%` `_` 后两端加 `%`。
+///
+/// 不转义的话用户输入 `%` 会变成通配符（检索到全部账单），属于隐性的注入式误用。
+pub fn like_pattern(keyword: &str) -> LedgerResult<String> {
+    let trimmed = keyword.trim();
+    let chars = trimmed.chars().count();
+    if chars == 0 {
+        return Err(LedgerError::validation("搜索关键字不能为空"));
+    }
+    if chars > SEARCH_KEYWORD_MAX {
+        return Err(LedgerError::validation(format!(
+            "搜索关键字不能超过 {SEARCH_KEYWORD_MAX} 个字"
+        )));
+    }
+    let mut pattern = String::with_capacity(trimmed.len() + 2);
+    pattern.push('%');
+    for ch in trimmed.chars() {
+        match ch {
+            '\\' => pattern.push_str("\\\\"),
+            '%' => pattern.push_str("\\%"),
+            '_' => pattern.push_str("\\_"),
+            other => pattern.push(other),
+        }
+    }
+    pattern.push('%');
+    Ok(pattern)
+}
+
 /// 附件 MIME：只接受前端压缩后的三种图片。
 pub fn attachment_mime(value: &str) -> LedgerResult<&'static str> {
     match value {
@@ -185,6 +216,15 @@ mod tests {
         assert!(icon_name("mdi:Noodles").is_err());
         assert!(icon_name("mdi:").is_err());
         assert!(icon_name("lucide:apple").is_err());
+    }
+
+    #[test]
+    fn like_pattern_trims_escapes_and_rejects_empty() {
+        assert_eq!(like_pattern("  早餐 ").expect("ok"), "%早餐%");
+        assert_eq!(like_pattern("50%").expect("ok"), "%50\\%%");
+        assert_eq!(like_pattern("a_b\\c").expect("ok"), "%a\\_b\\\\c%");
+        assert!(like_pattern("   ").is_err());
+        assert!(like_pattern(&"字".repeat(SEARCH_KEYWORD_MAX + 1)).is_err());
     }
 
     #[test]

@@ -97,6 +97,7 @@ pub fn run() {
             commands::ledger::reorder_categories,
             commands::ledger::list_transactions_by_day,
             commands::ledger::list_transactions_range,
+            commands::ledger::search_transactions,
             commands::ledger::get_transaction,
             commands::ledger::create_transaction,
             commands::ledger::update_transaction,

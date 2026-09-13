@@ -3,14 +3,19 @@ import {
     clampDay,
     daysInMonth,
     daysOfMonth,
+    formatClockTime,
+    formatDateLabel,
+    formatShortDay,
     isLeapYear,
     parseDayKey,
+    shiftDayKey,
     shiftMonth,
     toDayKey,
     toMonthKey,
     todayKey,
     weekdayIndex,
     weekdayLabel,
+    yearOptions,
     yearRange,
 } from './date';
 
@@ -95,5 +100,31 @@ describe('其它工具', () => {
     it('yearRange 含端点且顺序升序', () => {
         expect(yearRange(2023, 2026)).toEqual([2023, 2024, 2025, 2026]);
         expect(yearRange(2026, 2024)).toEqual([2024, 2025, 2026]);
+    });
+
+    it('yearOptions 以今年结尾（不允许未来年份）', () => {
+        const now = new Date(2026, 8, 13);
+        const years = yearOptions(now, 10);
+        expect(years).toHaveLength(10);
+        expect(years.at(-1)).toBe(2026);
+        expect(years[0]).toBe(2017);
+    });
+
+    it('shiftDayKey 处理跨月 / 跨年 / 闰日', () => {
+        expect(shiftDayKey('2025-09-08', -7)).toBe('2025-09-01');
+        expect(shiftDayKey('2025-09-01', -1)).toBe('2025-08-31');
+        expect(shiftDayKey('2025-01-01', -1)).toBe('2024-12-31');
+        // 2024-03-01 往前一天是闰日 2024-02-29
+        expect(shiftDayKey('2024-03-01', -1)).toBe('2024-02-29');
+        // 非法输入原样返回，不抛异常
+        expect(shiftDayKey('bad', -1)).toBe('bad');
+    });
+
+    it('时间与日期文案用本地时区', () => {
+        const ms = new Date(2025, 8, 8, 14, 32, 5).getTime();
+        expect(formatClockTime(ms)).toBe('14:32');
+        expect(formatDateLabel(ms)).toBe('2025年9月8日 星期一');
+        expect(formatShortDay('2025-09-08')).toBe('09.08');
+        expect(formatShortDay('bad')).toBe('bad');
     });
 });

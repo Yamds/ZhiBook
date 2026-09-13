@@ -99,5 +99,6 @@ export { IconPicker, type IconPickerProps } from './IconPicker';
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { SegmentedControl, type SegmentedControlProps, type SegmentedItem } from './SegmentedControl';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
+export { ConfirmSheet, type ConfirmSheetProps } from './ConfirmSheet';
 export { PeriodSelector, type PeriodSelectorProps } from './PeriodSelector';
 

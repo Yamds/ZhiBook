@@ -35,6 +35,8 @@ export const ledgerKeys = {
     transactionsRange: (bookId: string, fromDay: string, toDay: string, limit: number) =>
         [...ledgerKeys.transactionsRoot(), 'range', bookId, fromDay, toDay, limit] as const,
     transaction: (id: string) => [...ledgerKeys.transactionsRoot(), 'one', id] as const,
+    searchTransactions: (bookId: string, keyword: string) =>
+        [...ledgerKeys.transactionsRoot(), 'search', bookId, keyword] as const,
     transactionRanks: (
         bookId: string,
         month: string,

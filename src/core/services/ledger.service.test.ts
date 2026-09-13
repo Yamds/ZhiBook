@@ -118,6 +118,12 @@ describe('ledgerService 命令契约', () => {
         await ledgerService.getTransaction('tx_1');
         expect(lastCall()).toEqual(['get_transaction', { id: 'tx_1' }]);
 
+        await ledgerService.searchTransactions('book_1', '早餐');
+        expect(lastCall()).toEqual([
+            'search_transactions',
+            { bookId: 'book_1', keyword: '早餐', limit: 200 },
+        ]);
+
         await ledgerService.deleteTransaction('tx_1');
         expect(lastCall()).toEqual(['delete_transaction', { id: 'tx_1' }]);
     });

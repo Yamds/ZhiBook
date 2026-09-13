@@ -5,8 +5,8 @@
 //   - 末尾固定一个「+」卡位（FR-ADD-6）；
 //   - 拖动排序的落点换算（FR-ADD-8）。
 
-import type { Category, EntryKind } from '../../core/ipc/types';
-import { todayDate, type CalendarDate } from '../../core/domain/date';
+import type { Category, EntryKind, Transaction } from '../../core/ipc/types';
+import { parseDayKey, todayDate, type CalendarDate } from '../../core/domain/date';
 
 /** 宫格列数（每排 4 个）。 */
 export const GRID_COLUMNS = 4;
@@ -254,22 +254,35 @@ export function isSamePage(a: number, b: number, pageSize = GRID_PAGE_SIZE): boo
  * 时间是记账当下的时分秒。
  */
 export function occurredAtMs(date: CalendarDate, now: Date = new Date()): number {
+    return occurredAtMsOnDate(date, now);
+}
+
+/**
+ * 保留「时分秒」、只换日期的时间戳（编辑账单用）。
+ *
+ * 用户只改日期时，原账单的记账时刻应当保留（否则一条 09:15 的账单
+ * 会因为改日期而变成“编辑当下的时间”）。
+ */
+export function occurredAtMsOnDate(date: CalendarDate, clockSource: Date): number {
     return new Date(
         date.year,
         date.month - 1,
         date.day,
-        now.getHours(),
-        now.getMinutes(),
-        now.getSeconds(),
-        now.getMilliseconds(),
+        clockSource.getHours(),
+        clockSource.getMinutes(),
+        clockSource.getSeconds(),
+        clockSource.getMilliseconds(),
     ).getTime();
 }
 
-/** 把未知异常转成可展示文案（Rust 命令层返回的是字符串）。 */
-export function describeError(error: unknown): string {
-    if (error instanceof Error) return error.message;
-    if (typeof error === 'string' && error.trim() !== '') return error;
-    return '未知错误，请重试';
+/**
+ * 金额（分）→ 键盘表达式原文（编辑账单回填用）。
+ *
+ * `34450` → `'344.50'`；非正数返回空串（键盘初始态）。
+ */
+export function centsToExpression(cents: number): string {
+    if (!Number.isFinite(cents) || cents <= 0) return '';
+    return (cents / 100).toFixed(2);
 }
 
 /** 两个日期相差的天数（同一天 = 0）。 */
@@ -295,4 +308,34 @@ export function categoryIdsOf(entries: ReadonlyArray<GridEntry>): string[] {
     return entries
         .filter((entry): entry is { type: 'category'; category: Category } => entry.type === 'category')
         .map((entry) => entry.category.id);
+}
+
+// ---------------------------------------------------------------------------
+// 编辑回填
+// ---------------------------------------------------------------------------
+
+/**
+ * 账单 → 表单初始值（Q3：编辑复用添加页表单）。
+ *
+ * 纯函数，单独可测：解析失败时退回原来的值，不让页面崩。
+ */
+export function editingFormValues(
+    transaction: Pick<Transaction, 'kind' | 'categoryId' | 'accountId' | 'amountCents' | 'note' | 'day'>,
+    fallbackDate: CalendarDate = todayDate(),
+): {
+    kind: EntryKind;
+    categoryId: string;
+    accountId: string | null;
+    expression: string;
+    note: string;
+    date: CalendarDate;
+} {
+    return {
+        kind: transaction.kind,
+        categoryId: transaction.categoryId,
+        accountId: transaction.accountId,
+        expression: centsToExpression(transaction.amountCents),
+        note: transaction.note,
+        date: parseDayKey(transaction.day) ?? fallbackDate,
+    };
 }

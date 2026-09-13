@@ -40,6 +40,8 @@ const BOOK_COLUMNS: &str = "id, name, created_at_ms, sort_order";
 const ACCOUNT_COLUMNS: &str = "id, book_id, kind, name, icon_name, color, initial_balance_cents, sort_order, created_at_ms, updated_at_ms";
 const CATEGORY_COLUMNS: &str = "id, kind, name, icon_name, color, sort_order, hidden, created_at_ms, updated_at_ms";
 const TRANSACTION_COLUMNS: &str = "id, book_id, kind, category_id, account_id, amount_cents, note, day, month, occurred_at_ms, created_at_ms, updated_at_ms";
+/// 与 `categories` 联表时用（`id` 等同名列必须带表前缀，否则 SQLite 报 ambiguous）。
+const TRANSACTION_COLUMNS_T: &str = "t.id, t.book_id, t.kind, t.category_id, t.account_id, t.amount_cents, t.note, t.day, t.month, t.occurred_at_ms, t.created_at_ms, t.updated_at_ms";
 const ATTACHMENT_COLUMNS: &str = "id, transaction_id, path, mime, byte_size, sort_order, created_at_ms";
 
 fn map_book(row: &Row<'_>) -> rusqlite::Result<Book> {
@@ -446,6 +448,26 @@ pub fn list_transactions_range(
     )
 }
 
+/// 关键字搜索账单（明细页 FR-DET-10）：匹配**备注**或**分类名**。
+///
+/// `pattern` 由 [`crate::validate::like_pattern`] 转义后传入（`%` 已被当作字面量），
+/// 排序与按天列表一致（时间倒序）。
+pub fn search_transactions(
+    conn: &Connection,
+    book_id: &str,
+    pattern: &str,
+    limit: i64,
+) -> LedgerResult<Vec<Transaction>> {
+    let mut statement = conn.prepare(&format!(
+        "SELECT {TRANSACTION_COLUMNS_T} FROM transactions t
+         LEFT JOIN categories c ON c.id = t.category_id
+         WHERE t.book_id = ?1 AND (t.note LIKE ?2 ESCAPE '\\' OR c.name LIKE ?2 ESCAPE '\\')
+         ORDER BY t.occurred_at_ms DESC, t.created_at_ms DESC, t.id
+         LIMIT ?3"
+    ))?;
+    collect(&mut statement, params![book_id, pattern, limit], map_transaction)
+}
+
 pub fn get_transaction(conn: &Connection, id: &str) -> LedgerResult<Option<Transaction>> {
     let mut statement =
         conn.prepare(&format!("SELECT {TRANSACTION_COLUMNS} FROM transactions WHERE id = ?1"))?;
@@ -662,6 +684,44 @@ mod tests {
             .expect("query")
             .expect("账单应保留");
         assert_eq!(transaction.account_id, None);
+    }
+
+    #[test]
+    fn search_matches_note_or_category_name_and_scopes_to_book() {
+        let conn = memory_db();
+        insert_book(&conn, &sample_book("book_a", "日常账")).expect("book a");
+        insert_book(&conn, &sample_book("book_b", "旅行账")).expect("book b");
+        conn.execute(
+            "INSERT INTO categories (id, kind, name, icon_name, color, sort_order, hidden, created_at_ms, updated_at_ms)
+             VALUES ('expense_food', 'expense', '餐饮', 'mdi:noodles', 'theme', 0, 0, 1, 1)",
+            [],
+        )
+        .expect("category");
+        let insert = |id: &str, book: &str, note: &str, amount: i64, occurred: i64| {
+            conn.execute(
+                "INSERT INTO transactions (id, book_id, kind, category_id, account_id, amount_cents, note, day, month, occurred_at_ms, created_at_ms, updated_at_ms)
+                 VALUES (?1, ?2, 'expense', 'expense_food', NULL, ?3, ?4, '2025-09-08', '2025-09', ?5, 1, 1)",
+                params![id, book, amount, note, occurred],
+            )
+            .expect("transaction");
+        };
+        insert("tx_old", "book_a", "早餐", 100, 1);
+        insert("tx_new", "book_a", "北京-杭州 D888号", 200, 2);
+        insert("tx_other_book", "book_b", "早餐", 300, 3);
+
+        let by_note = search_transactions(&conn, "book_a", "%早餐%", 50).expect("search note");
+        assert_eq!(by_note.len(), 1);
+        assert_eq!(by_note[0].id, "tx_old");
+
+        // 分类名命中：两条都属于「餐饮」，按时间倒序
+        let by_category = search_transactions(&conn, "book_a", "%餐饮%", 50).expect("search category");
+        let ids: Vec<&str> = by_category.iter().map(|item| item.id.as_str()).collect();
+        assert_eq!(ids, vec!["tx_new", "tx_old"]);
+
+        // LIMIT 生效
+        let limited = search_transactions(&conn, "book_a", "%餐饮%", 1).expect("limit");
+        assert_eq!(limited.len(), 1);
+        assert_eq!(limited[0].id, "tx_new");
     }
 
     #[test]

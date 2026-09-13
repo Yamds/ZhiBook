@@ -3,7 +3,7 @@
 // 明细页按天分段懒加载（Q9）：`useTransactionsRange` 只是把区间代理给后端，
 // 「继续加载更早」由页面把 toDay 往前推（每次不超过 7 天 / 50 条）。
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 import type { NewTransaction, Transaction, TransactionPatch } from '../../core/ipc/types';
 import {
     ledgerService,
@@ -31,6 +31,59 @@ export function useTransactionsRange(
         queryKey: ledgerKeys.transactionsRange(bookId ?? '', fromDay, toDay, limit),
         queryFn: () => ledgerService.listTransactionsRange(bookId ?? '', fromDay, toDay, limit),
         enabled: Boolean(bookId),
+    });
+}
+
+/** 日期区间窗口（明细页懒加载：互不重叠的日期段）。 */
+export interface TransactionWindow {
+    readonly fromDay: string;
+    readonly toDay: string;
+}
+
+/**
+ * 明细页懒加载：**每个窗口一个查询**（窗口互不重叠，页面按 id 去重合并）。
+ *
+ * 用 `useQueries` 而不是循环调 hook：窗口数量是动态增长的。
+ * 单个窗口仍受 [`TRANSACTION_BATCH_LIMIT`] 限制，与 BRD Q9 的「每批 ≤50 条」一致。
+ */
+export function useTransactionWindows(
+    bookId: string | undefined,
+    windows: ReadonlyArray<TransactionWindow>,
+    enabled = true,
+) {
+    return useQueries({
+        queries: windows.map((window) => ({
+            queryKey: ledgerKeys.transactionsRange(
+                bookId ?? '',
+                window.fromDay,
+                window.toDay,
+                TRANSACTION_BATCH_LIMIT,
+            ),
+            queryFn: () =>
+                ledgerService.listTransactionsRange(
+                    bookId ?? '',
+                    window.fromDay,
+                    window.toDay,
+                    TRANSACTION_BATCH_LIMIT,
+                ),
+            enabled: Boolean(bookId) && enabled,
+        })),
+    });
+}
+
+/**
+ * 明细页搜索（FR-DET-10）：关键字为空时不发请求。
+ *
+ * 结果不再分组——页面直接交给 `groupTransactionsByDay`（与按天浏览同一套渲染）。
+ */
+export function useSearchTransactions(bookId: string | undefined, keyword: string) {
+    const trimmed = keyword.trim();
+    return useQuery({
+        queryKey: ledgerKeys.searchTransactions(bookId ?? '', trimmed),
+        queryFn: () => ledgerService.searchTransactions(bookId ?? '', trimmed),
+        enabled: Boolean(bookId) && trimmed.length > 0,
+        // 搜索是用户输入驱动的短生命周期查询，缓存久了反而占内存
+        gcTime: 5 * 60_000,
     });
 }
 

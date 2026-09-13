@@ -111,3 +111,50 @@ export function yearRange(from: number, to: number): number[] {
     const end = Math.max(from, to);
     return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }
+
+/**
+ * 年选择器候选值：以今年结尾、往前 `span` 年（含今年）。
+ *
+ * BRD FR-BILL-1 / FR-DET-1：年份上限为今年（不允许选未来年份）。
+ */
+export function yearOptions(now?: Date, span = 10): number[] {
+    const current = todayDate(now).year;
+    const years = Math.max(1, Math.round(span));
+    return yearRange(current - years + 1, current);
+}
+
+/** 日期键按天偏移（跨月 / 跨年安全）；非法输入原样返回。 */
+export function shiftDayKey(key: string, delta: number): string {
+    const date = parseDayKey(key);
+    if (!date) return key;
+    const shifted = new Date(date.year, date.month - 1, date.day + Math.trunc(delta));
+    return toDayKey({
+        year: shifted.getFullYear(),
+        month: shifted.getMonth() + 1,
+        day: shifted.getDate(),
+    });
+}
+
+/** 时间戳（Unix 毫秒）→ 本地日历日。 */
+export function dateFromTimestamp(ms: number): CalendarDate {
+    return todayParts(new Date(ms));
+}
+
+/** 时间戳 → 本地 `HH:mm`（BRD 3.3：明细行内展示时间）。 */
+export function formatClockTime(ms: number): string {
+    const date = new Date(ms);
+    return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+/** 时间戳 → `2025年9月8日 星期一`（BRD 3.3：账单详情用完整日期）。 */
+export function formatDateLabel(ms: number): string {
+    const date = dateFromTimestamp(ms);
+    return `${date.year}年${date.month}月${date.day}日 ${weekdayLabel(date)}`;
+}
+
+/** 日期键 → `09.08`（分组头 / 紧凑展示用）。 */
+export function formatShortDay(key: string): string {
+    const date = parseDayKey(key);
+    if (!date) return key;
+    return `${pad2(date.month)}.${pad2(date.day)}`;
+}

@@ -29,6 +29,8 @@ export interface PeriodSelectorProps {
     unit?: string;
     ariaLabel: string;
     className?: string;
+    /** 需要打标记的取值（如「今天」）：在数字下方画一个小圆点。 */
+    isMarked?: (value: number) => boolean;
 }
 
 /** 滚动停止判定：触摸端 momentum 结束后 140ms 内没有新的 scroll 事件。 */
@@ -46,6 +48,7 @@ export function PeriodSelector({
     unit,
     ariaLabel,
     className,
+    isMarked,
 }: PeriodSelectorProps) {
     const trackRef = useRef<HTMLDivElement | null>(null);
     const programmaticRef = useRef(false);
@@ -130,7 +133,7 @@ export function PeriodSelector({
                         }}
                         aria-current={selected ? 'true' : undefined}
                         className={cn(
-                            'flex h-full shrink-0 snap-center items-baseline justify-center transition-colors duration-150',
+                            'relative flex h-full shrink-0 snap-center items-baseline justify-center transition-colors duration-150',
                             selected
                                 ? 'text-[15px] font-semibold text-text'
                                 : 'text-[13px] text-text-tertiary active:text-text-secondary',
@@ -142,6 +145,15 @@ export function PeriodSelector({
                             <span className={cn('ml-0.5 text-[11px] font-normal', selected ? 'text-text-secondary' : 'text-text-disabled')}>
                                 {unit}
                             </span>
+                        ) : null}
+                        {isMarked?.(item) ? (
+                            <span
+                                aria-hidden
+                                className={cn(
+                                    'absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full',
+                                    selected ? 'bg-brand' : 'bg-text-tertiary',
+                                )}
+                            />
                         ) : null}
                     </button>
                 );

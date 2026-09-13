@@ -43,6 +43,9 @@ pub use schema::SCHEMA_VERSION;
 /// 业务侧默认趋势回看月数。
 pub const DEFAULT_TREND_MONTHS: usize = query::DEFAULT_TREND_MONTHS;
 
+/// 明细页搜索结果上限（FR-DET-11；前端会提示「只显示前 N 条」）。
+pub const SEARCH_RESULT_LIMIT: i64 = 200;
+
 /// 记账数据入口：一个账本库 = 一个连接 + 一个附件仓库。
 pub struct Ledger {
     conn: Mutex<Connection>,
@@ -364,6 +367,19 @@ impl Ledger {
         self.with_conn(|conn| repo::get_transaction(conn, id))
     }
 
+    /// 明细页搜索（FR-DET-10）：备注 / 分类名包含关键字，按时间倒序，最多 [`SEARCH_RESULT_LIMIT`] 条。
+    pub fn search_transactions(
+        &self,
+        book_id: &str,
+        keyword: &str,
+        limit: i64,
+    ) -> LedgerResult<Vec<Transaction>> {
+        let pattern = validate::like_pattern(keyword)?;
+        self.with_conn(|conn| {
+            repo::search_transactions(conn, book_id, &pattern, limit.clamp(1, SEARCH_RESULT_LIMIT))
+        })
+    }
+
     pub fn create_transaction(&self, input: NewTransaction) -> LedgerResult<Transaction> {
         validate::amount_cents(input.amount_cents)?;
         let note = validate::note(&input.note)?;
@@ -646,6 +662,19 @@ mod tests {
         assert_eq!(
             ledger.current_book_id().expect("current").as_deref(),
             Some(seed::DEFAULT_BOOK_ID)
+        );
+    }
+
+    #[test]
+    fn search_rejects_blank_keyword_and_finds_seeded_notes() {
+        let ledger = TestLedger::new();
+        assert!(ledger.search_transactions("book_default", "   ", 50).is_err());
+        // 种子数据里没有账单，搜索返回空而不是报错
+        assert!(
+            ledger
+                .search_transactions("book_default", "早餐", 50)
+                .expect("search")
+                .is_empty()
         );
     }
 

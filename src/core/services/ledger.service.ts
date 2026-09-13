@@ -48,6 +48,8 @@ function call<T>(command: string, args: Record<string, unknown> = {}): Promise<T
 export const DEFAULT_TREND_MONTHS = 12;
 /** 明细页单批最多返回条数（Q9：每批 ≤7 天 / 50 条）。 */
 export const TRANSACTION_BATCH_LIMIT = 50;
+/** 明细页搜索结果上限（与 Rust `tk_ledger::SEARCH_RESULT_LIMIT` 一致，FR-DET-11）。 */
+export const SEARCH_RESULT_LIMIT = 200;
 
 export const ledgerService = {
     // ---- 账本 ----
@@ -81,6 +83,8 @@ export const ledgerService = {
         call<Transaction[]>('list_transactions_by_day', { bookId, day }),
     listTransactionsRange: (bookId: string, fromDay: string, toDay: string, limit = TRANSACTION_BATCH_LIMIT) =>
         call<Transaction[]>('list_transactions_range', { bookId, fromDay, toDay, limit }),
+    searchTransactions: (bookId: string, keyword: string, limit = SEARCH_RESULT_LIMIT) =>
+        call<Transaction[]>('search_transactions', { bookId, keyword, limit }),
     getTransaction: (id: string) => call<Transaction | null>('get_transaction', { id }),
     createTransaction: (input: NewTransaction) => call<Transaction>('create_transaction', { input }),
     updateTransaction: (input: TransactionPatch) => call<void>('update_transaction', { input }),

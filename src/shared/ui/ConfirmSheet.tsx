@@ -1,10 +1,11 @@
 // 破坏性操作的二次确认弹层（BRD 3.7：删除分类 / 账户 / 账单都要说明影响范围）。
 //
+// 移动端通用原子件（P5 从 `modules/add` 提到 `shared/ui`）：明细页删账单也要用。
 // 用 BottomSheet 而不是系统 confirm：移动端更顺手，也能带上「影响范围」文案。
 
 import type { ReactNode } from 'react';
-import { BottomSheet } from '../../shared/ui/BottomSheet';
-import { cn } from '../../shared/utils/cn';
+import { BottomSheet } from './BottomSheet';
+import { cn } from '../utils/cn';
 
 export interface ConfirmSheetProps {
     open: boolean;

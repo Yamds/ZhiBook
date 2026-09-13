@@ -8,11 +8,13 @@ import {
     buildGridEntries,
     categoryIdsOf,
     avoidanceOffset,
+    centsToExpression,
     clampPageDrag,
-    describeError,
     dayDiff,
+    editingFormValues,
     isSamePage,
     oneSlotOffset,
+    occurredAtMsOnDate,
     resolvePageAfterRelease,
     dropIndexAt,
     moveItem,
@@ -186,15 +188,6 @@ describe('dayDiff / shortDateLabel', () => {
     });
 });
 
-describe('describeError', () => {
-    it('Error / 字符串 / 其它都能给出文案', () => {
-        expect(describeError(new Error('磁盘写入失败'))).toBe('磁盘写入失败');
-        expect(describeError('校验失败：金额必须大于 0')).toBe('校验失败：金额必须大于 0');
-        expect(describeError(undefined)).toBe('未知错误，请重试');
-        expect(describeError('   ')).toBe('未知错误，请重试');
-    });
-});
-
 describe('clampPageDrag', () => {
     const width = 360;
 
@@ -286,5 +279,63 @@ describe('oneSlotOffset / avoidanceOffset', () => {
         expect(isSamePage(0, 11)).toBe(true);
         expect(isSamePage(11, 12)).toBe(false);
         expect(isSamePage(-1, 3)).toBe(false);
+    });
+});
+
+describe('编辑回填', () => {
+    it('centsToExpression 保留两位小数，非正数给空串', () => {
+        expect(centsToExpression(34450)).toBe('344.50');
+        expect(centsToExpression(1)).toBe('0.01');
+        expect(centsToExpression(99_999_999_999)).toBe('999999999.99');
+        expect(centsToExpression(0)).toBe('');
+        expect(centsToExpression(-1)).toBe('');
+    });
+
+    it('occurredAtMsOnDate 只换日期、保留原时刻', () => {
+        const clock = new Date(2025, 8, 8, 14, 32, 5, 123);
+        const next = new Date(occurredAtMsOnDate({ year: 2024, month: 2, day: 29 }, clock));
+        expect(next.getFullYear()).toBe(2024);
+        expect(next.getMonth() + 1).toBe(2);
+        expect(next.getDate()).toBe(29);
+        expect(next.getHours()).toBe(14);
+        expect(next.getMinutes()).toBe(32);
+        expect(next.getSeconds()).toBe(5);
+    });
+
+    it('editingFormValues 把账单拆成表单初始值', () => {
+        const values = editingFormValues(
+            {
+                kind: 'income',
+                categoryId: 'income_salary',
+                accountId: 'acc_1',
+                amountCents: 123456,
+                note: '九月工资',
+                day: '2025-09-08',
+
+            },
+            { year: 2000, month: 1, day: 1 },
+        );
+        expect(values.kind).toBe('income');
+        expect(values.categoryId).toBe('income_salary');
+        expect(values.accountId).toBe('acc_1');
+        expect(values.expression).toBe('1234.56');
+        expect(values.note).toBe('九月工资');
+        expect(values.date).toEqual({ year: 2025, month: 9, day: 8 });
+    });
+
+    it('editingFormValues 日期非法时退回 fallback', () => {
+        const values = editingFormValues(
+            {
+                kind: 'expense',
+                categoryId: 'expense_food',
+                accountId: null,
+                amountCents: 100,
+                note: '',
+                day: 'bad',
+
+            },
+            { year: 2025, month: 9, day: 13 },
+        );
+        expect(values.date).toEqual({ year: 2025, month: 9, day: 13 });
     });
 });

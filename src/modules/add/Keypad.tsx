@@ -33,6 +33,9 @@ export interface KeypadProps {
     onKey: (key: KeypadKey) => void;
     onPickDate: () => void;
     onSubmit: () => void;
+    /** 提交键文案：新增「完成」、编辑「保存」（Q3 编辑复用）。 */
+    submitLabel?: string;
+    submittingLabel?: string;
 }
 
 export function Keypad({
@@ -42,6 +45,8 @@ export function Keypad({
     onKey,
     onPickDate,
     onSubmit,
+    submitLabel = '完成',
+    submittingLabel = '保存中',
 }: KeypadProps) {
     return (
         <div className="flex shrink-0 items-stretch gap-1 px-3 pt-1.5 pb-1">
@@ -97,7 +102,7 @@ export function Keypad({
                         submitting && 'opacity-60',
                     )}
                 >
-                    {submitting ? '保存中' : '完成'}
+                    {submitting ? submittingLabel : submitLabel}
                 </button>
             </div>
         </div>

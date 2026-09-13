@@ -22,9 +22,11 @@ export {
     groupTransactionsByDay,
     useCreateTransaction,
     useDeleteTransaction,
+    useSearchTransactions,
     useTransaction,
     useTransactionsByDay,
     useTransactionsRange,
+    useTransactionWindows,
     useUpdateTransaction,
 } from './useLedgerTransactions';
 export {

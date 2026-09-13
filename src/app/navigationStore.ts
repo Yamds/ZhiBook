@@ -17,6 +17,8 @@ export interface NavigationIntent {
     date?: string;
     /** 目标账本 id：账本切换后的回跳场景使用。 */
     bookId?: string;
+    /** 要编辑的账单 id（明细详情 →「编辑」→ 添加页表单，Q3）。 */
+    editTransactionId?: string;
     /** 重复点击已激活页签：页面收到后回到顶部 / 重置到默认视图。 */
     retap?: boolean;
 }
