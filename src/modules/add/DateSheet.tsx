@@ -75,9 +75,6 @@ export function DateSheet({ open, onOpenChange, value, onSelect }: DateSheetProp
                             });
                         }}
                     />
-                    <span className="ml-auto text-[11.5px] text-text-tertiary tabular-nums">
-                        已选 {value.month} 月 {value.day} 日
-                    </span>
                 </div>
 
                 <div className="flex items-center justify-between">

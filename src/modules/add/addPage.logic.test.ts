@@ -7,13 +7,17 @@ import {
     autoPageDirection,
     buildGridEntries,
     categoryIdsOf,
+    avoidanceOffset,
+    clampPageDrag,
     describeError,
     dayDiff,
+    isSamePage,
+    oneSlotOffset,
+    resolvePageAfterRelease,
     dropIndexAt,
     moveItem,
     occurredAtMs,
     shortDateLabel,
-    pageIndexFromScroll,
     paginate,
 } from './addPage.logic';
 
@@ -125,16 +129,6 @@ describe('autoPageDirection', () => {
     });
 });
 
-describe('pageIndexFromScroll', () => {
-    it('四舍五入到最近一页并夹取范围', () => {
-        expect(pageIndexFromScroll(0, 360, 4)).toBe(0);
-        expect(pageIndexFromScroll(200, 360, 4)).toBe(1);
-        expect(pageIndexFromScroll(-50, 360, 4)).toBe(0);
-        expect(pageIndexFromScroll(5000, 360, 4)).toBe(3);
-        expect(pageIndexFromScroll(100, 0, 4)).toBe(0);
-    });
-});
-
 describe('categoryIdsOf', () => {
     it('忽略「+」卡位', () => {
         const entries = buildGridEntries(
@@ -183,5 +177,98 @@ describe('describeError', () => {
         expect(describeError('校验失败：金额必须大于 0')).toBe('校验失败：金额必须大于 0');
         expect(describeError(undefined)).toBe('未知错误，请重试');
         expect(describeError('   ')).toBe('未知错误，请重试');
+    });
+});
+
+describe('clampPageDrag', () => {
+    const width = 360;
+
+    it('中间页可自由拖动，但不超过一页', () => {
+        expect(clampPageDrag(100, 1, 4, width)).toBe(100);
+        expect(clampPageDrag(-100, 1, 4, width)).toBe(-100);
+        expect(clampPageDrag(999, 1, 4, width)).toBe(width);
+    });
+
+    it('首页往右 / 末页往左带阻尼', () => {
+        expect(clampPageDrag(100, 0, 4, width)).toBeCloseTo(35, 5);
+        expect(clampPageDrag(-100, 3, 4, width)).toBeCloseTo(-35, 5);
+    });
+
+    it('没有宽度或只有一页时不动', () => {
+        expect(clampPageDrag(100, 0, 4, 0)).toBe(0);
+        expect(clampPageDrag(100, 0, 1, width)).toBeCloseTo(35, 5);
+    });
+});
+
+describe('resolvePageAfterRelease', () => {
+    const width = 360;
+
+    it('位移超过 1/4 页就翻一页', () => {
+        expect(resolvePageAfterRelease(1, -100, width, 0, 4)).toBe(2);
+        expect(resolvePageAfterRelease(1, 100, width, 0, 4)).toBe(0);
+        expect(resolvePageAfterRelease(1, -50, width, 0, 4)).toBe(1);
+        expect(resolvePageAfterRelease(1, -90, width, 0, 4)).toBe(2);
+    });
+
+    it('快甩也翻一页（同方向）', () => {
+        expect(resolvePageAfterRelease(1, -20, width, -0.8, 4)).toBe(2);
+        expect(resolvePageAfterRelease(1, 20, width, 0.8, 4)).toBe(0);
+        // 甩动方向与位移相反 → 不翻
+        expect(resolvePageAfterRelease(1, -20, width, 0.8, 4)).toBe(1);
+    });
+
+    it('最多只翻一页（再快也只过一页）', () => {
+        expect(resolvePageAfterRelease(0, -1000, width, -9, 4)).toBe(1);
+        expect(resolvePageAfterRelease(3, 1000, width, 9, 4)).toBe(2);
+    });
+
+    it('夹在首尾页之间', () => {
+        expect(resolvePageAfterRelease(0, 200, width, 0, 4)).toBe(0);
+        expect(resolvePageAfterRelease(3, -200, width, 0, 4)).toBe(3);
+    });
+});
+
+describe('oneSlotOffset / avoidanceOffset', () => {
+    const cellWidth = 100;
+    const cellHeight = 68;
+
+    it('行内往前 / 往后挪一格', () => {
+        expect(oneSlotOffset(0, 1, cellWidth, cellHeight)).toEqual({ x: 100, y: 0 });
+        expect(oneSlotOffset(2, -1, cellWidth, cellHeight)).toEqual({ x: -100, y: 0 });
+    });
+
+    it('行尾往后挪 = 下一行开头；行首往前挪 = 上一行末尾', () => {
+        // 第一行末尾（行 0 列 3）→ 第二行开头
+        expect(oneSlotOffset(3, 1, cellWidth, cellHeight)).toEqual({ x: -300, y: 68 });
+        // 第二行开头（行 1 列 0）→ 第一行末尾
+        expect(oneSlotOffset(4, -1, cellWidth, cellHeight)).toEqual({ x: 300, y: -68 });
+    });
+
+    it('往后拖：区间内的格子往前补位', () => {
+        expect(avoidanceOffset(2, 2, 5, cellWidth, cellHeight)).toBeNull(); // 拖动项自己
+        expect(avoidanceOffset(3, 2, 5, cellWidth, cellHeight)).toEqual({ x: -100, y: 0 });
+        expect(avoidanceOffset(5, 2, 5, cellWidth, cellHeight)).toEqual({ x: -100, y: 0 });
+        expect(avoidanceOffset(6, 2, 5, cellWidth, cellHeight)).toBeNull();
+        expect(avoidanceOffset(1, 2, 5, cellWidth, cellHeight)).toBeNull();
+    });
+
+    it('往前拖：区间内的格子往后让位', () => {
+        expect(avoidanceOffset(5, 5, 2, cellWidth, cellHeight)).toBeNull();
+        expect(avoidanceOffset(4, 5, 2, cellWidth, cellHeight)).toEqual({ x: 100, y: 0 });
+        expect(avoidanceOffset(2, 5, 2, cellWidth, cellHeight)).toEqual({ x: 100, y: 0 });
+        expect(avoidanceOffset(1, 5, 2, cellWidth, cellHeight)).toBeNull();
+        expect(avoidanceOffset(6, 5, 2, cellWidth, cellHeight)).toBeNull();
+    });
+
+    it('原地或越界不动', () => {
+        expect(avoidanceOffset(3, 3, 3, cellWidth, cellHeight)).toBeNull();
+        expect(avoidanceOffset(3, 2, 0, cellWidth, cellHeight)).toBeNull(); // 区间外
+        expect(avoidanceOffset(1, 2, 0, cellWidth, cellHeight)).toEqual({ x: 100, y: 0 });
+    });
+
+    it('isSamePage 判断是否同页', () => {
+        expect(isSamePage(0, 11)).toBe(true);
+        expect(isSamePage(11, 12)).toBe(false);
+        expect(isSamePage(-1, 3)).toBe(false);
     });
 });

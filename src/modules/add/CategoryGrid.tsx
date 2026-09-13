@@ -1,13 +1,12 @@
-// 分类宫格：一排 4 个、一页 3 排（12 项），可左右翻页；末尾固定「+」卡位。
+// 分类宫格：一排 4 个、一页 3 排（12 项），末尾固定「+」卡位。
 //
-// 三种状态（BRD FR-ADD-1~9）：
-//   1. 普通：点选分类；
-//   2. 编辑：长按任意分类进入，出现「×」删除角标与「完成 / 取消」工具条；
-//   3. 拖动：编辑模式下再次长按某项拾起，拖到目标格放下（拖到左右边缘自动翻页），
-//      松手即提交整组顺序。
+// 手势（自绘，不用原生滚动，保证「跟手 + 一次只过一页」）：
+//   - 横向拖动 → 翻页：1:1 跟手，首尾页带阻尼，松手最多翻一页（位移 1/4 页或快甩）；
+//   - 长按 500ms（位移 <8px）→ 普通模式进编辑模式；编辑模式下拾起该项拖动排序；
+//   - 编辑模式也能左右翻页（不再依赖原生滚动，也不再有 touch-action 拦截）；
+//   - 拖动排序时目标位置及之后的格子按「挪一格」动画避让（行尾 → 下一行开头）。
 //
-// 手势说明：格子上的长按自己实现（不用 useLongPress，因为它是一个 hook、
-// 不能按格子循环使用），阈值与位移容差复用同一组常量，保证与全应用一致。
+// 状态（BRD FR-ADD-1~9）：普通点选 / 编辑（× 删除 + 「+」新建）/ 拖动排序（松手即存）。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Category, EntryKind } from '../../core/ipc/types';
@@ -18,26 +17,33 @@ import { LONG_PRESS_DELAY_MS, LONG_PRESS_MOVE_TOLERANCE_PX } from '../../hooks/u
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { cn } from '../../shared/utils/cn';
 import {
+    GRID_COLUMNS,
     GRID_PAGE_SIZE,
+    GRID_ROWS,
+    avoidanceOffset,
     autoPageDirection,
     buildGridEntries,
     categoryIdsOf,
+    clampPageDrag,
     dropIndexAt,
+    isSamePage,
     moveItem,
-    pageIndexFromScroll,
     paginate,
+    resolvePageAfterRelease,
     type GridEntry,
 } from './addPage.logic';
 
 /** 拖动到边缘后每次自动翻页的最小间隔。 */
 const AUTO_PAGE_INTERVAL_MS = 450;
+/** 翻页 / 回弹动画时长（关掉动效时由 CSS 媒体查询兜底，功能不受影响）。 */
+const PAGE_TRANSITION = 'transform 220ms cubic-bezier(0.33, 1, 0.68, 1)';
 
 export interface CategoryGridProps {
     kind: EntryKind;
     categories: ReadonlyArray<Category>;
     selectedId: string | null;
     editing: boolean;
-    /** 编辑模式工具条上的「完成」是否可用（拖动提交中时禁用）。 */
+    /** 编辑模式工具栏上的按钮是否禁用（拖动提交中）。 */
     busy?: boolean;
     onSelect: (categoryId: string) => void;
     /** 普通模式下长按：进入编辑模式。 */
@@ -58,13 +64,24 @@ interface DragState {
     startY: number;
     x: number;
     y: number;
+    /** 拖起时测得的格子 / 页宽（落点换算与避让动画用）。 */
+    cellWidth: number;
+    cellHeight: number;
+    pageWidth: number;
 }
 
-interface PressState {
-    entryIndex: number;
-    x: number;
-    y: number;
+interface GestureState {
     pointerId: number;
+    entryIndex: number | null;
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastTime: number;
+    dx: number;
+    dy: number;
+    velocity: number;
+    axis: 'h' | 'v' | null;
+    mode: 'press' | 'pan' | 'drag' | 'idle';
 }
 
 export function CategoryGrid({
@@ -88,51 +105,39 @@ export function CategoryGrid({
 
     const entries = useMemo(() => buildGridEntries(categories, kind), [categories, kind]);
     const pages = useMemo(() => paginate(entries), [entries]);
+    const pageCount = pages.length;
 
-    const scrollRef = useRef<HTMLDivElement | null>(null);
-    const [pageIndex, setPageIndex] = useState(0);
-    const [drag, setDrag] = useState<DragState | null>(null);
-    const [dropIndex, setDropIndex] = useState<number | null>(null);
-
-    const pressRef = useRef<PressState | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const gestureRef = useRef<GestureState | null>(null);
     const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const suppressClickRef = useRef(false);
     const dragRef = useRef<DragState | null>(null);
     const dropIndexRef = useRef<number | null>(null);
     const lastAutoPageRef = useRef(0);
+
+    const [pageIndex, setPageIndex] = useState(0);
+    const [panDx, setPanDx] = useState(0);
+    const [drag, setDrag] = useState<DragState | null>(null);
+    const [dropIndex, setDropIndex] = useState<number | null>(null);
     dragRef.current = drag;
     dropIndexRef.current = dropIndex;
 
-    // 编辑模式退出 / 分类变化（翻页后数组变短）时，收敛页码。
-    const pageCount = pages.length;
+    const editingRef = useRef(editing);
+    editingRef.current = editing;
+
+    // 分类变少（删除 / 翻页后）时收敛页码
     useEffect(() => {
         if (pageIndex > pageCount - 1) setPageIndex(Math.max(0, pageCount - 1));
     }, [pageCount, pageIndex]);
 
-    const clearPress = useCallback(() => {
+    const clearPressTimer = useCallback(() => {
         if (pressTimerRef.current !== null) {
             clearTimeout(pressTimerRef.current);
             pressTimerRef.current = null;
         }
-        pressRef.current = null;
     }, []);
 
-    useEffect(() => clearPress, [clearPress]);
-
-    const scrollToPage = useCallback((index: number, smooth = true) => {
-        const container = scrollRef.current;
-        if (!container) return;
-        const target = index * container.clientWidth;
-        container.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' });
-    }, []);
-
-    const startDrag = useCallback((entryIndex: number, x: number, y: number, pointerId: number) => {
-        // 「+」卡位不能拖动
-        dropIndexRef.current = entryIndex;
-        setDrag({ entryIndex, pointerId, startX: x, startY: y, x, y });
-        setDropIndex(entryIndex);
-        suppressClickRef.current = true;
-    }, []);
+    useEffect(() => clearPressTimer, [clearPressTimer]);
 
     const finishDrag = useCallback(() => {
         const current = dragRef.current;
@@ -143,105 +148,188 @@ export function CategoryGrid({
             return;
         }
         const target = dropIndexRef.current;
-        setDropIndex(null);
         dropIndexRef.current = null;
-        const clampedTarget = Math.min(Math.max(0, target ?? current.entryIndex), entries.length - 1);
+        setDropIndex(null);
+        const clampedTarget = Math.min(
+            Math.max(0, target ?? current.entryIndex),
+            entries.length - 1,
+        );
         if (clampedTarget === current.entryIndex) return;
         const next = moveItem(entries, current.entryIndex, clampedTarget);
         const ids = categoryIdsOf(next);
-        const currentIds = categoryIdsOf(entries);
-        if (ids.join('|') === currentIds.join('|')) return;
+        if (ids.join('|') === categoryIdsOf(entries).join('|')) return;
         onReorder(ids);
     }, [entries, onReorder]);
 
-    // 拖动期间的全局监听：指针可能移出格子（甚至移出宫格）后继续拖。
+    // 拖动期间：非被动 touchmove 阻止浏览器接管手势（touch-action 已放开 pan-y 给外层滚动）
     useEffect(() => {
         if (!drag) return;
-        const handleMove = (event: PointerEvent) => {
-            const container = scrollRef.current;
+        const container = containerRef.current;
+        const blockTouch = (event: TouchEvent) => {
+            if (dragRef.current) event.preventDefault();
+        };
+        container?.addEventListener('touchmove', blockTouch, { passive: false });
+        return () => container?.removeEventListener('touchmove', blockTouch);
+    }, [drag]);
+
+    const updateDrag = useCallback(
+        (clientX: number, clientY: number) => {
+            const container = containerRef.current;
             const current = dragRef.current;
-            if (!container || !current || event.pointerId !== current.pointerId) return;
-            const next: DragState = { ...current, x: event.clientX, y: event.clientY };
+            if (!container || !current) return;
+            const next: DragState = { ...current, x: clientX, y: clientY };
             dragRef.current = next;
             setDrag(next);
 
             const rect = container.getBoundingClientRect();
-            const visiblePage = pageIndexFromScroll(
-                container.scrollLeft,
-                container.clientWidth,
-                Math.max(1, pageCount),
+            // 自绘翻页：可见页就是 pageIndex
+            const localIndex = dropIndexAt({ x: clientX, y: clientY }, rect);
+            const target = Math.min(
+                Math.max(0, pageIndex * GRID_PAGE_SIZE + localIndex),
+                entries.length - 1,
             );
-            const localIndex = dropIndexAt({ x: event.clientX, y: event.clientY }, rect);
-            const target = Math.min(visiblePage * GRID_PAGE_SIZE + localIndex, entries.length - 1);
             dropIndexRef.current = target;
             setDropIndex(target);
 
-            const direction = autoPageDirection({ x: event.clientX }, rect, pageCount);
+            // 拖到左右边缘自动翻页（一次一页，带最小间隔）
+            const direction = autoPageDirection({ x: clientX }, rect, pageCount);
             const now = Date.now();
             if (direction !== 0 && now - lastAutoPageRef.current > AUTO_PAGE_INTERVAL_MS) {
                 lastAutoPageRef.current = now;
-                const nextPage = Math.min(Math.max(0, visiblePage + direction), pageCount - 1);
-                if (nextPage !== visiblePage) scrollToPage(nextPage, false);
+                setPageIndex((prev) => Math.min(Math.max(0, prev + direction), pageCount - 1));
             }
-        };
-        const handleUp = (event: PointerEvent) => {
-            const current = dragRef.current;
-            if (current && event.pointerId !== current.pointerId) return;
-            finishDrag();
-        };
-        window.addEventListener('pointermove', handleMove);
-        window.addEventListener('pointerup', handleUp);
-        window.addEventListener('pointercancel', handleUp);
-        return () => {
-            window.removeEventListener('pointermove', handleMove);
-            window.removeEventListener('pointerup', handleUp);
-            window.removeEventListener('pointercancel', handleUp);
-        };
-    }, [drag, entries.length, finishDrag, pageCount, scrollToPage]);
+        },
+        [entries.length, pageCount, pageIndex],
+    );
 
-    const handleCellPointerDown = useCallback(
-        (event: React.PointerEvent<HTMLElement>, entry: GridEntry, entryIndex: number) => {
+    const handlePointerDown = useCallback(
+        (event: React.PointerEvent<HTMLDivElement>) => {
             if (event.pointerType === 'mouse' && event.button !== 0) return;
-            if (entry.type === 'add') {
-                // 「+」只做点击，不参与长按 / 拖动
-                pressRef.current = null;
-                return;
-            }
-            // 先清掉上一次的按压跟踪，再登记这次（clearPress 会把 pressRef 置空）
-            clearPress();
-            pressRef.current = {
-                entryIndex,
-                x: event.clientX,
-                y: event.clientY,
+            const target = event.target as HTMLElement;
+            const cell = target.closest('[data-entry-index]');
+            const entryIndex = cell ? Number(cell.getAttribute('data-entry-index')) : null;
+            const isCategoryCell = cell?.getAttribute('data-cell-kind') === 'category';
+
+            gestureRef.current = {
                 pointerId: event.pointerId,
+                entryIndex: isCategoryCell ? entryIndex : null,
+                startX: event.clientX,
+                startY: event.clientY,
+                lastX: event.clientX,
+                lastTime: Date.now(),
+                dx: 0,
+                dy: 0,
+                velocity: 0,
+                axis: null,
+                mode: 'press',
             };
             suppressClickRef.current = false;
-            const point = { x: event.clientX, y: event.clientY };
-            pressTimerRef.current = setTimeout(() => {
-                pressTimerRef.current = null;
-                if (editing) startDrag(entryIndex, point.x, point.y, event.pointerId);
-                else {
-                    suppressClickRef.current = true;
-                    onEnterEditing();
-                }
-            }, LONG_PRESS_DELAY_MS);
-        },
-        [clearPress, editing, onEnterEditing, startDrag],
-    );
+            clearPressTimer();
+            containerRef.current?.setPointerCapture(event.pointerId);
 
-    const handleCellPointerMove = useCallback(
-        (event: React.PointerEvent<HTMLElement>) => {
-            const press = pressRef.current;
-            if (!press || pressTimerRef.current === null) return;
-            if (
-                Math.abs(event.clientX - press.x) > LONG_PRESS_MOVE_TOLERANCE_PX ||
-                Math.abs(event.clientY - press.y) > LONG_PRESS_MOVE_TOLERANCE_PX
-            ) {
-                clearPress();
+            if (isCategoryCell && entryIndex !== null) {
+                pressTimerRef.current = setTimeout(() => {
+                    pressTimerRef.current = null;
+                    const gesture = gestureRef.current;
+                    if (!gesture || gesture.mode !== 'press') return;
+                    suppressClickRef.current = true;
+                    if (editingRef.current) {
+                        // 拾起拖动：记下格子尺寸用于落点换算与避让动画
+                        const container = containerRef.current;
+                        const width = container?.clientWidth ?? 0;
+                        const height = container?.clientHeight ?? 0;
+                        gesture.mode = 'drag';
+                        const next: DragState = {
+                            entryIndex: gesture.entryIndex ?? 0,
+                            pointerId: gesture.pointerId,
+                            startX: gesture.startX,
+                            startY: gesture.startY,
+                            x: gesture.startX,
+                            y: gesture.startY,
+                            cellWidth: width / GRID_COLUMNS,
+                            cellHeight: height / GRID_ROWS,
+                            pageWidth: width,
+                        };
+                        dragRef.current = next;
+                        dropIndexRef.current = next.entryIndex;
+                        setDrag(next);
+                        setDropIndex(next.entryIndex);
+                    } else {
+                        gesture.mode = 'idle';
+                        onEnterEditing();
+                    }
+                }, LONG_PRESS_DELAY_MS);
             }
         },
-        [clearPress],
+        [clearPressTimer, onEnterEditing],
     );
+
+    const handlePointerMove = useCallback(
+        (event: React.PointerEvent<HTMLDivElement>) => {
+            const gesture = gestureRef.current;
+            if (!gesture || event.pointerId !== gesture.pointerId) return;
+
+            const now = Date.now();
+            const dt = now - gesture.lastTime;
+            if (dt > 0) {
+                gesture.velocity = (event.clientX - gesture.lastX) / dt;
+                gesture.lastX = event.clientX;
+                gesture.lastTime = now;
+            }
+            gesture.dx = event.clientX - gesture.startX;
+            gesture.dy = event.clientY - gesture.startY;
+
+            if (gesture.mode === 'drag') {
+                updateDrag(event.clientX, event.clientY);
+                return;
+            }
+            if (gesture.mode === 'idle') return;
+
+            if (gesture.mode === 'press') {
+                if (
+                    Math.abs(gesture.dx) > LONG_PRESS_MOVE_TOLERANCE_PX ||
+                    Math.abs(gesture.dy) > LONG_PRESS_MOVE_TOLERANCE_PX
+                ) {
+                    clearPressTimer();
+                    gesture.axis ??= Math.abs(gesture.dx) > Math.abs(gesture.dy) ? 'h' : 'v';
+                }
+                if (gesture.axis === 'h') {
+                    gesture.mode = 'pan';
+                    suppressClickRef.current = true;
+                }
+            }
+
+            if (gesture.mode === 'pan') {
+                const width = containerRef.current?.clientWidth ?? 0;
+                setPanDx(clampPageDrag(gesture.dx, pageIndex, pageCount, width));
+            }
+        },
+        [clearPressTimer, pageCount, pageIndex, updateDrag],
+    );
+
+    const endGesture = useCallback(() => {
+        const gesture = gestureRef.current;
+        gestureRef.current = null;
+        clearPressTimer();
+        if (!gesture) return;
+
+        if (gesture.mode === 'drag') {
+            finishDrag();
+            return;
+        }
+        if (gesture.mode === 'pan') {
+            const width = containerRef.current?.clientWidth ?? 0;
+            const nextPage = resolvePageAfterRelease(
+                pageIndex,
+                gesture.dx,
+                width,
+                gesture.velocity,
+                pageCount,
+            );
+            setPageIndex(nextPage);
+            setPanDx(0);
+        }
+    }, [clearPressTimer, finishDrag, pageCount, pageIndex]);
 
     const handleCellClick = useCallback(
         (entry: GridEntry) => {
@@ -259,117 +347,139 @@ export function CategoryGrid({
         [editing, onCreateCategory, onEditCategory, onSelect],
     );
 
-    const handleScroll = useCallback(() => {
-        const container = scrollRef.current;
-        if (!container) return;
-        const next = pageIndexFromScroll(container.scrollLeft, container.clientWidth, pageCount);
-        setPageIndex((prev) => (prev === next ? prev : next));
-    }, [pageCount]);
+    const goToPage = useCallback(
+        (index: number) => {
+            setPageIndex(Math.min(Math.max(0, index), Math.max(0, pageCount - 1)));
+        },
+        [pageCount],
+    );
+
+    const offset = -pageIndex * 100;
 
     return (
         <div className="flex min-h-0 flex-col">
             {editing ? (
-                <div className="flex items-center justify-between gap-2 px-4 pb-1.5">
-                    <p className="text-[11.5px] text-text-tertiary">
-                        长按图标可拖动排序；点「×」删除，点分类可改名 / 换图标
-                    </p>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                            type="button"
-                            onClick={onExitEditing}
-                            disabled={busy}
-                            className="h-7 rounded-pill bg-inset px-2.5 text-[12px] font-medium text-text-secondary active:bg-muted disabled:opacity-50"
-                        >
-                            取消
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onExitEditing}
-                            disabled={busy}
-                            className="h-7 rounded-pill bg-brand px-2.5 text-[12px] font-medium text-white active:opacity-90 disabled:opacity-50"
-                        >
-                            完成
-                        </button>
-                    </div>
+                <div className="flex items-center justify-end gap-1.5 px-4 pb-1.5">
+                    <button
+                        type="button"
+                        onClick={onExitEditing}
+                        disabled={busy}
+                        className="h-7 rounded-pill bg-inset px-2.5 text-[12px] font-medium text-text-secondary active:bg-muted disabled:opacity-50"
+                    >
+                        取消
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onExitEditing}
+                        disabled={busy}
+                        className="h-7 rounded-pill bg-brand px-2.5 text-[12px] font-medium text-white active:opacity-90 disabled:opacity-50"
+                    >
+                        完成
+                    </button>
                 </div>
             ) : null}
 
             <div
-                ref={scrollRef}
+                ref={containerRef}
                 data-swipe-scroll
-                onScroll={handleScroll}
+                data-no-swipe
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={endGesture}
+                onPointerCancel={endGesture}
+                onContextMenu={(event) => event.preventDefault()}
                 onClick={(event) => {
-                    // FR-ADD-9：选择模式下点空白区退出（点分类不算空白）
+                    // FR-ADD-9：选择模式下点空白区退出
                     if (!editing) return;
-                    const target = event.target as HTMLElement;
-                    if (target.closest('[data-category-cell]')) return;
+                    if ((event.target as HTMLElement).closest('[data-entry-index]')) return;
                     onExitEditing();
                 }}
-                className={cn(
-                    'scrollbar-hide flex w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain',
-                )}
+                className="touch-pan-y select-none overflow-hidden"
             >
-                {pages.map((page, index) => (
-                    <div
-                        key={index}
-                        className={cn(
-                            'grid w-full shrink-0 snap-center grid-cols-4 auto-rows-[68px]',
-                            'gap-x-1 gap-y-0.5 px-3',
-                        )}
-                    >
-                        {page.map((entry, cellIndex) => {
-                            const entryIndex = index * GRID_PAGE_SIZE + cellIndex;
-                            const dragging = drag?.entryIndex === entryIndex;
-                            const isDropTarget = drag !== null && dropIndex === entryIndex && !dragging;
-                            const delta = dragging && drag
-                                ? { x: drag.x - drag.startX, y: drag.y - drag.startY }
-                                : null;
-                            const palette = entry.type === 'add'
-                                ? null
-                                : categoryColors(entry.category.color, brand, surface);
-                            return (
-                                <div
-                                    key={entry.type === 'add' ? '__add__' : entry.category.id}
-                                    data-category-cell
-                                    style={
-                                        delta
-                                            ? {
-                                                  transform: `translate3d(${delta.x}px, ${delta.y}px, 0) scale(1.08)`,
-                                                  zIndex: 30,
-                                              }
-                                            : undefined
-                                    }
-                                    className={cn(
-                                        'relative flex items-center justify-center',
-                                        dragging && 'opacity-95',
-                                    )}
-                                >
-                                    {entry.type === 'add' || !palette ? (
-                                        <AddCard onClick={() => handleCellClick(entry)} />
-                                    ) : (
-                                        <CategoryCell
-                                            category={entry.category}
-                                            selected={entry.category.id === selectedId}
-                                            editing={editing}
-                                            dropTarget={isDropTarget}
-                                            foreground={palette.foreground}
-                                            background={palette.background}
-                                            dragging={dragging}
-                                            onPointerDown={(event) =>
-                                                handleCellPointerDown(event, entry, entryIndex)
-                                            }
-                                            onPointerMove={handleCellPointerMove}
-                                            onPointerUp={clearPress}
-                                            onPointerLeave={clearPress}
-                                            onClick={() => handleCellClick(entry)}
-                                            onDelete={() => onDeleteCategory(entry.category)}
-                                        />
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                ))}
+                <div
+                    className="flex"
+                    style={{
+                        transform: `translate3d(calc(${offset}% + ${panDx}px), 0, 0)`,
+                        // 拖动中翻页要瞬移，否则拖动项会比手指慢半拍
+                        transition: panDx === 0 && !drag ? PAGE_TRANSITION : 'none',
+                    }}
+                >
+                    {pages.map((page, index) => (
+                        <div
+                            key={index}
+                            className="grid w-full shrink-0 grid-cols-4 auto-rows-[64px] gap-x-1 gap-y-0.5 px-3"
+                        >
+                            {page.map((entry, cellIndex) => {
+                                const entryIndex = index * GRID_PAGE_SIZE + cellIndex;
+                                const isDragged = drag?.entryIndex === entryIndex;
+                                const isDropTarget =
+                                    drag !== null && dropIndex === entryIndex && !isDragged;
+                                const shift =
+                                    drag && isSamePage(drag.entryIndex, dropIndex ?? -1)
+                                        ? avoidanceOffset(
+                                              entryIndex,
+                                              drag.entryIndex,
+                                              dropIndex ?? drag.entryIndex,
+                                              drag.cellWidth,
+                                              drag.cellHeight,
+                                          )
+                                        : null;
+                                const dragDelta =
+                                    isDragged && drag
+                                        ? {
+                                              // 翻页时把拖动项平移回可见页，保证它一直在手指下
+                                              x:
+                                                  drag.x -
+                                                  drag.startX +
+                                                  (Math.floor(drag.entryIndex / GRID_PAGE_SIZE) -
+                                                      pageIndex) *
+                                                      drag.pageWidth,
+                                              y: drag.y - drag.startY,
+                                          }
+                                        : null;
+                                const palette =
+                                    entry.type === 'add'
+                                        ? null
+                                        : categoryColors(entry.category.color, brand, surface);
+                                const transform = dragDelta
+                                    ? `translate3d(${dragDelta.x}px, ${dragDelta.y}px, 0) scale(1.08)`
+                                    : shift
+                                      ? `translate3d(${shift.x}px, ${shift.y}px, 0)`
+                                      : undefined;
+
+                                return (
+                                    <div
+                                        key={entry.type === 'add' ? '__add__' : entry.category.id}
+                                        data-entry-index={entryIndex}
+                                        data-cell-kind={entry.type === 'add' ? 'add' : 'category'}
+                                        style={{ transform, zIndex: dragDelta ? 30 : undefined }}
+                                        className={cn(
+                                            'relative flex items-center justify-center',
+                                            shift && !dragDelta && 'transition-transform duration-150',
+                                            dragDelta && 'opacity-95',
+                                        )}
+                                    >
+                                        {entry.type === 'add' || !palette ? (
+                                            <AddCard onClick={() => handleCellClick(entry)} />
+                                        ) : (
+                                            <CategoryCell
+                                                category={entry.category}
+                                                selected={entry.category.id === selectedId}
+                                                editing={editing}
+                                                dropTarget={isDropTarget}
+                                                dragging={Boolean(dragDelta)}
+                                                foreground={palette.foreground}
+                                                background={palette.background}
+                                                onClick={() => handleCellClick(entry)}
+                                                onDelete={() => onDeleteCategory(entry.category)}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {pageCount > 1 ? (
@@ -380,7 +490,7 @@ export function CategoryGrid({
                             type="button"
                             aria-label={`第 ${index + 1} 页`}
                             aria-current={index === pageIndex}
-                            onClick={() => scrollToPage(index)}
+                            onClick={() => goToPage(index)}
                             className={cn(
                                 'h-1.5 rounded-pill transition-[width,background-color] duration-200',
                                 index === pageIndex ? 'w-4 bg-brand' : 'w-1.5 bg-border-strong',
@@ -401,10 +511,6 @@ interface CategoryCellProps {
     dragging: boolean;
     foreground: string;
     background: string;
-    onPointerDown: (event: React.PointerEvent<HTMLElement>) => void;
-    onPointerMove: (event: React.PointerEvent<HTMLElement>) => void;
-    onPointerUp: () => void;
-    onPointerLeave: () => void;
     onClick: () => void;
     onDelete: () => void;
 }
@@ -417,29 +523,17 @@ function CategoryCell({
     dragging,
     foreground,
     background,
-    onPointerDown,
-    onPointerMove,
-    onPointerUp,
-    onPointerLeave,
     onClick,
     onDelete,
 }: CategoryCellProps) {
     return (
         <button
             type="button"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            onPointerLeave={onPointerLeave}
-            onContextMenu={(event) => event.preventDefault()}
             onClick={onClick}
             aria-pressed={selected}
-            style={editing ? { touchAction: 'none' } : undefined}
             className={cn(
                 'group flex w-full flex-col items-center gap-1 rounded-md px-0.5 pt-1.5 pb-1',
-                'active:bg-inset',
-                dragging && 'shadow-popover',
+                dragging ? 'shadow-popover' : 'active:bg-inset',
             )}
         >
             <span
@@ -457,7 +551,6 @@ function CategoryCell({
                         role="button"
                         tabIndex={-1}
                         aria-label={`删除分类 ${category.name}`}
-                        onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
                             event.stopPropagation();
                             onDelete();

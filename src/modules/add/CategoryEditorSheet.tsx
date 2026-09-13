@@ -94,7 +94,7 @@ export function CategoryEditorSheet({
                             value={name}
                             onChange={(event) => setName(event.target.value)}
                             maxLength={CATEGORY_NAME_MAX}
-                            placeholder="分类名称（最多 8 字）"
+                            placeholder="分类名称"
                             aria-label="分类名称"
                             className={cn(
                                 'h-9 w-full rounded-md border bg-field px-2.5 text-[14px] text-text',
@@ -105,7 +105,7 @@ export function CategoryEditorSheet({
                             )}
                         />
                         <p className="mt-1 text-[11px] text-text-tertiary">
-                            {trimmed === '' ? '必填，最多 8 个字' : `${nameLength} / ${CATEGORY_NAME_MAX} 字`}
+                            {trimmed === '' ? '必填' : `${nameLength} / ${CATEGORY_NAME_MAX} 字`}
                         </p>
                     </div>
                 </div>

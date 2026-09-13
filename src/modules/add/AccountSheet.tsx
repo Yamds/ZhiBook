@@ -30,7 +30,7 @@ export function AccountSheet({ open, onOpenChange, accounts, value, onSelect }: 
             open={open}
             onOpenChange={onOpenChange}
             title="选择账户"
-            description="留空表示「未指定账户」：只进收支统计，不影响账户余额"
+            description="留空 = 未指定，不影响账户余额"
         >
             <div className="flex flex-col gap-3">
                 <button

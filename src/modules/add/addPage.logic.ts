@@ -16,6 +16,12 @@ export const GRID_ROWS = 3;
 export const GRID_PAGE_SIZE = GRID_COLUMNS * GRID_ROWS;
 /** 拖动到距边缘多少像素时触发自动翻页。 */
 export const AUTO_PAGE_EDGE_PX = 28;
+/** 翻页位移超过页面宽度的这个比例就翻页。 */
+export const PAGE_SWIPE_THRESHOLD_RATIO = 0.25;
+/** 甩动速度阈值（px/ms），超过就按方向翻页。 */
+export const PAGE_FLING_VELOCITY = 0.5;
+/** 首尾页继续往外拖时的阻尼系数（跟手但不越界太多）。 */
+export const PAGE_EDGE_DAMPING = 0.35;
 
 /** 宫格条目：分类，或末尾的「+」新建卡位。 */
 export type GridEntry =
@@ -111,14 +117,116 @@ export function autoPageDirection(
     return 0;
 }
 
-/** 由滚动位置反推当前页（四舍五入，容忍半页回弹）。 */
-export function pageIndexFromScroll(scrollLeft: number, pageWidth: number, pageCount: number): number {
-    if (pageWidth <= 0 || pageCount <= 0) return 0;
-    return clamp(Math.round(scrollLeft / pageWidth), 0, pageCount - 1);
-}
-
 function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
+}
+
+// ---------------------------------------------------------------------------
+// 自定义翻页（跟手 + 一次只过一页）
+// ---------------------------------------------------------------------------
+
+/**
+ * 把拖动位移夹到当前页范围内：首尾页继续往外拖时按阻尼缩小，形成“拉不动”的手感。
+ */
+export function clampPageDrag(
+    dx: number,
+    pageIndex: number,
+    pageCount: number,
+    pageWidth: number,
+    damping = PAGE_EDGE_DAMPING,
+): number {
+    if (pageWidth <= 0) return 0;
+    if (dx > 0 && pageIndex <= 0) return dx * damping;
+    if (dx < 0 && pageIndex >= pageCount - 1) return dx * damping;
+    return clamp(dx, -pageWidth, pageWidth);
+}
+
+/**
+ * 松手后落到哪一页。
+ *
+ * 规则：位移超过 1/4 页 → 按位移方向翻一页；否则看甩动速度（≥ 0.5 px/ms
+ * 且与位移同方向）→ 翻一页；都不满足则回弹。**无论如何最多只翻一页**。
+ */
+export function resolvePageAfterRelease(
+    pageIndex: number,
+    dx: number,
+    pageWidth: number,
+    velocity = 0,
+    pageCount = 1,
+): number {
+    if (pageWidth <= 0 || pageCount <= 1) return 0;
+    const ratio = dx / pageWidth;
+    let delta = 0;
+    if (Math.abs(ratio) >= PAGE_SWIPE_THRESHOLD_RATIO) {
+        delta = ratio > 0 ? -1 : 1;
+    } else if (Math.abs(velocity) >= PAGE_FLING_VELOCITY && Math.sign(velocity) === Math.sign(dx)) {
+        delta = velocity > 0 ? -1 : 1;
+    }
+    return clamp(pageIndex + delta, 0, pageCount - 1);
+}
+
+// ---------------------------------------------------------------------------
+// 拖动排序的避让
+// ---------------------------------------------------------------------------
+
+/**
+ * 单个格子往前 / 往后挪一格的位移。
+ *
+ * 行首往前挪会回到上一行末尾，行尾往后挪会去下一行开头。
+ */
+export function oneSlotOffset(
+    entryIndex: number,
+    direction: -1 | 1,
+    cellWidth: number,
+    cellHeight: number,
+    columns = GRID_COLUMNS,
+): { x: number; y: number } {
+    const column = entryIndex % columns;
+    if (direction === -1) {
+        return column > 0
+            ? { x: -cellWidth, y: 0 }
+            : { x: (columns - 1) * cellWidth, y: -cellHeight };
+    }
+    return column < columns - 1
+        ? { x: cellWidth, y: 0 }
+        : { x: -(columns - 1) * cellWidth, y: cellHeight };
+}
+
+/**
+ * 拖动中的避让偏移：被拖走的格子腾出的空位，由它后面的格子补上。
+ *
+ * - 往后拖（source < drop）：`(source, drop]` 这些格子往前挪一格；
+ * - 往前拖（source > drop）：`[drop, source)` 这些格子往后挪一格；
+ * - 拖动项自己返回 null（它跟着手指走）。
+ *
+ * 只在「同页」时使用：跨页拖动不避让（避免跨页边界处出现半格残影），
+ * 改用虚线落点提示。
+ */
+export function avoidanceOffset(
+    entryIndex: number,
+    sourceIndex: number,
+    dropIndex: number,
+    cellWidth: number,
+    cellHeight: number,
+    columns = GRID_COLUMNS,
+): { x: number; y: number } | null {
+    if (entryIndex === sourceIndex || sourceIndex === dropIndex) return null;
+    if (sourceIndex < dropIndex) {
+        if (entryIndex > sourceIndex && entryIndex <= dropIndex) {
+            return oneSlotOffset(entryIndex, -1, cellWidth, cellHeight, columns);
+        }
+        return null;
+    }
+    if (entryIndex >= dropIndex && entryIndex < sourceIndex) {
+        return oneSlotOffset(entryIndex, 1, cellWidth, cellHeight, columns);
+    }
+    return null;
+}
+
+/** 两个下标是否在同一页（跨页拖动不避让）。 */
+export function isSamePage(a: number, b: number, pageSize = GRID_PAGE_SIZE): boolean {
+    if (a < 0 || b < 0) return false;
+    return Math.floor(a / pageSize) === Math.floor(b / pageSize);
 }
 
 /**

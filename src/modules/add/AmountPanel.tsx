@@ -1,23 +1,16 @@
 // 输入面板顶部（BRD FR-ADD-10 ~ 12）：
 // 左侧备注输入 + 附图按钮 + 账户入口，右侧金额显示（含表达式）。
 //
-// 备注是真实 <input>：聚焦时系统键盘会弹出，页面此时会把数字键盘收起
-// （见 AddPage），避免两个键盘抢屏。
+// 备注是真实 <input>：聚焦后直接用系统输入法打字，自定义数字键盘**照常保留**在下方。
 
-import type { RefObject } from 'react';
 import { UI_ICONS } from '../../core/design/icons';
 import { formatMoney } from '../../core/domain/money';
-import type { EntryKind } from '../../core/ipc/types';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { cn } from '../../shared/utils/cn';
-import { MAX_ATTACHMENTS } from './image';
 
 export interface AmountPanelProps {
-    kind: EntryKind;
     note: string;
     onNoteChange: (value: string) => void;
-    onNoteFocus: () => void;
-    onNoteBlur: () => void;
     attachmentCount: number;
     onPickAttachments: () => void;
     /** 键盘表达式原文（空 = 还没输入）。 */
@@ -27,16 +20,11 @@ export interface AmountPanelProps {
     amountValid: boolean;
     accountName: string;
     onPickAccount: () => void;
-    /** 页面用来控制聚焦 / 收起（备注聚焦时数字键盘会让位）。 */
-    noteInputRef?: RefObject<HTMLInputElement>;
 }
 
 export function AmountPanel({
-    kind,
     note,
     onNoteChange,
-    onNoteFocus,
-    onNoteBlur,
     attachmentCount,
     onPickAttachments,
     expression,
@@ -44,7 +32,6 @@ export function AmountPanel({
     amountValid,
     accountName,
     onPickAccount,
-    noteInputRef,
 }: AmountPanelProps) {
     return (
         <div className="flex items-end gap-2 px-3 pt-2 pb-1.5">
@@ -65,13 +52,10 @@ export function AmountPanel({
                     </button>
                     <div className="relative min-w-0 flex-1">
                         <input
-                            ref={noteInputRef}
                             value={note}
                             onChange={(event) => onNoteChange(event.target.value)}
-                            onFocus={onNoteFocus}
-                            onBlur={onNoteBlur}
                             maxLength={64}
-                            placeholder="备注（可选，最多 64 字）"
+                            placeholder="备注（可选）"
                             aria-label="备注"
                             className={cn(
                                 'h-8 w-full rounded-md border border-border-subtle bg-field pr-7 pl-2 text-[13px] text-text',
@@ -119,9 +103,6 @@ export function AmountPanel({
                     )}
                 >
                     {formatMoney(amountCents)}
-                </span>
-                <span className="text-[10.5px] text-text-tertiary">
-                    {kind === 'expense' ? '支出' : '收入'} · 最多 {MAX_ATTACHMENTS} 张图
                 </span>
             </div>
         </div>

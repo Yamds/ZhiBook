@@ -66,7 +66,6 @@ export function AddPage() {
     const [accountOverride, setAccountOverride] = useState<{ id: string | null } | null>(null);
     const [expression, setExpression] = useState('');
     const [note, setNote] = useState('');
-    const [noteFocused, setNoteFocused] = useState(false);
     const [date, setDate] = useState<CalendarDate>(() => todayDate());
     const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
     const [submitting, setSubmitting] = useState(false);
@@ -79,7 +78,6 @@ export function AddPage() {
     const [deleting, setDeleting] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const noteInputRef = useRef<HTMLInputElement | null>(null);
 
     // 今日已记笔数：既是给小字提示，也是真机验收时「数据真的落库了」的可见证据
     const today = todayKey();
@@ -371,7 +369,7 @@ export function AddPage() {
 
     return (
         <section className="flex h-full min-h-0 flex-col">
-            <div className="flex shrink-0 items-center gap-2 px-3 pt-1">
+            <div className="flex shrink-0 items-center gap-2 px-3 pt-4">
                 <SegmentedControl
                     className="flex-1"
                     items={[
@@ -387,7 +385,7 @@ export function AddPage() {
                 </span>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto pt-2">
+            <div className="min-h-0 flex-1 overflow-y-auto pt-3">
                 <CategoryGrid
                     kind={kind}
                     categories={categories}
@@ -420,12 +418,8 @@ export function AddPage() {
             />
 
             <AmountPanel
-                kind={kind}
                 note={note}
                 onNoteChange={setNote}
-                onNoteFocus={() => setNoteFocused(true)}
-                onNoteBlur={() => setNoteFocused(false)}
-                noteInputRef={noteInputRef}
                 attachmentCount={attachments.length}
                 onPickAttachments={handlePickFiles}
                 expression={expression}
@@ -435,37 +429,14 @@ export function AddPage() {
                 onPickAccount={() => setSheet('account')}
             />
 
-            {noteFocused ? (
-                <div className="flex shrink-0 items-center gap-2 px-3 pt-2 pb-2">
-                    <span className="flex-1 text-[12px] text-text-tertiary">备注输入中…</span>
-                    <button
-                        type="button"
-                        onClick={() => noteInputRef.current?.blur()}
-                        className="h-10 rounded-md bg-inset px-3 text-[13px] font-medium text-text-secondary active:bg-muted"
-                    >
-                        收起
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            noteInputRef.current?.blur();
-                            void handleSubmit();
-                        }}
-                        className="h-10 rounded-md bg-brand px-4 text-[14px] font-semibold text-white shadow-card active:opacity-90"
-                    >
-                        完成
-                    </button>
-                </div>
-            ) : (
-                <Keypad
-                    dateLabel={shortDateLabel(date)}
-                    canSubmit={canSubmit}
-                    submitting={submitting}
-                    onKey={handleKey}
-                    onPickDate={() => setSheet('date')}
-                    onSubmit={() => void handleSubmit()}
-                />
-            )}
+            <Keypad
+                dateLabel={shortDateLabel(date)}
+                canSubmit={canSubmit}
+                submitting={submitting}
+                onKey={handleKey}
+                onPickDate={() => setSheet('date')}
+                onSubmit={() => void handleSubmit()}
+            />
 
             <input
                 ref={fileInputRef}
