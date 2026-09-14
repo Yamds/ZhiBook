@@ -20,7 +20,7 @@ function renderHome() {
 
 /** 取一个当月格子（相邻月的格子 disabled 且没有 data-day-key 之外的语义）。 */
 async function firstSelectableCell(): Promise<HTMLButtonElement> {
-    const cells = await screen.findAllByRole('button', { name: /点击记账/ });
+    const cells = await screen.findAllByRole('button', { name: /点一下记账/ });
     const cell = cells.find((item) => !(item as HTMLButtonElement).disabled);
     if (!cell) throw new Error('no selectable calendar cell');
     return cell as HTMLButtonElement;

@@ -41,7 +41,7 @@ describe('cloud.logic', () => {
             recurringRules: { added: 0, updated: 1, deleted: 0 },
         };
         expect(mergeSummaryText(merge)).toBe(
-            '已合并另一台设备的更新：新增 2 笔账单、更新 1 笔账单、删除 1 笔账单、更新 1 条固定收支',
+            '合并了另一台设备的更新：新增 2 笔账单、更新 1 笔账单、删除 1 笔账单、更新 1 条固定收支',
         );
     });
 
@@ -61,9 +61,9 @@ describe('cloud.logic', () => {
             backedUpAtMs: 0,
             attachmentsMissing: 0,
         };
-        expect(backupSummaryText(base)).toBe('内容没有变化，无需新增备份');
+        expect(backupSummaryText(base)).toBe('内容没有变化，不用再备一次啦');
         expect(backupSummaryText({ ...base, pushed: true, uploadedBytes: 2048 })).toBe(
-            '已备份 3 个文件（上传 2.0 KB）',
+            '存好了 3 个文件（上传 2.0 KB）',
         );
     });
 

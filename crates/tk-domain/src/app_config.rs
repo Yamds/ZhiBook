@@ -77,7 +77,7 @@ fn default_reminder_title() -> String {
 }
 
 fn default_reminder_body() -> String {
-    "今天要记得记账哦?~".to_string()
+    "今天要记得记账哦~".to_string()
 }
 
 /// 提醒标题 / 内容长度上限。
@@ -344,7 +344,7 @@ mod tests {
         assert_eq!(parsed.reminder.hour, 20);
         assert_eq!(parsed.reminder.minute, 0);
         assert_eq!(parsed.reminder.title, "Hello~");
-        assert_eq!(parsed.reminder.body, "今天要记得记账哦?~");
+        assert_eq!(parsed.reminder.body, "今天要记得记账哦~");
 
         let mut cfg = AppSettings {
             reminder: ReminderPreferences {

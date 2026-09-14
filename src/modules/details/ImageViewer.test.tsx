@@ -31,7 +31,7 @@ describe('ImageViewer 附件异常', () => {
             </QueryClientProvider>,
         );
 
-        expect(await screen.findByText('这张图片读不出来')).toBeTruthy();
+        expect(await screen.findByText('这张图片读不出来呢')).toBeTruthy();
         // 关闭按钮与页码仍在（不阻塞查看器）
         expect(screen.getByLabelText('关闭图片查看器')).toBeTruthy();
         expect(screen.getByText('1 / 1')).toBeTruthy();

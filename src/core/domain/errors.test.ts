@@ -8,9 +8,9 @@ describe('describeError', () => {
     });
 
     it('其它值给统一兑底文案', () => {
-        expect(describeError(undefined)).toBe('未知错误，请重试');
-        expect(describeError('   ')).toBe('未知错误，请重试');
-        expect(describeError({ code: 1 })).toBe('未知错误，请重试');
+        expect(describeError(undefined)).toBe('出了点小状况，请重试');
+        expect(describeError('   ')).toBe('出了点小状况，请重试');
+        expect(describeError({ code: 1 })).toBe('出了点小状况，请重试');
     });
 
     it('结构化错误：收录的码走语言文件（rust.<code>），{{param}} 插值', () => {
@@ -21,7 +21,7 @@ describe('describeError', () => {
                 message: '（Rust 兜底文案，不该出现在这里）',
                 params: { id: 'book_x' },
             }),
-        ).toBe('账本不存在：book_x');
+        ).toBe('咦…账本不见了：book_x');
 
         // `ledger.db` 同时是 `ledger.db.unavailable` 的前缀，语言文件里只能用点号直写的
         // 扁平 key（嵌不进对象），这条用例盯住它还能被 i18next 解析出来。
@@ -45,10 +45,10 @@ describe('describeError', () => {
             describeError(
                 JSON.stringify({
                     code: 'ledger.book.not_found',
-                    message: '账本不存在：book_y',
+                    message: '咦…账本不见了：book_y',
                     params: { id: 'book_y' },
                 }),
             ),
-        ).toBe('账本不存在：book_y');
+        ).toBe('咦…账本不见了：book_y');
     });
 });

@@ -28,7 +28,7 @@ describe('AssetsPage', () => {
         expect(await screen.findByText('净资产')).toBeTruthy();
         // 净资产 / 总资产 / 负债 都是 ¥ 0.00
         expect(screen.getAllByText('¥ 0.00').length).toBeGreaterThanOrEqual(3);
-        expect(await screen.findByText('还没有账户')).toBeTruthy();
+        expect(await screen.findByText('还没有账户哦')).toBeTruthy();
         expect(await screen.findByText('账本')).toBeTruthy();
         expect(screen.getByText('当前')).toBeTruthy();
     });

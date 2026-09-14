@@ -35,7 +35,7 @@ export const DEFAULT_UI_PREFERENCES: AppUiPreferences = {
  */
 const BUILTIN_REMINDER_TITLE = 'Hello~';
 // i18n-allow: 下一行是与 Rust 种子值对齐的**数据**，不是界面文案。
-const BUILTIN_REMINDER_BODY = '今天要记得记账哦?~';
+const BUILTIN_REMINDER_BODY = '今天要记得记账哦~';
 
 export const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
     enabled: false,
