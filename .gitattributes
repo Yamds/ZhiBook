@@ -1,0 +1,11 @@
+# 行尾策略：仓库里一律存 LF，检出也一律 LF。
+#
+# 为什么需要它：Windows 工作区里大量文件被 autocrlf 换成了 CRLF，于是「根本没碰过」
+# 的文件在 `git status` 里也显示整文件重写（假 diff），评审时分不清哪些是真改动。
+# 有了这条，git 在 add / 比较之前都会把 CRLF 归一成 LF，假 diff 消失。
+* text=auto eol=lf
+
+# Gradle 包装脚本保持原样：.bat 在个别 cmd 版本下用 LF 有踩坑风险，
+# 而 `gradlew`（shell 脚本）在 Windows 上根本不执行。
+src-tauri/gen/android/gradlew -text
+src-tauri/gen/android/gradlew.bat -text
