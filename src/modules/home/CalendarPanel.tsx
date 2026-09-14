@@ -132,7 +132,7 @@ export function CalendarPanel({
     }, [month, onPeriodChange, paneHeight, recenter, year]);
 
     return (
-        <Card data-tour="home-calendar" className="flex flex-col gap-1.5 rounded-lg p-3">
+        <Card className="flex flex-col gap-1.5 rounded-lg p-3">
             <header className="flex items-center justify-between gap-2">
                 <button
                     type="button"

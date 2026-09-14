@@ -21,8 +21,6 @@ export const DEFAULT_UI_PREFERENCES: AppUiPreferences = {
     motionSpeed: MOTION_SPEED_DEFAULT,
     radiusStyle: 'standard',
     splashEnabled: true,
-    onboardingCompleted: true,
-    addTourCompleted: true,
     infoBarDismissInfoMs: 5000,
     infoBarDismissSuccessMs: 4000,
     infoBarDismissWarningMs: 6000,

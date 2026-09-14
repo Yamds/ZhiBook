@@ -1,17 +1,14 @@
-// 「关于」页签：版本 / 简介 / Git 仓库 / 帮助文档 / 新手引导 / 开源许可 / 鸣谢。
+// 「关于」页签：版本 / 简介 / Git 仓库 / 帮助文档 / 开源许可 / 鸣谢。
 //
 // 不展示包名；版本号来自 tauri.conf.json（经 app 插件读取），浏览器预览下拿不到时
 // 退回内置版本标签。仓库与协议链接走 `openExternalUrl`（Tauri opener）。
 
 import { useState } from 'react';
 import logo from '../../../assets/logo-72.png';
-import { navigateTo } from '../../../app/navigationStore';
 import { UI_ICONS } from '../../../core/design/icons';
 import { APP_PRODUCT_NAME, APP_VERSION_LABEL } from '../../../core/domain/app-meta';
 import { openExternalUrl } from '../../../core/ipc/transport';
 import { useAppInfo } from '../../../hooks/app/useAppInfo';
-import { useBackendSettings } from '../../../hooks/preferences/useBackendSettings';
-import { startOnboarding } from '../../onboarding/onboardingStore';
 import { AppIcon } from '../../../shared/ui/AppIcon';
 import {
     SettingsEntryRow,
@@ -26,7 +23,6 @@ const REPO_LABEL = 'github.com/Yamds/ZhiBook';
 
 export function AboutTab() {
     const { data, isLoading } = useAppInfo();
-    const { patchBackend } = useBackendSettings();
     const [helpOpen, setHelpOpen] = useState(false);
     const [licensesOpen, setLicensesOpen] = useState(false);
 
@@ -89,21 +85,6 @@ export function AboutTab() {
                         label="帮助文档"
                         description="数据在哪、换机迁移、提醒 / 密码锁 / 云端备份等常见问题"
                         onClick={() => setHelpOpen(true)}
-                    />
-                    <SettingsEntryRow
-                        icon={UI_ICONS.guide}
-                        label="新手引导"
-                        description="重新观看日历、记账与设置的操作指引"
-                        value="重新播放"
-                        onClick={() => {
-                            navigateTo('home');
-                            // 重新武装添加页分段引导：下次进入添加页会再播一次
-                            patchBackend((current) => ({
-                                ...current,
-                                uiPreferences: { ...current.uiPreferences, addTourCompleted: false },
-                            }));
-                            startOnboarding('main');
-                        }}
                     />
                 </SettingsSection>
 

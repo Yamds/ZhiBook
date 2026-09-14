@@ -1,10 +1,11 @@
 // 应用壳：顶部栏 + 底部导航 + 路由过渡 + 全局 InfoBar + 退出闸门。
 //
 // 页面业务只放在 modules；壳只负责编排生命周期和跨页面能力。
-// 侧边栏 / 抽屉已整体移除，所有导航入口收敛为底部 5 个页签 + 日历页重复点击进设置。
+// 侧边栏 / 抽屉已整体移除，所有导航入口收敛为底部 5 个页签 + 日历 / 设置槽位上方
+// 从栏后露头的替身按钮（见 BottomNav / NavSlotPeek）。
 //
 // 三种导航输入统一在这里收敛：
-//   点击  —— 底部导航：重复点日历 = 进设置；重复点其它页签 = 回到该页顶部
+//   点击  —— 底部导航：重复点日历 / 点上方探出的齿轮 = 进设置；重复点其它页签 = 回到该页顶部
 //   横滑  —— 先问页面的嵌套消费方（选择器等），未消费才切顶级页签；设置页不参与
 //   返回键 —— 首页弹退出确认；其它页面回首页
 
@@ -40,8 +41,6 @@ import {
 import { backActionFor, navigateTo, retapScreen, useNavigation, useRetapHandler } from './navigationStore';
 import { runPageBackHandler } from './pageBackHandler';
 import { closeTopOverlay } from '../shared/ui/overlayStack';
-import { OnboardingTour } from '../modules/onboarding/OnboardingTour';
-import { isOnboardingActive } from '../modules/onboarding/onboardingStore';
 import { SwipeProvider, neighborOf, type NestedSwipeHandler, type SwipeDirection } from './swipeNavigation';
 
 /** 顶部栏右侧的账本入口：数据未就绪时先显示占位名（正常一帧内就被真实名替换）。 */
@@ -74,12 +73,7 @@ function renderScreen(screen: AppScreen) {
     }
 }
 
-export interface AppNextProps {
-    /** 启动层是否已经退场；新手引导等首启逻辑等它之后再出现。 */
-    bootSettled?: boolean;
-}
-
-export function AppNext({ bootSettled = true }: AppNextProps) {
+export function AppNext() {
     const navigation = useNavigation();
     const screen = navigation.screen;
     const [displayedScreen, setDisplayedScreen] = useState<AppScreen>(screen);
@@ -126,11 +120,13 @@ export function AppNext({ bootSettled = true }: AppNextProps) {
     });
 
     // ===== 底部导航 =====
-    // 设置页签只想当于「日历」槽位的临时替换：
-    //   日历已激活 → 进设置；设置已激活 → 回日历；其它 → 切页签；重复点 → 回顶
+    // 「设置」这个 id 有两个来源，语义都是「日历 ↔ 设置 互换」：
+    //   1. 设置页的第 3 槽位（点它回日历）；
+    //   2. 日历页上方露头的齿轮替身（点它进设置）。
+    // 所以按当前屏幕决定方向，而不是写死一个方向。
     const handleTabSelect = useCallback((next: AppRoute | 'settings') => {
         if (next === 'settings') {
-            navigateTo(HOME_ROUTE);
+            navigateTo(screen === 'settings' ? HOME_ROUTE : 'settings');
             return;
         }
         if (next !== screen) {
@@ -165,9 +161,8 @@ export function AppNext({ bootSettled = true }: AppNextProps) {
     useHorizontalSwipe(mainRef, handleSwipe);
 
     // ===== Android 返回键 =====
-    // 优先级：新手引导（不许退出）> 最上层弹层 > 页面拦截 > 非首页回首页 > 首页退出确认。
+    // 优先级：最上层弹层 > 页面拦截 > 非首页回首页 > 首页退出确认。
     useEffect(() => registerBackButtonHandler(() => {
-        if (isOnboardingActive()) return 'handled';
         if (closeTopOverlay()) return 'handled';
         if (runPageBackHandler()) return 'handled';
         switch (backActionFor(screen, exitGateOpen)) {
@@ -209,7 +204,6 @@ export function AppNext({ bootSettled = true }: AppNextProps) {
                     <BottomNav active={screen} onSelect={handleTabSelect} />
                     <InfoBarStack items={bars} onDismiss={dismiss} onAutoDismiss={remove} />
                     <AppExitGate open={exitGateOpen} onOpenChange={setExitGateOpen} />
-                    <OnboardingTour bootSettled={bootSettled} />
                     <GlobalTitleTooltip />
                 </div>
             </TooltipProvider>

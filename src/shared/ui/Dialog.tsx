@@ -344,23 +344,6 @@ function useDialogContentHeight(
             return;
         }
 
-        // onboarding：内容多时若再跑 height tween，会和进场 scale 叠出边框重影。
-        // 固定 max-height + 内层滚动，不再插值 clip 高度。
-        if (size === 'onboarding') {
-            tweenRef.current?.kill();
-            clip.style.flex = '1 1 auto';
-            clip.style.minHeight = '0';
-            clip.style.height = 'auto';
-            clip.style.maxHeight = `${cap}px`;
-            inner.style.overflowY = 'auto';
-            inner.style.maxHeight = `${cap}px`;
-            inner.style.height = 'auto';
-            inner.style.minHeight = '0';
-            inner.style.flex = '';
-            primedRef.current = true;
-            return;
-        }
-
         // sheet / sheetWide：不要按 inner.scrollHeight 写死 clip 高度。
         // 内容高于外层 max-h（或调用方又叠了 max-h-[85vh]）时，像素高度会大于
         // 内容盒，overflow-hidden 把 footer 裁掉；外层 portal 还 pointer-events-none，
@@ -498,8 +481,6 @@ const ContentBody = forwardRef<
                 // 放在 className 之后，避免业务再叠 max-h-[85vh] 把 footer 裁掉。
                 size === 'sheet' && 'flex max-h-[calc(100dvh-3rem)] min-h-0 flex-col overflow-hidden',
                 size === 'sheetWide' && 'flex max-h-[calc(100dvh-3rem)] min-h-0 flex-col overflow-hidden',
-                size === 'onboarding' &&
-                'flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden p-0',
                 size === 'taskQueue' && 'flex h-[min(92dvh,900px)] min-h-[min(52dvh,480px)] max-h-[min(92dvh,900px)] flex-col p-0',
             )}
         >
@@ -509,15 +490,13 @@ const ContentBody = forwardRef<
                     'overflow-x-clip overflow-y-hidden',
                     size === 'sheet' && 'flex min-h-0 flex-1 flex-col',
                     size === 'sheetWide' && 'flex min-h-0 flex-1 flex-col',
-                    size === 'onboarding' && 'min-h-0 flex-1',
                     size === 'taskQueue' && 'min-h-0 flex-1',
                 )}
             >
                 <div ref={setInnerRef} className={cn(
-                    size === 'onboarding' || size === 'taskQueue' ? 'px-0' : 'px-1',
+                    size === 'taskQueue' ? 'px-0' : 'px-1',
                     size === 'sheet' && 'flex min-h-0 flex-1 flex-col overflow-hidden',
                     size === 'sheetWide' && 'flex min-h-0 flex-1 flex-col overflow-hidden',
-                    size === 'onboarding' && 'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
                     size === 'taskQueue' && 'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
                 )}>
                     {children}

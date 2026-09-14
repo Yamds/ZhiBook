@@ -50,7 +50,7 @@ export function Keypad({
     submittingLabel = '保存中',
 }: KeypadProps) {
     return (
-        <div data-tour="add-keypad" className="flex shrink-0 items-stretch gap-1 px-3 pt-1.5 pb-1">
+        <div className="flex shrink-0 items-stretch gap-1 px-3 pt-1.5 pb-1">
             <div className="grid flex-1 grid-cols-3 gap-1">
                 {DIGIT_ROWS.map((row) => (
                     <Row key={row.join('')} keys={row} onKey={onKey} />

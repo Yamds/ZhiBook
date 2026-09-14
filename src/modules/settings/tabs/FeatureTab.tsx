@@ -6,8 +6,6 @@
 
 import { useState } from 'react';
 import { UI_ICONS } from '../../../core/design/icons';
-import { navigateTo } from '../../../app/navigationStore';
-import { startOnboarding } from '../../onboarding/onboardingStore';
 import { useCloudBackupState } from '../../../hooks/cloud/useCloudBackup';
 import { useCurrentBook } from '../../../hooks/ledger';
 import { useRecurringRules } from '../../../hooks/ledger/useLedgerRecurring';
@@ -35,7 +33,7 @@ interface Props {
 export function FeatureTab({ draft, patchDraft }: Props) {
     const { currentBook } = useCurrentBook();
     const { data: rules } = useRecurringRules();
-    const { settings, patchBackend } = useBackendSettings();
+    const { settings } = useBackendSettings();
     const { configured } = useLockState();
     const { data: cloudState } = useCloudBackupState();
     const [recurringOpen, setRecurringOpen] = useState(false);
@@ -121,24 +119,6 @@ export function FeatureTab({ draft, patchDraft }: Props) {
                         description="导出 zip 备份包（含附件）；导入为覆盖式恢复"
                         value="JSON + ZIP"
                         onClick={() => setDataOpen(true)}
-                    />
-                </SettingsSection>
-
-                <SettingsSection title="帮助" description="随时可以重看操作指引">
-                    <SettingsEntryRow
-                        icon={UI_ICONS.guide}
-                        label="新手引导"
-                        description="重新观看日历、记账与设置的操作指引"
-                        value="重新播放"
-                        onClick={() => {
-                            navigateTo('home');
-                            // 重新武装添加页分段引导：下次进入添加页会再播一次
-                            patchBackend((current) => ({
-                                ...current,
-                                uiPreferences: { ...current.uiPreferences, addTourCompleted: false },
-                            }));
-                            startOnboarding('main');
-                        }}
                     />
                 </SettingsSection>
             </SettingsTabSections>

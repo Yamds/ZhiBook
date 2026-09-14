@@ -9,9 +9,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
     APP_ROUTES,
     HOME_ROUTE,
+    HOME_TAB,
     ROUTE_ORDER,
     SETTINGS_TAB,
     bottomNavTabs,
+    navPeekTarget,
     routeContentClass,
     routeTitle,
 } from './navigation';
@@ -58,6 +60,14 @@ describe('navigation registry', () => {
         expect(slot).toBe(SETTINGS_TAB);
         expect(slot?.label).toBe('设置');
         expect(slot?.icon).toBeDefined();
+    });
+
+    it('槽位上方的露头替身永远是当前页的对家，其它页不露头', () => {
+        expect(navPeekTarget('home')).toBe(SETTINGS_TAB);
+        expect(navPeekTarget('settings')).toBe(HOME_TAB);
+        for (const screen of ['bills', 'details', 'add', 'assets'] as const) {
+            expect(navPeekTarget(screen)).toBeNull();
+        }
     });
 });
 

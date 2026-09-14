@@ -4,6 +4,9 @@
 // **临时占用「日历」槽位**的替身页签：进入设置后该槽位显示「设置」，
 // 再点一次切回日历，返回键也是回日历。
 //
+// 槽位上方还有一层「露头」替身（`NavSlotPeek`）：日历页时设置图标从栏后
+// 升起露半个头，设置页时换成日历图标，其它页两个都缩回栏后。
+//
 // 这里登记一次，底部导航、页面标题、横滑顺序、过渡方向全部由它推导，
 // 页面侧不需要再写第二份路由表。
 //
@@ -37,16 +40,19 @@ export interface AppRouteDef extends TabDef {
     readonly title?: string;
 }
 
+/** 首页 = 日历页。App 启动、返回键兜底都回到这里。 */
+export const HOME_ROUTE: AppRoute = 'home';
+
+/** 日历页签定义。单独提出来是因为「露头」替身按钮（`navPeekTarget`）要复用它。 */
+export const HOME_TAB: AppRouteDef = { id: HOME_ROUTE, label: '日历', icon: UI_ICONS.calendar };
+
 export const APP_ROUTES: ReadonlyArray<AppRouteDef> = [
     { id: 'bills', label: '账单', icon: UI_ICONS.bills },
     { id: 'details', label: '明细', icon: UI_ICONS.details },
-    { id: 'home', label: '日历', icon: UI_ICONS.calendar },
+    HOME_TAB,
     { id: 'add', label: '添加', icon: UI_ICONS.add },
     { id: 'assets', label: '资产', icon: UI_ICONS.assets },
 ];
-
-/** 首页 = 日历页。App 启动、返回键兜底都回到这里。 */
-export const HOME_ROUTE: AppRoute = 'home';
 
 /** 页签顺序，决定过渡方向与横滑邻居。 */
 export const ROUTE_ORDER: ReadonlyArray<AppRoute> = APP_ROUTES.map((route) => route.id);
@@ -65,6 +71,7 @@ export function findRoute(id: AppRoute): AppRouteDef | undefined {
  *
  * 非设置页：原样 5 个页签；
  * 设置页：把「日历」槽位换成「设置」——两者是同一个位置的两个状态。
+ * （两页之间的「露头」按钮另见 `navPeekTarget`。）
  */
 export function bottomNavTabs(screen: AppScreen): ReadonlyArray<TabDef> {
     if (screen !== 'settings') return APP_ROUTES;
@@ -75,6 +82,18 @@ export function routeTitle(screen: AppScreen): string {
     if (screen === 'settings') return SETTINGS_LABEL;
     const def = findRoute(screen);
     return def?.title ?? def?.label ?? '';
+}
+
+/**
+ * 日历槽位上方的「露头」替身：当前页的对家。
+ *
+ * 日历页 → 设置（提示「这个位置还藏着一页设置」）；设置页 → 日历（原路回去）；
+ * 其它页面返回 null —— 两者只在彼此之间互为入口，不在别处露头。
+ */
+export function navPeekTarget(screen: AppScreen): TabDef | null {
+    if (screen === HOME_ROUTE) return SETTINGS_TAB;
+    if (screen === 'settings') return HOME_TAB;
+    return null;
 }
 
 /**
