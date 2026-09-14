@@ -275,7 +275,7 @@ function CalendarDayCell({
             aria-label={calendarCellLabel(cell)}
             aria-current={cell.isToday ? 'date' : undefined}
             style={{ height: CALENDAR_CELL_HEIGHT_PX }}
-            className="flex select-none flex-col items-center gap-0.5 overflow-hidden rounded-md pt-1 active:bg-inset"
+            className="flex select-none flex-col items-center gap-0.5 overflow-hidden rounded-md pt-1"
             {...longPress}
         >
             <span
