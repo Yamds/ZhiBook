@@ -1,9 +1,9 @@
 // 输入面板顶部（BRD FR-ADD-10 ~ 12）：
-// 左侧备注输入 + 时间按钮 + 附图按钮 + 账户入口，右侧金额显示（含表达式）。
+// 第一行：附图 + 日期 + 时间 + 备注（备注延伸到屏幕右缘）；
+// 第二行：账户入口（左） + 金额计算（表达式在总额左侧）。
 //
 // 备注是真实 <input>：聚焦后直接用系统输入法打字，自定义数字键盘**照常保留**在下方。
-// 时间按钮在附图按钮与备注之间（FR-ADD-10b）：拍开是时 / 分双列滚轮，可精确到分钟；
-// 不选时就是打开页面那一刻的当前时间。
+// 日期按钮与时间按钮同尺寸（FR-ADD-10b 修订）：日期在时间左侧，点击开月历。
 
 import { UI_ICONS } from '../../core/design/icons';
 import { formatMoney } from '../../core/domain/money';
@@ -26,6 +26,9 @@ export interface AmountPanelProps {
     amountValid: boolean;
     accountName: string;
     onPickAccount: () => void;
+    /** 日期按钮文案（如「今天」「09-08」）。 */
+    dateLabel: string;
+    onPickDate: () => void;
 }
 
 export function AmountPanel({
@@ -40,90 +43,104 @@ export function AmountPanel({
     amountValid,
     accountName,
     onPickAccount,
+    dateLabel,
+    onPickDate,
 }: AmountPanelProps) {
     return (
-        <div className="flex items-end gap-2 px-3 pt-2 pb-1.5">
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <div className="flex items-center gap-1.5">
-                    <button
-                        type="button"
-                        onClick={onPickAttachments}
-                        aria-label="添加图片附件"
-                        className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-inset text-text-secondary active:bg-muted"
-                    >
-                        <AppIcon name={UI_ICONS.camera} size={17} />
-                        {attachmentCount > 0 ? (
-                            <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-brand px-1 text-[10px] font-semibold text-white">
-                                {attachmentCount}
-                            </span>
-                        ) : null}
-                    </button>
-
-                    <TimePicker
-                        hours={time.hours}
-                        minutes={time.minutes}
-                        onChange={onTimeChange}
-                        variant="field"
-                        side="top"
-                        align="start"
-                        aria-label="选择账单时间"
-                        className="h-8 shrink-0 gap-1 rounded-md border-0 bg-inset px-1.5 text-[11.5px] text-text-secondary"
-                    />
-
-                    <div className="relative min-w-0 flex-1">
-                        <input
-                            value={note}
-                            onChange={(event) => onNoteChange(event.target.value)}
-                            maxLength={64}
-                            placeholder="备注（可选）"
-                            aria-label="备注"
-                            className={cn(
-                                'h-8 w-full rounded-md border border-border-subtle bg-field pr-7 pl-2 text-[13px] text-text',
-                                'placeholder:text-text-disabled',
-                                'focus-visible:border-brand focus-visible:outline-none',
-                            )}
-                        />
-                        {note.length > 0 ? (
-                            <button
-                                type="button"
-                                onClick={() => onNoteChange('')}
-                                aria-label="清空备注"
-                                className="absolute top-1/2 right-1.5 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-text-tertiary active:bg-muted"
-                            >
-                                <AppIcon name={UI_ICONS.close} size={13} />
-                            </button>
-                        ) : null}
-                    </div>
-                </div>
+        <div className="flex flex-col gap-2 px-3 pt-2 pb-1.5">
+            {/* 第一行：附件 / 日期 / 时间 / 备注（日期在时间左侧；备注一直延伸到屏幕右侧） */}
+            <div className="flex items-center gap-1.5">
+                <button
+                    type="button"
+                    onClick={onPickAttachments}
+                    aria-label="添加图片附件"
+                    className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-inset text-text-secondary active:bg-muted"
+                >
+                    <AppIcon name={UI_ICONS.camera} size={17} />
+                    {attachmentCount > 0 ? (
+                        <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-brand px-1 text-[10px] font-semibold text-white">
+                            {attachmentCount}
+                        </span>
+                    ) : null}
+                </button>
 
                 <button
                     type="button"
-                    onClick={onPickAccount}
-                    className="inline-flex h-7 max-w-full items-center gap-1 self-start rounded-pill bg-inset px-2.5 text-[11.5px] text-text-secondary active:bg-muted"
+                    onClick={onPickDate}
+                    aria-label="选择账单日期"
+                    className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border-0 bg-inset px-1.5 text-[11.5px] text-text-secondary active:bg-muted"
                 >
-                    <AppIcon name={UI_ICONS.assets} size={13} />
-                    <span className="truncate">{accountName}</span>
-                    <AppIcon name={UI_ICONS.chevronDown} size={12} />
+                    <AppIcon name={UI_ICONS.calendarToday} size={13} />
+                    <span className="tabular-nums">{dateLabel}</span>
                 </button>
+
+                <TimePicker
+                    hours={time.hours}
+                    minutes={time.minutes}
+                    onChange={onTimeChange}
+                    variant="field"
+                    side="top"
+                    align="start"
+                    aria-label="选择账单时间"
+                    className="h-8 shrink-0 gap-1 rounded-md border-0 bg-inset px-1.5 text-[11.5px] text-text-secondary"
+                />
+
+                <div className="relative min-w-0 flex-1">
+                    <input
+                        value={note}
+                        onChange={(event) => onNoteChange(event.target.value)}
+                        maxLength={64}
+                        placeholder="备注（可选）"
+                        aria-label="备注"
+                        className={cn(
+                            'h-8 w-full rounded-md border border-border-subtle bg-field pr-7 pl-2 text-[13px] text-text',
+                            'placeholder:text-text-disabled',
+                            'focus-visible:border-brand focus-visible:outline-none',
+                        )}
+                    />
+                    {note.length > 0 ? (
+                        <button
+                            type="button"
+                            onClick={() => onNoteChange('')}
+                            aria-label="清空备注"
+                            className="absolute top-1/2 right-1.5 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-text-tertiary active:bg-muted"
+                        >
+                            <AppIcon name={UI_ICONS.close} size={13} />
+                        </button>
+                    ) : null}
+                </div>
             </div>
 
-            <div className="flex shrink-0 flex-col items-end gap-0.5 pb-0.5">
-                <span
-                    className={cn(
-                        'text-[10.5px] text-text-tertiary tabular-nums',
-                        expression === '' && 'invisible',
-                    )}
+            {/* 第二行：账户（左） + 金额计算（表达式在总额左侧） */}
+            <div className="flex items-center justify-between gap-2">
+                <button
+                    type="button"
+                    onClick={onPickAccount}
+                    className="inline-flex h-7 min-w-0 items-center gap-1 rounded-pill bg-inset px-2.5 text-[11.5px] text-text-secondary active:bg-muted"
                 >
-                    {expression === '' ? '0' : `${expression} =`}
-                </span>
-                <span
-                    className={cn(
-                        'text-[26px] leading-none font-semibold tabular-nums',
-                        amountValid ? 'text-text' : 'text-text-disabled',
-                    )}
-                >
-                    {formatMoney(amountCents)}
-                </span>
+                    <AppIcon name={UI_ICONS.assets} size={13} className="shrink-0" />
+                    <span className="truncate">{accountName}</span>
+                    <AppIcon name={UI_ICONS.chevronDown} size={12} className="shrink-0" />
+                </button>
+
+                <div className="flex shrink-0 items-baseline gap-1.5">
+                    <span
+                        className={cn(
+                            'max-w-[40vw] truncate text-[10.5px] text-text-tertiary tabular-nums',
+                            expression === '' && 'invisible',
+                        )}
+                    >
+                        {expression === '' ? '0' : `${expression} =`}
+                    </span>
+                    <span
+                        className={cn(
+                            'text-[26px] leading-none font-semibold tabular-nums',
+                            amountValid ? 'text-text' : 'text-text-disabled',
+                        )}
+                    >
+                        {formatMoney(amountCents)}
+                    </span>
+                </div>
             </div>
         </div>
     );

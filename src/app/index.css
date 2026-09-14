@@ -807,6 +807,21 @@ samp,
     animation: ndf-row-flash 460ms ease-in-out 2;
 }
 
+/* 重置金额键：按住 0.8s 的绕圈进度；周长 = 2π×16 ≈ 100.53 */
+@keyframes ndf-reset-progress {
+    from {
+        stroke-dashoffset: 100.53;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.ndf-reset-progress {
+    animation: ndf-reset-progress 800ms linear forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .ndf-row-flash {
         animation: none !important;

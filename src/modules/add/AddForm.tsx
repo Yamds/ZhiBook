@@ -567,14 +567,15 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                 amountValid={amountValid}
                 accountName={accountName}
                 onPickAccount={() => setSheet('account')}
+                dateLabel={shortDateLabel(date)}
+                onPickDate={() => setSheet('date')}
             />
 
             <Keypad
-                dateLabel={shortDateLabel(date)}
                 canSubmit={canSubmit}
                 submitting={submitting}
                 onKey={handleKey}
-                onPickDate={() => setSheet('date')}
+                onReset={() => setExpression('')}
                 onSubmit={() => void handleSubmit()}
                 submitLabel={isEditing ? '保存' : '完成'}
             />

@@ -1,17 +1,19 @@
-// 数字键盘（BRD FR-ADD-13）：左三列为数字，右侧一列为「日期 / + / − / 完成」。
+// 数字键盘（BRD FR-ADD-13）：左三列为数字，右侧一列为「重置 / + / − / 完成」。
 //
-//   7 8 9 | 日期
+//   7 8 9 | 重置（长按 0.8s）
 //   4 5 6 | +
 //   1 2 3 | −
 //   · 0 ⌫ | 完成
 //
-// 按键规则（最多 2 位小数、`.` 只能一次、运算符不打头）全部在
-// `core/domain/money.tryAppendKeypadKey` 里，这里只负责画与转发。
+// 日期按钮已移到金额区（时间左侧，见 AmountPanel）；右侧第一格改为重置金额键
+// （见 ResetAmountButton）。按键规则（最多 2 位小数、`.` 只能一次、运算符不打头）
+// 全部在 `core/domain/money.tryAppendKeypadKey` 里，这里只负责画与转发。
 
 import type { KeypadKey } from '../../core/domain/money';
 import { UI_ICONS } from '../../core/design/icons';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { cn } from '../../shared/utils/cn';
+import { ResetAmountButton } from './ResetAmountButton';
 
 const DIGIT_ROWS: ReadonlyArray<ReadonlyArray<KeypadKey>> = [
     ['7', '8', '9'],
@@ -19,19 +21,19 @@ const DIGIT_ROWS: ReadonlyArray<ReadonlyArray<KeypadKey>> = [
     ['1', '2', '3'],
 ];
 
+/** 键盘字号 48px（本轮需求）；leading-none 避免 48px 字形被 58px 键高挤出。 */
 const KEY_CLASS =
-    'flex h-[58px] items-center justify-center rounded-md text-[30px] font-semibold text-text tabular-nums active:bg-inset';
+    'flex h-[58px] items-center justify-center rounded-md text-[48px] font-semibold leading-none text-text tabular-nums active:bg-inset';
 const OPERATOR_CLASS =
-    'flex h-[58px] items-center justify-center rounded-md text-[33px] font-medium text-text tabular-nums active:bg-inset';
+    'flex h-[58px] items-center justify-center rounded-md text-[48px] font-medium leading-none text-text tabular-nums active:bg-inset';
 
 export interface KeypadProps {
-    /** 日期键上的文案（如「今天」「09-08」）。 */
-    dateLabel: string;
     /** 金额 + 分类是否都就绪（只影响「完成」的视觉强调，点击仍会给提示）。 */
     canSubmit: boolean;
     submitting: boolean;
     onKey: (key: KeypadKey) => void;
-    onPickDate: () => void;
+    /** 长按重置金额（清空表达式）。 */
+    onReset: () => void;
     onSubmit: () => void;
     /** 提交键文案：新增「完成」、编辑「保存」（Q3 编辑复用）。 */
     submitLabel?: string;
@@ -39,11 +41,10 @@ export interface KeypadProps {
 }
 
 export function Keypad({
-    dateLabel,
     canSubmit,
     submitting,
     onKey,
-    onPickDate,
+    onReset,
     onSubmit,
     submitLabel = '完成',
     submittingLabel = '保存中',
@@ -76,14 +77,7 @@ export function Keypad({
             </div>
 
             <div className="grid w-[86px] shrink-0 grid-rows-4 gap-1">
-                <button
-                    type="button"
-                    onClick={onPickDate}
-                    className="flex flex-col items-center justify-center rounded-md bg-inset px-1 text-[13.5px] font-medium text-text-secondary active:bg-muted"
-                >
-                    <AppIcon name={UI_ICONS.calendarToday} size={18} className="mb-0.5" />
-                    <span className="max-w-full truncate tabular-nums">{dateLabel}</span>
-                </button>
+                <ResetAmountButton onReset={onReset} />
                 <button type="button" className={OPERATOR_CLASS} onClick={() => onKey('+')}>
                     +
                 </button>
