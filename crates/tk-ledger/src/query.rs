@@ -545,6 +545,28 @@ pub fn assets_overview(
     }
 
     let mut trend = Vec::with_capacity(month_list.len());
+
+    // 趋势窗口之前的账单必须先计入基线。
+    //
+    // 卡片口径（BRD FR-AST-6/11）是「初始余额 + 截至 until_day 的全部账单」，
+    // 趋势只是把这段历史切成按月快照；`month_list` 只有最近 N 个月，
+    // 若只累加窗口内的 delta，卡片和同页的账户余额就会对不上（且整体偏移）。
+    let mut account_kinds: HashMap<&str, AccountKind> = HashMap::with_capacity(accounts.len());
+    for (account_id, kind) in &accounts {
+        account_kinds.insert(account_id.as_str(), *kind);
+    }
+    let window_start = month_list.first().map(String::as_str).unwrap_or("");
+    for ((account_id, month), delta) in &deltas {
+        if month.as_str() >= window_start {
+            continue;
+        }
+        match account_kinds.get(account_id.as_str()) {
+            Some(AccountKind::Asset) => asset_total += delta,
+            Some(AccountKind::Liability) => liability_total -= delta,
+            None => {}
+        }
+    }
+
     for month_key in &month_list {
         for (account_id, kind) in &accounts {
             let delta = deltas

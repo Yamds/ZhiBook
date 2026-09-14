@@ -13,6 +13,8 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 rusqlite = { version = "0.37", features = ["bundled"] }
 base64 = "0.22"
+# 只用于「事务提交后的文件清理失败」告警；与 tk-config 同一个 tracing 实例，不增体积。
+tracing = "0.1"
 
 [dev-dependencies]
 tempfile = "3"

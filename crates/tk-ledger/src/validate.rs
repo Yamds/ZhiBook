@@ -154,6 +154,76 @@ pub fn like_pattern(keyword: &str) -> LedgerResult<String> {
     Ok(pattern)
 }
 
+/// 数据库里附件相对路径的强制前缀。
+///
+/// 完整形态：`ledger/attachments/<账单 id>/<附件 id>.<扩展名>`。
+/// 除本前缀外不允许任何其它位置——否则 `data_root.join(path)` 会变成
+/// 路径穿越的落点（导入 / 云端恢复 / 合并都会写这个字段）。
+pub const ATTACHMENT_PATH_PREFIX: &str = "ledger/attachments/";
+
+/// 单个路径分量是否安全：只允许 `[A-Za-z0-9_-]+`。
+///
+/// 这条规则天然挡掉 `..`、`.`、空段、盘符、反斜杠、NUL 与空白。
+fn is_safe_path_component(segment: &str) -> bool {
+    !segment.is_empty()
+        && segment
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
+}
+
+/// 附件相对路径是否严格合法（纯字符串判断，不碰文件系统）。
+///
+/// 规则：以 [`ATTACHMENT_PATH_PREFIX`] 开头，其余部分至少两段
+/// （`<账单 id>/<附件 id>.<扩展名>`），每段只含 `[A-Za-z0-9_-]`，
+/// 最后一段必须带一个 `.` 分隔的扩展名。
+///
+/// 任何来自外部的路径（备份包 `data.json`、云端 manifest、合并远端数据）
+/// **落盘前必须过这里**；否则一个 `ledger/../config/security.json`
+/// 就能覆盖应用私有目录里的任意文件。
+pub fn attachment_relative_path(path: &str) -> LedgerResult<()> {
+    let Some(rest) = path.strip_prefix(ATTACHMENT_PATH_PREFIX) else {
+        return Err(LedgerError::validation(format!(
+            "附件路径必须以 {ATTACHMENT_PATH_PREFIX} 开头：{path}"
+        )));
+    };
+    let segments: Vec<&str> = rest.split('/').collect();
+    if segments.len() < 2 {
+        return Err(LedgerError::validation(format!(
+            "附件路径至少需要「账单 id / 文件名」两段：{path}"
+        )));
+    }
+    // 目录段：纯 id 形态
+    if !segments[..segments.len() - 1]
+        .iter()
+        .all(|item| is_safe_path_component(item))
+    {
+        return Err(LedgerError::validation(format!(
+            "附件路径的目录名含有非法字符或越界分量：{path}"
+        )));
+    }
+    // 文件段：`<附件 id>.<扩展名>`（各只允许一个 `.`）
+    let file_name = segments[segments.len() - 1];
+    let Some((stem, extension)) = file_name.split_once('.') else {
+        return Err(LedgerError::validation(format!(
+            "附件路径缺少扩展名：{path}"
+        )));
+    };
+    if !is_safe_path_component(stem)
+        || !is_safe_path_component(extension)
+        || extension.contains('.')
+    {
+        return Err(LedgerError::validation(format!(
+            "附件文件名不合法（应为 <附件 id>.<扩展名>）：{path}"
+        )));
+    }
+    Ok(())
+}
+
+/// [`attachment_relative_path`] 的布尔形态（用于「跳过」而非「报错」的场景）。
+pub fn is_valid_attachment_path(path: &str) -> bool {
+    attachment_relative_path(path).is_ok()
+}
+
 /// 附件 MIME：只接受前端压缩后的三种图片。
 pub fn attachment_mime(value: &str) -> LedgerResult<&'static str> {
     match value {
@@ -239,6 +309,31 @@ mod tests {
         assert!(day_and_month("2025-09-08", "2025-09").is_ok());
         assert!(day_and_month("2025-09-08", "2025-10").is_err());
         assert!(day_and_month("2025-02-30", "2025-02").is_err());
+    }
+
+    #[test]
+    fn attachment_paths_must_stay_inside_the_attachments_dir() {
+        assert!(is_valid_attachment_path("ledger/attachments/tx_1/att_2.jpg"));
+        assert!(is_valid_attachment_path("ledger/attachments/tx_1/att-2.webp"));
+
+        // 前缀不对
+        assert!(!is_valid_attachment_path("attachments/tx_1/att_2.jpg"));
+        assert!(!is_valid_attachment_path("ledger/attachments"));
+        assert!(!is_valid_attachment_path(""));
+        // 越界分量（这是 P0：会写到 config/ 或覆盖 ledger.db）
+        assert!(!is_valid_attachment_path("ledger/attachments/../security.json"));
+        assert!(!is_valid_attachment_path("ledger/attachments/tx/../../ledger.db"));
+        assert!(!is_valid_attachment_path("ledger/attachments/tx/.."));
+        assert!(!is_valid_attachment_path("ledger/attachments/./a.jpg"));
+        assert!(!is_valid_attachment_path("ledger/attachments//a.jpg"));
+        // 绝对路径 / 反斜杠 / NUL
+        assert!(!is_valid_attachment_path("ledger/attachments//etc/passwd"));
+        assert!(!is_valid_attachment_path("ledger/attachments/tx\\a.jpg"));
+        assert!(!is_valid_attachment_path("ledger/attachments/tx/a\0.jpg"));
+        // 段数 / 扩展名
+        assert!(!is_valid_attachment_path("ledger/attachments/only-one.jpg"));
+        assert!(!is_valid_attachment_path("ledger/attachments/tx/noext"));
+        assert!(!is_valid_attachment_path("ledger/attachments/tx/a.b.c"));
     }
 
     #[test]

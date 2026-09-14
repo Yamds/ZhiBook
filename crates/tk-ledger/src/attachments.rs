@@ -40,8 +40,17 @@ impl AttachmentStore {
     }
 
     /// 相对路径 → 绝对路径。
+    ///
+    /// **不校验**：只给「我们自己刚拼出来的路径」用（[`Self::relative_path`]）。
+    /// 任何来自数据库 / 备份包 / 云端的路径必须先过 [`Self::resolve_checked`]。
     pub fn resolve(&self, relative_path: &str) -> PathBuf {
         self.data_root.join(relative_path)
+    }
+
+    /// 带校验的相对路径 → 绝对路径；越界路径直接报错，绝不落到 data_root 之外。
+    pub fn resolve_checked(&self, relative_path: &str) -> LedgerResult<PathBuf> {
+        validate::attachment_relative_path(relative_path)?;
+        Ok(self.resolve(relative_path))
     }
 
     /// 相对路径拼装（账单 id / 附件 id 都是我们生成的短 id）。
@@ -111,7 +120,7 @@ impl AttachmentStore {
     pub fn read(&self, conn: &Connection, attachment_id: &str) -> LedgerResult<AttachmentData> {
         let attachment = repo::get_attachment(conn, attachment_id)?
             .ok_or_else(|| LedgerError::not_found(format!("附件不存在：{attachment_id}")))?;
-        let absolute = self.resolve(&attachment.path);
+        let absolute = self.resolve_checked(&attachment.path)?;
         let bytes = match fs::read(&absolute) {
             Ok(bytes) => bytes,
             Err(error) if error.kind() == ErrorKind::NotFound => {
@@ -125,20 +134,14 @@ impl AttachmentStore {
         })
     }
 
-    /// 删除一张附件：先删文件（文件缺失也算删成功），再删数据库行。
-    pub fn delete(&self, conn: &Connection, attachment_id: &str) -> LedgerResult<()> {
-        let attachment = repo::get_attachment(conn, attachment_id)?
-            .ok_or_else(|| LedgerError::not_found(format!("附件不存在：{attachment_id}")))?;
-        self.remove_files(std::slice::from_ref(&attachment.path))?;
-        repo::insert_tombstone(conn, "attachment", attachment_id, now_ms())?;
-        repo::delete_attachment_row(conn, attachment_id)?;
-        Ok(())
-    }
-
     /// 逐文件删除（缺失视为已删）；任何一次失败就中止，交给调用方决定是否重试。
+    ///
+    /// 路径来自数据库，先过校验：一条被污染的记录不允许把删除动作带到 data_root 之外。
+    ///
+    /// 注意：调用方必须在**数据库事务提交之后**调它（见 `Ledger::cleanup_attachment_files`）。
     pub fn remove_files(&self, relative_paths: &[String]) -> LedgerResult<()> {
         for relative in relative_paths {
-            let absolute = self.resolve(relative);
+            let absolute = self.resolve_checked(relative)?;
             match fs::remove_file(&absolute) {
                 Ok(()) => {}
                 Err(error) if error.kind() == ErrorKind::NotFound => {}
@@ -239,6 +242,47 @@ mod tests {
     }
 
     #[test]
+    fn read_refuses_a_path_outside_the_attachments_dir() {
+        let ledger = TestLedger::new();
+        let transaction_id = create_transaction(&ledger, "越界");
+        // 直接在库里塞一条被污染的记录（模拟恶意备份包导入后的状态）
+        let secret = ledger.data_root().join("config/security.json");
+        std::fs::create_dir_all(secret.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&secret, b"{\"secret\":true}").expect("write");
+        ledger
+            .with_tx(|conn| {
+                repo::insert_attachment(
+                    conn,
+                    &Attachment {
+                        id: "att_evil".to_string(),
+                        transaction_id: transaction_id.clone(),
+                        path: "ledger/attachments/../config/security.json".to_string(),
+                        mime: "image/jpeg".to_string(),
+                        byte_size: 16,
+                        sort_order: 0,
+                        created_at_ms: 1,
+                    },
+                )
+            })
+            .expect("insert poisoned row");
+
+        let error = ledger.read_attachment("att_evil").expect_err("必须拒绝越界路径");
+        assert!(matches!(error, LedgerError::Validation(_)), "{error:?}");
+        // 文件本身没有被读走，也没有被删掉
+        assert!(secret.exists());
+    }
+
+    #[test]
+    fn deleting_refuses_escaping_paths() {
+        let ledger = TestLedger::new();
+        let error = ledger
+            .attachments
+            .remove_files(&["ledger/attachments/../../ledger.db".to_string()])
+            .expect_err("必须拒绝越界路径");
+        assert!(matches!(error, LedgerError::Validation(_)), "{error:?}");
+    }
+
+    #[test]
     fn rejects_bad_mime_and_bad_base64() {
         let ledger = TestLedger::new();
         let transaction_id = create_transaction(&ledger, "非法");
@@ -257,5 +301,22 @@ mod tests {
         ledger.delete_transaction(&transaction_id).expect("delete");
         assert!(!absolute.exists());
         assert!(!absolute.parent().expect("parent").exists());
+    }
+
+    /// 回归（REV-08）：文件清理失败不得影响数据库删除（删除顺序 = 先提交 DB）。
+    #[test]
+    fn database_delete_succeeds_even_when_file_cleanup_fails() {
+        let ledger = TestLedger::new();
+        let transaction_id = create_transaction(&ledger, "清理会失败");
+        let saved = save(&ledger, &transaction_id, "image/jpeg", &BASE64.encode(b"abc")).expect("save");
+        let absolute = ledger.data_root().join(&saved.path);
+        // 把文件换成一个同名目录：remove_file 必然失败（Windows / Unix 都失败）
+        std::fs::remove_file(&absolute).expect("remove file");
+        std::fs::create_dir_all(&absolute).expect("replace with dir");
+
+        ledger
+            .delete_transaction(&transaction_id)
+            .expect("数据库删除必须成功（文件清理是尽力而为）");
+        assert!(ledger.get_transaction(&transaction_id).expect("get").is_none());
     }
 }

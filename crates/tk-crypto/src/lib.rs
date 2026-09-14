@@ -126,6 +126,19 @@ pub fn random_key_id() -> CryptoResult<String> {
     Ok(out)
 }
 
+/// keyId 是否合法：`k-` + 8 位小写十六进制。
+///
+/// `key.wrap.json` 来自网络（云端仓库），而 keyId 会被拼进本地目录名
+/// （`tmp/cloud-cache/<keyId>`）并配合 `remove_dir_all` 使用，
+/// 因此导入 / 读取密钥文件前必须先过这里。
+pub fn is_valid_key_id(value: &str) -> bool {
+    value.len() == 10
+        && value.starts_with("k-")
+        && value[2..]
+            .chars()
+            .all(|ch| ch.is_ascii_digit() || ('a'..='f').contains(&ch))
+}
+
 // ---------------------------------------------------------------------------
 // 文件加密
 // ---------------------------------------------------------------------------
@@ -692,6 +705,19 @@ mod tests {
         let mut broken = file.clone();
         broken.fingerprint = "00000000".to_string();
         assert!(broken.master_key().is_err());
+    }
+
+    #[test]
+    fn key_id_format_is_enforced() {
+        let generated = random_key_id().expect("key id");
+        assert!(is_valid_key_id(&generated), "{generated}");
+        assert!(is_valid_key_id("k-0123456a"));
+        assert!(!is_valid_key_id("k-0123456A"), "大写不接受");
+        assert!(!is_valid_key_id("k-0123456"));
+        assert!(!is_valid_key_id("k-012345678"));
+        assert!(!is_valid_key_id("../.."));
+        assert!(!is_valid_key_id(""), "空");
+        assert!(!is_valid_key_id("k-../../x"));
     }
 
     #[test]

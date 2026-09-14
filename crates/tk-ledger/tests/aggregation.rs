@@ -367,6 +367,50 @@ fn account_balances_follow_asset_and_liability_rules() {
 }
 
 #[test]
+fn assets_overview_counts_transactions_older_than_the_trend_window() {
+    // 回归（REV-03）：窗口之前的账单也必须计入卡片与趋势。
+    let f = Fixture::new();
+    let wallet = f.account(AccountKind::Asset, "现金", yuan(100));
+    let card = f.account(AccountKind::Liability, "信用卡", 0);
+    // 窗口之外（查询窗口只有 2025-02..2025-04）
+    f.add(EntryKind::Expense, "expense_food", Some(&wallet), yuan(30), "2024-01-05", "旧支出");
+    f.add(EntryKind::Income, "income_salary", Some(&wallet), yuan(10), "2024-06-06", "旧收入");
+    f.add(EntryKind::Expense, "expense_shopping", Some(&card), yuan(40), "2024-09-09", "旧刷卡");
+    // 窗口之内
+    f.add(EntryKind::Expense, "expense_food", Some(&wallet), yuan(20), "2025-04-01", "新支出");
+
+    let accounts = f
+        .ledger
+        .list_accounts(&f.book(), "2025-04-30")
+        .expect("accounts");
+    let asset_sum: i64 = accounts
+        .iter()
+        .filter(|item| item.kind == AccountKind::Asset)
+        .map(|item| item.balance_cents)
+        .sum();
+    let liability_sum: i64 = accounts
+        .iter()
+        .filter(|item| item.kind == AccountKind::Liability)
+        .map(|item| item.balance_cents)
+        .sum();
+    assert_eq!(asset_sum, yuan(60), "100 - 30 + 10 - 20");
+    assert_eq!(liability_sum, yuan(40));
+
+    let overview = f
+        .ledger
+        .assets_overview(&f.book(), "2025-04-30", 3)
+        .expect("overview");
+    assert_eq!(overview.trend.len(), 3);
+    // 卡片（趋势最后一个点）必须与账户余额汇总一致
+    assert_eq!(overview.total_asset_cents, asset_sum);
+    assert_eq!(overview.liability_cents, liability_sum);
+    assert_eq!(overview.net_cents, asset_sum - liability_sum);
+    assert_eq!(overview.trend[2].net_cents, overview.net_cents);
+    // 窗口内的第一个点：只有窗口前的历史（窗口内还没有到 4 月那笔）
+    assert_eq!(overview.trend[0].net_cents, yuan(60) - yuan(40) + yuan(20));
+}
+
+#[test]
 fn future_dated_transactions_do_not_move_the_asset_card() {
     let f = Fixture::new();
     let wallet = f.account(AccountKind::Asset, "现金", yuan(100));

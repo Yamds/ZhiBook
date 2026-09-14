@@ -111,11 +111,12 @@ impl Ledger {
     pub fn create_book(&self, input: NewBook) -> LedgerResult<Book> {
         let name = validate::book_name(&input.name)?;
         self.with_tx(|conn| {
+            let now = id::now_ms();
             let book = Book {
                 id: id::new_id("book"),
                 name: name.clone(),
-                created_at_ms: id::now_ms(),
-                updated_at_ms: id::now_ms(),
+                created_at_ms: now,
+                updated_at_ms: now,
                 sort_order: repo::next_book_sort_order(conn)?,
             };
             repo::insert_book(conn, &book)?;
@@ -134,23 +135,27 @@ impl Ledger {
         })
     }
 
-    /// 删除账本：附件文件逐张删除 → 数据库级联删除账单 / 账户 → 修正当前账本指针。
+    /// 删除账本：数据库级联删除账单 / 账户（含附件行）→ 提交 → 再逐张清附件文件 → 修正当前账本指针。
     ///
     /// 最后一个账本不允许删除（FR-AST-5）。
+    ///
+    /// 顺序很重要：文件删除在事务提交**之后**。反过来的话，事务一旦回滚，
+    /// 文件已经没了，库里却还留着指向它们的附件记录（附件是用户唯一副本）。
     pub fn delete_book(&self, id: &str) -> LedgerResult<()> {
-        self.with_tx(|conn| {
+        let paths = self.with_tx(|conn| {
             let book = repo::get_book(conn, id)?
                 .ok_or_else(|| LedgerError::not_found(format!("账本不存在：{id}")))?;
             if repo::count_books(conn)? <= 1 {
                 return Err(LedgerError::validation("至少保留一个账本"));
             }
             let paths = repo::attachment_paths_for_book(conn, &book.id)?;
-            self.attachments.remove_files(&paths)?;
             repo::insert_tombstone(conn, "book", &book.id, id::now_ms())?;
             repo::delete_book(conn, &book.id)?;
             seed::ensure_current_book(conn)?;
-            Ok(())
-        })
+            Ok(paths)
+        })?;
+        self.cleanup_attachment_files(&paths);
+        Ok(())
     }
 
     pub fn current_book_id(&self) -> LedgerResult<Option<String>> {
@@ -455,19 +460,39 @@ impl Ledger {
         })
     }
 
-    /// 删除账单：附件文件逐张删除 → 删除账单行（附件行级联）→ 删空目录。
+    /// 删除账单：提交数据库（含墓碑、附件行级联）→ 再逐张清附件文件。
+    ///
+    /// 与 [`Self::delete_book`] 同理：文件删除必须在事务提交之后。
     pub fn delete_transaction(&self, id: &str) -> LedgerResult<()> {
-        let transaction_id = self.with_tx(|conn| {
+        let (transaction_id, paths) = self.with_tx(|conn| {
             let transaction = repo::get_transaction(conn, id)?
                 .ok_or_else(|| LedgerError::not_found(format!("账单不存在：{id}")))?;
             let paths = repo::attachment_paths_for_transaction(conn, &transaction.id)?;
-            self.attachments.remove_files(&paths)?;
             repo::insert_tombstone(conn, "transaction", &transaction.id, id::now_ms())?;
             repo::delete_transaction(conn, &transaction.id)?;
-            Ok(transaction.id)
+            Ok((transaction.id, paths))
         })?;
+        self.cleanup_attachment_files(&paths);
         self.attachments.remove_transaction_dir(&transaction_id);
         Ok(())
+    }
+
+    /// 提交后的附件文件清理：**尽力而为**，失败只告警不回滚。
+    ///
+    /// 数据库此时已经是最终状态；留下一个孤儿文件比「回滚后库里留着一条
+    /// 指向已删文件的记录」安全得多（后者用户能看到坏图且无法自愈）。
+    fn cleanup_attachment_files(&self, relative_paths: &[String]) {
+        if relative_paths.is_empty() {
+            return;
+        }
+        if let Err(error) = self.attachments.remove_files(relative_paths) {
+            tracing::warn!(
+                target: "tk_ledger::attachments",
+                %error,
+                count = relative_paths.len(),
+                "附件文件清理失败；数据库已提交，仅留下孤儿文件"
+            );
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -570,7 +595,15 @@ impl Ledger {
     }
 
     pub fn delete_attachment(&self, attachment_id: &str) -> LedgerResult<()> {
-        self.with_tx(|conn| self.attachments.delete(conn, attachment_id))
+        let path = self.with_tx(|conn| {
+            let attachment = repo::get_attachment(conn, attachment_id)?
+                .ok_or_else(|| LedgerError::not_found(format!("附件不存在：{attachment_id}")))?;
+            repo::insert_tombstone(conn, "attachment", attachment_id, id::now_ms())?;
+            repo::delete_attachment_row(conn, attachment_id)?;
+            Ok(attachment.path)
+        })?;
+        self.cleanup_attachment_files(std::slice::from_ref(&path));
+        Ok(())
     }
 
     // -----------------------------------------------------------------------

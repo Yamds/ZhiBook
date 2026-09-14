@@ -7,6 +7,8 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+use tk_config::DataPaths;
+
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use flate2::Compression;
@@ -228,20 +230,47 @@ fn seal_cached(
 }
 
 /// 数据库附件路径 → 云端路径。
+///
+/// 只接受合法形态的数据库路径（否则返回 `None`）：云端包是网络输入，
+/// 不能把 `.`/`..`/绝对路径这类分量带进去。
 pub fn cloud_path_for_attachment(db_path: &str) -> Option<String> {
+    if !tk_ledger::validate::is_valid_attachment_path(db_path) {
+        return None;
+    }
     let rest = db_path.strip_prefix("ledger/attachments/")?;
     Some(format!("{ATTACHMENTS_PREFIX}{rest}"))
 }
 
 /// 云端路径 → 数据库附件路径。
+///
+/// 校验「云端路径」自身的各段，再映射回 `ledger/attachments/...`；
+/// 任何越界分量（`..`、绝对路径、空段、反斜杠）都返回 `None`。
 pub fn db_path_for_attachment(cloud_path: &str) -> Option<String> {
+    if !is_safe_cloud_path(cloud_path) {
+        return None;
+    }
     let rest = cloud_path.strip_prefix(ATTACHMENTS_PREFIX)?;
     Some(format!("ledger/attachments/{rest}"))
 }
 
+/// 云端相对路径是否安全：`attachments/<账单 id>/<附件 id>.<扩展名>`。
+pub fn is_safe_cloud_path(path: &str) -> bool {
+    let Some(rest) = path.strip_prefix(ATTACHMENTS_PREFIX) else {
+        return false;
+    };
+    !rest.is_empty()
+        && rest
+            .split('/')
+            .all(|segment| !segment.is_empty() && segment != "." && segment != "..")
+        && !rest.contains('\\')
+        && !rest.contains('\0')
+        // 映射回数据库路径后再过一遍 tk-ledger 的强校验（含扩展名 / id 形态）
+        && tk_ledger::validate::is_valid_attachment_path(&format!("ledger/attachments/{rest}"))
+}
+
 /// 附件缓存目录的默认位置（`<tmp>/cloud-cache/<keyId>`）。
-pub fn default_cache_dir(tmp_dir: &Path, key_id: &str) -> PathBuf {
-    tmp_dir.join("cloud-cache").join(key_id)
+pub fn default_cache_dir(paths: &DataPaths, key_id: &str) -> PathBuf {
+    paths.cloud_cache_dir().join(key_id)
 }
 
 #[cfg(test)]
@@ -353,5 +382,18 @@ mod tests {
             Some("ledger/attachments/tx_1/att_2.jpg".to_string())
         );
         assert_eq!(cloud_path_for_attachment("elsewhere/x"), None);
+    }
+
+    #[test]
+    fn cloud_and_db_attachment_paths_reject_traversal() {
+        assert_eq!(cloud_path_for_attachment("ledger/attachments/../security.json"), None);
+        assert_eq!(db_path_for_attachment("attachments/../security.json"), None);
+        assert_eq!(db_path_for_attachment("attachments/../../ledger.db"), None);
+        assert_eq!(db_path_for_attachment("attachments/tx/./a.jpg"), None);
+        assert_eq!(db_path_for_attachment("attachments//a.jpg"), None);
+        assert_eq!(db_path_for_attachment("attachments/tx/a.jpg/../../x"), None);
+        assert!(!is_safe_cloud_path("data.enc"));
+        assert!(!is_safe_cloud_path("attachments/tx/noext"));
+        assert!(is_safe_cloud_path("attachments/tx_1/att_2.jpg"));
     }
 }

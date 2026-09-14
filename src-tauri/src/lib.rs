@@ -8,13 +8,14 @@ use std::sync::Arc;
 use tauri::{Emitter, Manager};
 use tk_domain::{AppSettings, BootstrapSnapshot};
 use tk_ledger::Ledger;
-use tk_traits::{BroadcastEventBus, EventBus, EventFilter};
+use tk_traits::{EventBus, EventFilter};
 use tokio::sync::RwLock;
 
 pub mod app_log;
 pub mod app_log_format;
 pub mod bootstrap;
 pub mod commands;
+pub mod event_bus;
 pub mod http_transport;
 
 pub struct AppState {
@@ -57,11 +58,11 @@ pub fn run() {
                 cloud,
             });
 
-            // 宿主 EventBus → WebView 事件桥。业务插件/模块发布领域事件后，
-            // 前端通过 core/services/event-stream.service 订阅。
-            let event_bus = BroadcastEventBus::default();
+            // 宿主 EventBus → WebView 事件桥。业务模块发布领域事件后，
+            // 前端通过 Tauri 事件渠道（`DomainEvent::tauri_event_name()`）订阅。
+            // 注意：bus 必须是进程级单例，否则 setup 返回时就被 drop（见 event_bus 模块注释）。
             let handle = app.handle().clone();
-            let mut subscription = event_bus.subscribe(EventFilter::all());
+            let mut subscription = event_bus::bus().subscribe(EventFilter::all());
             tauri::async_runtime::spawn(async move {
                 while let Some(event) = subscription.next().await {
                     let name = event.tauri_event_name();

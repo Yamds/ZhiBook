@@ -21,7 +21,7 @@
     "android:dev": "tauri android dev",
     "android:build": "tauri android build --apk",
     "icon": "tauri icon src/assets/app-icon.png",
-    "check:versions": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));const t=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8'));if(p.version!==t.version)process.exit(1);console.log('version metadata is consistent:',p.version)\""
+    "check:versions": "node scripts/check-versions.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",

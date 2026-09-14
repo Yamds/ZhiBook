@@ -176,6 +176,12 @@ function ConnectionForm({
                 autoCapitalize="none"
                 autoCorrect="off"
             />
+            {repoUrl.trim().toLowerCase().startsWith('http://') ? (
+                <p className="-mt-1 text-[11.5px] leading-relaxed text-danger">
+                    明文 HTTP：访问 Token 会随请求头发出去，同一网络下可能被截获。
+                    自建仓库建议改用 HTTPS。
+                </p>
+            ) : null}
             <TextField
                 label="账号"
                 value={username}

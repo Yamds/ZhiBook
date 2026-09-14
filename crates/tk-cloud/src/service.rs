@@ -30,7 +30,7 @@ use crate::manifest::{
 };
 use crate::package::{
     BuiltFile, PackageBuilder, db_path_for_attachment, decode_data, decrypt_entry,
-    default_cache_dir, verify_ciphertext,
+    default_cache_dir, is_safe_cloud_path, verify_ciphertext,
 };
 use crate::pack::{PackObject, PackObjectKind, write_pack};
 use crate::transport::HttpTransport;
@@ -173,7 +173,15 @@ impl CloudService {
         let value = store
             .read_json(&path)
             .map_err(|error| CloudError::State(error.to_string()))?;
-        Ok(Some(serde_json::from_value(value)?))
+        let key: KeyFile = serde_json::from_value(value)?;
+        // keyId 会参与本地目录名拼接，形态不对一律当损坏处理。
+        if !tk_crypto::is_valid_key_id(&key.key_id) {
+            return Err(CloudError::State(format!(
+                "备份密钥的 keyId 不合法（{}），密钥文件可能已损坏",
+                key.key_id
+            )));
+        }
+        Ok(Some(key))
     }
 
     fn save_key(&self, key: &KeyFile) -> CloudResult<()> {
@@ -185,7 +193,7 @@ impl CloudService {
     }
 
     fn cache_dir(&self, key_id: &str) -> PathBuf {
-        default_cache_dir(&self.paths().tmp_dir(), key_id)
+        default_cache_dir(&self.paths(), key_id)
     }
 
     fn client<'a>(
@@ -361,7 +369,8 @@ impl CloudService {
     pub fn disconnect(&self, remove_key: bool) -> CloudResult<()> {
         if remove_key && let Some(key) = self.load_key()? {
             let cache = self.cache_dir(&key.key_id);
-            if cache.exists() {
+            // 双保险：只允许删 tmp 下的密文缓存目录。
+            if cache.starts_with(self.paths().tmp_dir()) && cache.exists() {
                 fs::remove_dir_all(&cache)?;
             }
             let path = self.key_path();
@@ -505,6 +514,10 @@ impl CloudService {
                     &pulled.data,
                     Some(&temp),
                 )?;
+                // 合并已经把需要的附件拷进数据根，拉取目录里的**明文副本**用完即删。
+                if let Err(error) = fs::remove_dir_all(&temp) {
+                    tracing::warn!(target: "tk_cloud::service", %error, "拉取临时目录清理失败");
+                }
                 for file in &pulled.files {
                     known.insert(file.path.clone(), file.clone());
                 }
@@ -602,7 +615,11 @@ impl CloudService {
     }
 
     fn make_pull_dir(&self) -> CloudResult<PathBuf> {
-        let dir = self.paths().tmp_dir().join(format!("cloud-pull-{}", now_ms()));
+        let tmp = self.paths().tmp_dir();
+        // 上次崩溃 / 强杀可能留下未清理的拉取目录（里面有**解密后的附件明文**）：
+        // 建新目录前先把旧的收完。
+        tk_config::prune_prefixed_dirs(&tmp, tk_config::CLOUD_PULL_PREFIX, tk_config::MAX_CLOUD_PULL_DIRS);
+        let dir = tmp.join(format!("{}{}", tk_config::CLOUD_PULL_PREFIX, now_ms()));
         fs::create_dir_all(&dir)?;
         Ok(dir)
     }
@@ -664,6 +681,13 @@ impl CloudService {
             }
             if !file_entry.path.starts_with(ATTACHMENTS_PREFIX) {
                 continue;
+            }
+            // 云端包是网络输入：路径越界就直接拒绝整包，不往磁盘写。
+            if !is_safe_cloud_path(&file_entry.path) {
+                return Err(CloudError::Protocol(format!(
+                    "云端附件路径不合法：{}",
+                    file_entry.path
+                )));
             }
             let ciphertext = client.download_raw(branch, &file_entry.path)?;
             verify_ciphertext(file_entry, &ciphertext)?;
@@ -878,6 +902,13 @@ impl CloudService {
             return Err(CloudError::Protocol(
                 "云端密钥文件与 manifest 不一致，拒绝使用".to_string(),
             ));
+        }
+        // 换机导入的 keyId 会被拼进本地目录名，形态必须合法。
+        if !tk_crypto::is_valid_key_id(&wrap_file.key_id) {
+            return Err(CloudError::Protocol(format!(
+                "云端密钥的 keyId 不合法：{}",
+                wrap_file.key_id
+            )));
         }
         let master = match input.kind.as_str() {
             "passphrase" => wrap_file.unwrap_passphrase(&input.value)?,

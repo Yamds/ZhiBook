@@ -20,6 +20,21 @@ pub const MAX_JSON_BAK_FILES: usize = 3;
 /// migration-backup 目录最多保留份数。
 pub const MAX_MIGRATION_BACKUPS: usize = 5;
 
+/// `tmp/exports` 目录最多保留的备份包份数（每份都是全量数据，包括附件）。
+pub const MAX_EXPORT_FILES: usize = 3;
+
+/// `tmp/cloud-pull-*` 目录最多保留份数（正常情况下用完即删，这里是崩溃后的保底）。
+pub const MAX_CLOUD_PULL_DIRS: usize = 1;
+
+/// 导入暂存目录前缀（`<tmp>/import-stage-<时间戳>`）。
+pub const IMPORT_STAGE_PREFIX: &str = "import-stage-";
+
+/// 导出备份包文件名前缀。
+pub const EXPORT_FILE_PREFIX: &str = "zz-backup-";
+
+/// 云端拉取临时目录前缀。
+pub const CLOUD_PULL_PREFIX: &str = "cloud-pull-";
+
 /// 应用会话日志最多保留文件数(与按天清理叠加,取更严)。
 pub const MAX_LOG_FILES: usize = 30;
 
@@ -89,6 +104,10 @@ impl DataPaths {
 
     pub fn export_dir(&self) -> PathBuf {
         self.tmp_dir().join("exports")
+    }
+
+    pub fn cloud_cache_dir(&self) -> PathBuf {
+        self.tmp_dir().join("cloud-cache")
     }
 }
 

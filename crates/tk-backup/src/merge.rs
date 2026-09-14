@@ -52,6 +52,8 @@ pub fn merge_into(
     remote: &BackupData,
     remote_attachment_root: Option<&Path>,
 ) -> BackupResult<MergeSummary> {
+    // 远端包同样是外部输入：先过形态校验再进事务（见 `crate::validate_snapshot`）。
+    crate::validate_snapshot(remote)?;
     let local = crate::gather_data(ledger)?;
     let outcome = ledger
         .with_tx(|conn| {
@@ -712,6 +714,10 @@ fn apply_files(
     outcome: &MergeOutcome,
 ) -> BackupResult<()> {
     for relative in &outcome.files_to_delete {
+        // 路径来自数据库（可能是被污染的远端记录）：越界的一律不碰。
+        if !tk_ledger::validate::is_valid_attachment_path(relative) {
+            continue;
+        }
         let target = data_root.join(relative);
         match fs::remove_file(&target) {
             Ok(()) => {}
@@ -724,6 +730,10 @@ fn apply_files(
     }
     if let Some(remote_root) = remote_attachment_root {
         for relative in &outcome.files_to_ensure {
+            // 同上：远端记录带来的路径也必须先过校验。
+            if !tk_ledger::validate::is_valid_attachment_path(relative) {
+                continue;
+            }
             let Some(stripped) = remote_relative(relative) else {
                 continue;
             };

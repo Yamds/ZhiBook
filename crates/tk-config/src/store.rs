@@ -299,6 +299,60 @@ pub fn prune_json_bak_files(path: &Path, keep: usize) {
     }
 }
 
+/// 保留目录下最新的 `keep` 个以 `prefix` 开头的**普通文件**，其余逐个删除。
+///
+/// 不通配、不递归（全局约束）：只 `remove_file` 明确命中的那一个。
+pub fn prune_prefixed_files(dir: &Path, prefix: &str, keep: usize) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let mut files: Vec<(SystemTime, PathBuf)> = entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let path = entry.path();
+            let name = path.file_name()?.to_str()?;
+            if !path.is_file() || !name.starts_with(prefix) {
+                return None;
+            }
+            Some((entry.metadata().ok()?.modified().ok()?, path))
+        })
+        .collect();
+    if files.len() <= keep {
+        return;
+    }
+    files.sort_by_key(|item| std::cmp::Reverse(item.0));
+    for (_, path) in files.into_iter().skip(keep) {
+        let _ = fs::remove_file(path);
+    }
+}
+
+/// 保留目录下最新的 `keep` 个以 `prefix` 开头的**子目录**，其余递归删除。
+///
+/// 只用于我们自己创建并在内部穷举过的临时目录（如 `tmp/cloud-pull-*`）。
+pub fn prune_prefixed_dirs(dir: &Path, prefix: &str, keep: usize) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let mut dirs: Vec<(SystemTime, PathBuf)> = entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let path = entry.path();
+            let name = path.file_name()?.to_str()?;
+            if !path.is_dir() || !name.starts_with(prefix) {
+                return None;
+            }
+            Some((entry.metadata().ok()?.modified().ok()?, path))
+        })
+        .collect();
+    if dirs.len() <= keep {
+        return;
+    }
+    dirs.sort_by_key(|item| std::cmp::Reverse(item.0));
+    for (_, path) in dirs.into_iter().skip(keep) {
+        let _ = fs::remove_dir_all(path);
+    }
+}
+
 /// 保留最新 keep 个 migration-* 目录。
 pub fn prune_migration_backups(backup_dir: &Path, keep: usize) {
     let Ok(entries) = fs::read_dir(backup_dir) else {
@@ -345,5 +399,29 @@ mod tests {
         let store = LocalConfigStore::new(temp.path());
         let result = store.read_json(Path::new("../outside.json"));
         assert!(matches!(result, Err(ConfigError::OutsideAllowedRoots(_))));
+    }
+
+    #[test]
+    fn prune_prefixed_files_keeps_the_newest() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let dir = temp.path();
+        for index in 0..5 {
+            let path = dir.join(format!("zz-backup-{index}.zip"));
+            fs::write(&path, b"x").expect("write");
+            // 让 modified 时间可靠地拉开（文件系统时间戳精度有限）
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        fs::write(dir.join("keep-me.txt"), b"x").expect("write other");
+        prune_prefixed_files(dir, "zz-backup-", 2);
+
+        let mut left: Vec<String> = fs::read_dir(dir)
+            .expect("read")
+            .filter_map(Result::ok)
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .filter(|name| name.starts_with("zz-backup-"))
+            .collect();
+        left.sort();
+        assert_eq!(left, vec!["zz-backup-3.zip", "zz-backup-4.zip"]);
+        assert!(dir.join("keep-me.txt").exists(), "不该动别的文件");
     }
 }
