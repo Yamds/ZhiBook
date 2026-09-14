@@ -159,7 +159,7 @@ pub fn run() {
         Ok(application) => application.run(|_app, _event| {}),
         Err(error) => {
             app_log::write_session_line("ERROR", "lifecycle", &error.to_string());
-            tracing::error!(target: "yamds_bill::lifecycle", %error, "failed to build Tauri application");
+            tracing::error!(target: "zhibook::lifecycle", %error, "failed to build Tauri application");
         }
     }
 }

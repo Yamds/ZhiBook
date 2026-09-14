@@ -1,10 +1,10 @@
 // 可选启动/路由性能标记。默认关闭，避免生产噪音。
 // 打开方式（任一）：
-//   - localStorage['yamds-bill:perf-marks'] = '1'（调试包可用 chrome://inspect 连 WebView 设置）
+//   - localStorage['zhibook:perf-marks'] = '1'（调试包可用 chrome://inspect 连 WebView 设置）
 //   - 开发构建（import.meta.env.DEV）且 localStorage 未显式设为 '0'
 // 仅写 performance.mark / measure + console.debug，不发 IPC。
 
-const STORAGE_KEY = 'yamds-bill:perf-marks';
+const STORAGE_KEY = 'zhibook:perf-marks';
 
 // 进程内缓存开关，避免每次 mark 都读 localStorage。
 let enabledCache: boolean | null = null;

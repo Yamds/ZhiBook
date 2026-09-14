@@ -16,13 +16,13 @@
     <script>
       (function () {
         try {
-          var canvas = localStorage.getItem('yamds-bill:canvas');
+          var canvas = localStorage.getItem('zhibook:canvas');
           if (canvas) {
             document.documentElement.style.backgroundColor = canvas;
             var rootEl = document.getElementById('root');
             if (rootEl) rootEl.style.backgroundColor = canvas;
           }
-          var raw = localStorage.getItem('yamds-bill:preferences:v1');
+          var raw = localStorage.getItem('zhibook:preferences:v1');
           var theme = raw ? JSON.parse(raw).theme : null;
           if (theme && theme !== 'auto') {
             document.documentElement.setAttribute('data-theme', theme);

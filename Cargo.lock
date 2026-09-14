@@ -5319,33 +5319,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "yamds-bill"
-version = "1.0.0"
-dependencies = [
- "chrono",
- "dirs 5.0.1",
- "jni",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "tempfile",
- "tk-backup",
- "tk-cloud",
- "tk-config",
- "tk-domain",
- "tk-ledger",
- "tk-log",
- "tk-runtime",
- "tk-security",
- "tk-traits",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "yoke"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5487,6 +5460,33 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.5",
+]
+
+[[package]]
+name = "zhibook"
+version = "1.0.0"
+dependencies = [
+ "chrono",
+ "dirs 5.0.1",
+ "jni",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "tempfile",
+ "tk-backup",
+ "tk-cloud",
+ "tk-config",
+ "tk-domain",
+ "tk-ledger",
+ "tk-log",
+ "tk-runtime",
+ "tk-security",
+ "tk-traits",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

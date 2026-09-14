@@ -18,7 +18,7 @@ export interface AddEntryPrefs {
     readonly lastAccountId: string | null;
 }
 
-const STORAGE_KEY = 'yamds-bill:add-entry:v1';
+const STORAGE_KEY = 'zhibook:add-entry:v1';
 
 export const DEFAULT_ADD_ENTRY_PREFS: AddEntryPrefs = {
     lastCategoryByKind: { expense: null, income: null },

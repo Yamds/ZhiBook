@@ -5,7 +5,7 @@
 //! $env:YAMDS_CLOUD_TEST_REPO = 'https://git.example.com/owner/repo.git'
 //! $env:YAMDS_CLOUD_TEST_USER = 'user'
 //! $env:YAMDS_CLOUD_TEST_TOKEN = '<PAT>'
-//! cargo test -p yamds-bill --test cloud_live -- --ignored --nocapture --test-threads=1
+//! cargo test -p zhibook --test cloud_live -- --ignored --nocapture --test-threads=1
 //! ```
 //!
 //! 测试会在专用测试分支上完成：备份 → 换机（恢复密钥解锁）→ 双端合并 → 清理分支。
@@ -50,7 +50,7 @@ fn live_backup_restore_merge_and_cleanup() {
     let token = env("YAMDS_CLOUD_TEST_TOKEN");
     let branch = format!("live-test-{}", std::process::id());
 
-    let transport = yamds_bill::http_transport::build_http_transport();
+    let transport = zhibook::http_transport::build_http_transport();
 
     // 分支清理守卫：无论测试成功还是中途 panic，都尝试删掉测试分支。
     struct BranchCleanup<'a> {

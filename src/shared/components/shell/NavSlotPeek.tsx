@@ -1,16 +1,23 @@
-// 日历 / 设置槽位上方的「露头」替身按钮。
+// 日历 / 设置槽位上方的「露头」替身图标。
 //
 // 位置：钉在底部导航**顶边**正中（＝第 3 槽位「日历 / 设置」的中心），
 // 层级压在导航栏**下面**——栏体不透明，所以缩回时整块被栏体盖住、看不见，
-// 露头时只有上半截从栏后探出来（就像从洞里探头）。
+// 露头时只有图标的上半截从栏后探出来（就像从洞里探头）。
 //
 // 内容由 `navPeekTarget` 决定，永远是**当前页的对家**：
 //   日历页 → 设置图标露头（提醒「这个位置还藏着设置」）；
 //   设置页 → 日历图标露头（点它原路回去）；
 //   其它页 → 两个都缩回栏后。
 //
-// 点击区域＝露在栏外的那半截；栏内一半被导航栏盖住，点下去命中的是槽位本身，
-// 行为一致（日历槽位重按进设置、设置槽位重按回日历），所以小按钮也不难点。
+// 视觉：**只有图标本身**——没有底板、没有边框、没有阴影，露出的部分被栏顶边整齐切掉。
+// 露出比例固定为图标的 2/5（`PEEK_ICON_VISIBLE`），大部分藏在栏后。
+//
+// 几何：按钮盒比图标大（触点更宽容、且探出的空档能挡掉误触页面），
+// 只有图标是可见的；`yPercent` 由「图标可见高度」反推，不写死经验值。
+//
+// 两个图标在切换时会上下交叠：**正在上浮的那个压在上面**（`zIndex`），
+// 于是两个方向的动画观感一致 —— 都是「目标页的图标升上来」，而不是
+// 「旧的降下去露出新的」。
 //
 // 动效全部走 useMotion()：关闭动效时直接落到终态（GSAP set），不做过渡。
 
@@ -22,22 +29,30 @@ import { useMotion } from '../../../hooks/preferences/useMotion';
 import type { IconName } from '../../../core/design/icons';
 import { HOME_TAB, SETTINGS_TAB, type AppRoute, type TabDef } from '../../../app/navigation';
 
-/**
- * 露头时露在栏外的比例。
- *
- * 0.7 = 三成压在栏后：20px 的图标会被栏顶边切掉底部约 3px，
- * 既看得出「是个图标」，又一眼知道它是从栏后升上来的。
- */
-const PEEK_VISIBLE = 0.7;
-/** 缩回时多压一点（百分比），避免边框 / 抗锯齿在栏顶漏出一条发丝线。 */
+/** 图标尺寸（与底部导航页签一致）。 */
+const ICON_SIZE = 20;
+/** 露头时**图标**露在栏外的比例：2/5，其余藏在栏后。 */
+const PEEK_ICON_VISIBLE = 2 / 5;
+/** 按钮盒高度：比图标高，多出来的空档既方便点，也不会让手指漏到页面上。 */
+const CHIP_HEIGHT = 32;
+/** 缩回时多压一点（百分比），避免抗锯齿在栏顶漏出一条发丝线。 */
 const HIDDEN_OVERSCAN = 12;
+
+/** 图标上沿距盒顶的距离。 */
+const ICON_TOP = (CHIP_HEIGHT - ICON_SIZE) / 2;
+/** 露头时露在栏外的盒高 = 图标上沿空档 + 图标可见高度。 */
+const PEEK_BOX_VISIBLE = ICON_TOP + ICON_SIZE * PEEK_ICON_VISIBLE;
+/** 露头 / 缩回对应的位移百分比（相对盒高）。 */
+const PEEK_Y_PERCENT = (1 - PEEK_BOX_VISIBLE / CHIP_HEIGHT) * 100;
+const HIDDEN_Y_PERCENT = 100 + HIDDEN_OVERSCAN;
+
 /** 图标本身的语义动效：与底部导航页签用的是同一套（见 NAV_ROUTE_MOTION）。 */
 const PEEK_ICON_MOTION: Record<'settings' | 'home', MotionIconPreset> = {
     settings: 'spin-slow',
     home: 'breathe',
 };
 
-interface PeekChipProps {
+interface PeekIconProps {
     /** 露头（true）还是缩回栏后（false）。 */
     visible: boolean;
     icon: IconName;
@@ -46,8 +61,8 @@ interface PeekChipProps {
     onClick: () => void;
 }
 
-/** 单个露头块：外层负责「贴栏顶 + 水平居中」，内层按钮由 GSAP 上下推。 */
-const PeekChip: React.FC<PeekChipProps> = ({ visible, icon, label, iconMotion, onClick }) => {
+/** 单个露头图标：外层负责「贴栏顶 + 水平居中 + 压层级」，内层按钮由 GSAP 上下推。 */
+const PeekIcon: React.FC<PeekIconProps> = ({ visible, icon, label, iconMotion, onClick }) => {
     const buttonRef = useRef<HTMLButtonElement | null>(null);
     const primedRef = useRef(false);
     const motion = useMotion();
@@ -55,7 +70,7 @@ const PeekChip: React.FC<PeekChipProps> = ({ visible, icon, label, iconMotion, o
     useLayoutEffect(() => {
         const element = buttonRef.current;
         if (!element) return;
-        const yPercent = visible ? (1 - PEEK_VISIBLE) * 100 : 100 + HIDDEN_OVERSCAN;
+        const yPercent = visible ? PEEK_Y_PERCENT : HIDDEN_Y_PERCENT;
         // 首帧只落位不补间：初值必须在本帧绘出之前就写好，否则会闪一下全露状态。
         if (!primedRef.current) {
             primedRef.current = true;
@@ -75,7 +90,8 @@ const PeekChip: React.FC<PeekChipProps> = ({ visible, icon, label, iconMotion, o
     }, [visible]);
 
     return (
-        <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2">
+        // zIndex：上浮的那个压在上面，保证两个方向的动画观感一致。
+        <div className={cn('pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2', visible ? 'z-[2]' : 'z-[1]')}>
             <button
                 ref={buttonRef}
                 type="button"
@@ -83,12 +99,11 @@ const PeekChip: React.FC<PeekChipProps> = ({ visible, icon, label, iconMotion, o
                 aria-hidden={!visible}
                 tabIndex={visible ? 0 : -1}
                 onClick={onClick}
+                style={{ height: CHIP_HEIGHT }}
                 className={cn(
-                    'flex h-9 w-11 items-center justify-center rounded-t-lg',
-                    'border border-b-0 border-border-subtle bg-sidebar text-brand',
-                    'shadow-[0_-2px_8px_color-mix(in_srgb,var(--text-primary)_10%,transparent)]',
+                    'flex w-10 items-center justify-center bg-transparent text-brand',
                     'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand',
-                    visible ? 'pointer-events-auto active:bg-muted' : 'pointer-events-none',
+                    visible ? 'pointer-events-auto' : 'pointer-events-none',
                 )}
             >
                 <MotionIcon
@@ -96,7 +111,7 @@ const PeekChip: React.FC<PeekChipProps> = ({ visible, icon, label, iconMotion, o
                     motion={visible ? iconMotion : 'none'}
                     playEnter={visible}
                     enterKey={visible ? label : undefined}
-                    size={20}
+                    size={ICON_SIZE}
                 />
             </button>
         </div>
@@ -113,14 +128,14 @@ export interface NavSlotPeekProps {
 export const NavSlotPeek: React.FC<NavSlotPeekProps> = ({ target, onSelect }) => (
     // 零高度锚点：底边卡在导航栏顶边，横向铺满 → 子级 left-1/2 即槽位正中。
     <div className="pointer-events-none absolute inset-x-0 bottom-full z-0 h-0">
-        <PeekChip
+        <PeekIcon
             visible={target?.id === SETTINGS_TAB.id}
             icon={SETTINGS_TAB.icon}
             label={SETTINGS_TAB.label}
             iconMotion={PEEK_ICON_MOTION.settings}
             onClick={() => onSelect(SETTINGS_TAB.id)}
         />
-        <PeekChip
+        <PeekIcon
             visible={target?.id === HOME_TAB.id}
             icon={HOME_TAB.icon}
             label={HOME_TAB.label}

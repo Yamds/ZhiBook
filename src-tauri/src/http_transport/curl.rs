@@ -160,7 +160,7 @@ fn parse_headers(path: &std::path::Path) -> CloudResult<Vec<(String, String)>> {
 mod tests {
     use super::*;
 
-    /// 真实网络冒烟（默认忽略）：`cargo test -p yamds-bill -- --ignored curl_network_smoke`
+    /// 真实网络冒烟（默认忽略）：`cargo test -p zhibook -- --ignored curl_network_smoke`
     #[test]
     #[ignore = "需要外网"]
     fn curl_network_smoke() {

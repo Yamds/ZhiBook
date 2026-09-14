@@ -49,13 +49,13 @@ export interface AppPreferences {
     splashEnabled: boolean;
 }
 
-const STORAGE_KEY = 'yamds-bill:preferences:v1';
+const STORAGE_KEY = 'zhibook:preferences:v1';
 /**
  * 首屏底色镜像：`index.html` 的内联引导脚本读它，在 React / CSS 到达前就把
  * `#root` 改成当前主题的画布色（否则暗色主题开机闪一帧白底）。
  * 存色值而不是主题名：新主题不需要再去 index.html 里枚举一遍。
  */
-export const CANVAS_MIRROR_KEY = 'yamds-bill:canvas';
+export const CANVAS_MIRROR_KEY = 'zhibook:canvas';
 
 const defaultPrefs: AppPreferences = {
     theme: 'auto',

@@ -1,5 +1,5 @@
 [package]
-name = "yamds-bill"
+name = "zhibook"
 description = "Yamds记账 · Android 应用壳"
 version.workspace = true
 edition.workspace = true
@@ -7,12 +7,13 @@ rust-version.workspace = true
 build = "build.rs"
 
 # 移动端要求 cdylib；staticlib 供将来嵌入其他宿主；rlib 供测试与桌面预览。
+# 库名决定 Android 侧的 libzhibook.so 与 generated/Rust.kt 的 loadLibrary。
 [lib]
-name = "yamds_bill"
+name = "zhibook"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
-name = "yamds-bill"
+name = "zhibook"
 path = "src/main.rs"
 
 [dependencies]

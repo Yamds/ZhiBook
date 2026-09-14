@@ -45,7 +45,7 @@ print_stdout = "warn"
 print_stderr = "warn"
 
 # 体积优先的 release 配置: LTO + 单编译单元 + 去符号 + 尺寸优化。
-# Android 上直接决定 libyamds_bill.so 的大小，是 APK 体积的主要来源。
+# Android 上直接决定 libzhibook.so 的大小，是 APK 体积的主要来源。
 [profile.release]
 lto = "fat"
 codegen-units = 1
