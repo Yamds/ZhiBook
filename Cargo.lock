@@ -4061,13 +4061,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tk-log"
-version = "1.0.0"
-dependencies = [
- "chrono",
-]
-
-[[package]]
 name = "tk-runtime"
 version = "1.0.0"
 
@@ -5483,7 +5476,6 @@ dependencies = [
  "tk-config",
  "tk-domain",
  "tk-ledger",
- "tk-log",
  "tk-runtime",
  "tk-security",
  "tk-traits",

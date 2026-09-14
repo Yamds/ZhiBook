@@ -4,7 +4,6 @@ members = [
     "crates/tk-domain",
     "crates/tk-traits",
     "crates/tk-config",
-    "crates/tk-log",
     "crates/tk-ledger",
     "crates/tk-security",
     "crates/tk-backup",

@@ -41,7 +41,7 @@
 | 层 | 技术 |
 | --- | --- |
 | 平台壳 | Tauri 2（Android） |
-| 业务内核 | Rust workspace：`tk-domain` / `tk-traits` / `tk-config` / `tk-log` / `tk-runtime` / `tk-ledger` / `tk-security` / `tk-backup` / `tk-crypto` / `tk-cloud` |
+| 业务内核 | Rust workspace：`tk-domain` / `tk-traits` / `tk-config` / `tk-runtime` / `tk-ledger` / `tk-security` / `tk-backup` / `tk-crypto` / `tk-cloud` |
 | 前端 | React 18 · Vite 5 · Tailwind CSS 4 · Radix UI · GSAP · TanStack Query |
 | 类型同源 | `ts-rs`：Rust 定义 → 生成 TypeScript |
 | 存储 | SQLite（rusqlite，bundled） |

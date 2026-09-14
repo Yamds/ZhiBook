@@ -12,7 +12,6 @@ use tk_traits::{EventBus, EventFilter};
 use tokio::sync::RwLock;
 
 pub mod app_log;
-pub mod app_log_format;
 pub mod bootstrap;
 pub mod commands;
 pub mod event_bus;
