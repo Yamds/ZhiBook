@@ -1,7 +1,6 @@
 // 账单页纯逻辑测试：年 / 月两种视图的口径换算、概览格、趋势点、占比颜色、排行文案。
 
 import { describe, expect, it } from 'vitest';
-import { CATEGORY_COLOR_PALETTE } from '../../core/design/categoryColor';
 import type {
     CategoryShare,
     CategoryShareSet,
@@ -45,6 +44,12 @@ import {
 
 const BRAND = '#ff6b3d';
 const SURFACE = '#ffffff';
+/** 主题色板样例（9 色相 + 4 灰阶），真实值由 `useThemePalette` 从 CSS 读出。 */
+const PALETTE = [
+    '#e85b57', '#f2762f', '#e8a72e', '#4fb477', '#14a3a0',
+    '#3d96ed', '#5b6ee1', '#a280e8', '#f58fb6',
+    '#d9d9d9', '#b3b3b3', '#808080', '#4d4d4d',
+];
 
 function kindStats(partial: Partial<KindMonthStats> = {}): KindMonthStats {
     return {
@@ -319,10 +324,12 @@ describe('占比与颜色', () => {
         expect(monthLabel('bad')).toBe('bad');
     });
 
-    it('theme 颜色走调色板，显式颜色用自己的色', () => {
-        expect(chartColor('theme', 0, BRAND, SURFACE)).toBe(CATEGORY_COLOR_PALETTE[0]);
-        expect(chartColor('theme', 13, BRAND, SURFACE)).toBe(CATEGORY_COLOR_PALETTE[1]);
-        expect(chartColor('#123456', 3, BRAND, SURFACE)).toBe('#123456');
+    it('theme 颜色走主题色板，显式颜色用自己的色', () => {
+        expect(chartColor('theme', 0, BRAND, SURFACE, PALETTE)).toBe(PALETTE[0]);
+        expect(chartColor('theme', 14, BRAND, SURFACE, PALETTE)).toBe(PALETTE[1]);
+        expect(chartColor('#123456', 3, BRAND, SURFACE, PALETTE)).toBe('#123456');
+        // 色板为空（探针还没就绪）时退回品牌色
+        expect(chartColor('theme', 0, BRAND, SURFACE, [])).toBe(BRAND);
     });
 
     it('shareColorMap：Top10 与环形图索引一致，合并桶用品牌色兑底', () => {
@@ -330,8 +337,8 @@ describe('占比与颜色', () => {
             [share(), share({ categoryId: '__other__', name: '其它', merged: true, color: 'theme' })],
             [share({ categoryId: 'expense_food' }), share({ categoryId: 'expense_traffic', color: '#123456' })],
         );
-        const map = shareColorMap(set, BRAND, SURFACE);
-        expect(map.get('expense_food')).toBe(CATEGORY_COLOR_PALETTE[0]);
+        const map = shareColorMap(set, BRAND, SURFACE, PALETTE);
+        expect(map.get('expense_food')).toBe(PALETTE[0]);
         expect(map.get('expense_traffic')).toBe('#123456');
         expect(map.get('__other__')).toBe(BRAND);
     });

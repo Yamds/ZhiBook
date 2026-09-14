@@ -1,10 +1,12 @@
-// 颜色选择行：默认「跟随主题」+ 内置调色板色块（BRD 3.5）。
+// 颜色选择行：默认「跟随主题」+ 主题自带调色板色块（BRD 3.5）。
 //
 // 分类编辑器（`modules/add/CategoryEditorSheet`）与账户编辑器（`modules/assets/AccountEditorSheet`）
 // 用的是同一套规则，所以提到原子件层，避免两处各写一遍色板。
+// 色板本身跟随当前主题（9 色相 + 4 级中性灰阶，见 `useThemePalette`）。
 
-import { CATEGORY_COLOR_PALETTE, THEME_COLOR_TOKEN, isFixedColor } from '../../core/design/categoryColor';
+import { THEME_COLOR_TOKEN, isFixedColor } from '../../core/design/categoryColor';
 import { UI_ICONS } from '../../core/design/icons';
+import { useThemePalette } from '../../hooks/theme/useThemePalette';
 import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import { cn } from '../utils/cn';
 import { AppIcon } from './AppIcon';
@@ -20,6 +22,7 @@ export function ColorSwatchRow({ value, onChange, className }: ColorSwatchRowPro
     const { brand } = useThemeTokens({
         brand: { name: '--brand-500', fallback: '#ff6b3d' },
     });
+    const { palette } = useThemePalette();
     const invalid = !isFixedColor(value) && value !== THEME_COLOR_TOKEN;
 
     return (
@@ -39,7 +42,7 @@ export function ColorSwatchRow({ value, onChange, className }: ColorSwatchRowPro
                     <span className="inline-block h-4 w-4 rounded-full" style={{ background: brand }} />
                     跟随主题
                 </button>
-                {CATEGORY_COLOR_PALETTE.map((swatch) => (
+                {palette.map((swatch) => (
                     <button
                         key={swatch}
                         type="button"

@@ -31,6 +31,9 @@ export function AppearanceTab({ draft, patchDraft }: Props) {
                 </FieldRow>
             </SettingsSection>
             <SettingsSection title="动效">
+                <FieldRow label="启动动画" description="启动页四幕动画；关闭后冷启动直接进入主界面">
+                    <Switch checked={draft.splashEnabled} onCheckedChange={(value) => patchDraft({ splashEnabled: value })} />
+                </FieldRow>
                 <FieldRow label="动画与体感" description="总开关。关闭后过渡退化为瞬时；系统「减少动画」仍会覆盖">
                     <Switch checked={draft.motionEnabled} onCheckedChange={(value) => patchDraft({ motionEnabled: value })} />
                 </FieldRow>

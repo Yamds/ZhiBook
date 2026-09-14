@@ -11,6 +11,7 @@
 //   motionLevel     elegant / standard / rich。决定动画风格强度
 //   motionSpeed     0.5 ~ 1.5（内部值）。0.5 = 体感 1× 基准，越大越快
 //   radiusStyle     square / standard / round。全局圆角风格（统一系数缩放）
+//   splashEnabled   启动动画开关。关闭后冷启动直接进主界面，不播启动层
 //
 // 退出行为 / 后台策略 / 双指缩放 / 开机自启已不是设置项：
 // 首页返回键固定弹退出确认、退到后台不做特殊处理、缩放始终关闭。
@@ -45,6 +46,7 @@ export interface AppPreferences {
     motionLevel: MotionLevel;
     motionSpeed: number;
     radiusStyle: RadiusStyle;
+    splashEnabled: boolean;
 }
 
 const STORAGE_KEY = 'yamds-bill:preferences:v1';
@@ -62,6 +64,7 @@ const defaultPrefs: AppPreferences = {
     motionLevel: 'standard',
     motionSpeed: MOTION_SPEED_DEFAULT,
     radiusStyle: RADIUS_STYLE_DEFAULT,
+    splashEnabled: true,
 };
 
 let state: AppPreferences = loadFromStorage();
@@ -80,6 +83,7 @@ function loadFromStorage(): AppPreferences {
             motionLevel: normalizeMotionLevel(parsed.motionLevel),
             motionSpeed: normalizeMotionSpeed(parsed.motionSpeed),
             radiusStyle: normalizeRadiusStyle(parsed.radiusStyle),
+            splashEnabled: parsed.splashEnabled !== false,
         };
     } catch {
         return defaultPrefs;
@@ -199,6 +203,8 @@ export const preferencesStore = {
             radiusStyle: normalizeRadiusStyle(
                 patch.radiusStyle ?? state.radiusStyle,
             ),
+            splashEnabled:
+                patch.splashEnabled !== undefined ? !!patch.splashEnabled : state.splashEnabled,
         };
         persist();
         notify();

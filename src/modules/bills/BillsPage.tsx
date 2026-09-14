@@ -30,6 +30,7 @@ import {
 } from '../../hooks/ledger';
 import { useCurrentBook } from '../../hooks/ledger/useLedgerBooks';
 import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
+import { useThemePalette } from '../../hooks/theme/useThemePalette';
 import { PeriodSelector } from '../../shared/ui/PeriodSelector';
 import { SegmentedControl } from '../../shared/ui';
 import { cn } from '../../shared/utils/cn';
@@ -69,6 +70,7 @@ export function BillsPage() {
         brand: { name: '--brand-500', fallback: '#ff6b3d' },
         surface: { name: '--surface-card', fallback: '#ffffff' },
     });
+    const { palette } = useThemePalette();
 
     const [year, setYear] = useState(today.year);
     const [month, setMonth] = useState(today.month);
@@ -111,7 +113,10 @@ export function BillsPage() {
     /** 占比与类目排行共用一套集合（两者都是「按分类汇总」）。 */
     const shareSet = breakdown ? sharesForKind(breakdown, kind) : undefined;
     /** 整页一套图表颜色：图例、类目排行、明细排行里同一个分类必然同色。 */
-    const colors = useMemo(() => shareColorMap(shareSet, brand, surface), [brand, shareSet, surface]);
+    const colors = useMemo(
+        () => shareColorMap(shareSet, brand, surface, palette),
+        [brand, palette, shareSet, surface],
+    );
 
     // 结余卡片：年视图看本年，月视图看本月
     const balanceCents = isYear

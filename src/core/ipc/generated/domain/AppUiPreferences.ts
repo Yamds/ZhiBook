@@ -10,6 +10,10 @@ export type AppUiPreferences = { theme: string,
  */
 startupTab: string, motionEnabled: boolean, motionLevel: string, motionSpeed: number, radiusStyle: string, 
 /**
+ * 启动动画(启动页)。关闭后冷启动直接进主界面,不再播放启动层。
+ */
+splashEnabled: boolean, 
+/**
  * InfoBar info tone 自动关闭毫秒,0 = 不自动关
  */
 infoBarDismissInfoMs: number, 

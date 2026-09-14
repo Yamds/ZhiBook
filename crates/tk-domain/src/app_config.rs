@@ -145,6 +145,9 @@ pub struct AppUiPreferences {
     pub motion_speed: f64,
     #[serde(rename = "radiusStyle", default = "default_ui_radius_style")]
     pub radius_style: String,
+    /// 启动动画(启动页)。关闭后冷启动直接进主界面,不再播放启动层。
+    #[serde(rename = "splashEnabled", default = "default_true")]
+    pub splash_enabled: bool,
     /// InfoBar info tone 自动关闭毫秒,0 = 不自动关
     #[serde(
         rename = "infoBarDismissInfoMs",
@@ -177,6 +180,7 @@ impl Default for AppUiPreferences {
             motion_level: default_ui_motion_level(),
             motion_speed: default_ui_motion_speed(),
             radius_style: default_ui_radius_style(),
+            splash_enabled: true,
             info_bar_dismiss_info_ms: default_infobar_dismiss_info_ms(),
             info_bar_dismiss_success_ms: default_infobar_dismiss_success_ms(),
             info_bar_dismiss_warning_ms: default_infobar_dismiss_warning_ms(),
@@ -241,6 +245,7 @@ mod tests {
                 theme: "mocha".to_string(),
                 motion_enabled: false,
                 motion_speed: 0.8,
+                splash_enabled: false,
                 info_bar_dismiss_info_ms: 8000,
                 ..AppUiPreferences::default()
             },
@@ -248,6 +253,7 @@ mod tests {
         };
         let json = serde_json::to_string(&cfg).expect("serialize 不应失败");
         assert!(json.contains(r#""theme":"mocha""#));
+        assert!(json.contains(r#""splashEnabled":false"#));
         assert!(json.contains(r#""infoBarDismissInfoMs":8000"#));
         let back: AppSettings = serde_json::from_str(&json).expect("反序列化失败");
         assert_eq!(back, cfg);

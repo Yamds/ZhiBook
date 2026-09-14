@@ -5,7 +5,7 @@ import './index.css';
 import { StartupSplash } from './StartupSplash';
 import { AppNext } from './AppNext';
 import { hydrateAppUiPreferencesFromDisk } from '../hooks/preferences/useAppUiPreferencesBootstrap';
-import { applySideEffects, preferencesStore } from '../hooks/preferences/preferencesStore';
+import { applySideEffects, preferencesStore, usePreferences } from '../hooks/preferences/preferencesStore';
 import { useMotion } from '../hooks/preferences/useMotion';
 import { refreshPinConfigured, useLockState } from '../hooks/security/usePinLock';
 import { PinLockScreen } from '../modules/security/PinLockScreen';
@@ -27,9 +27,12 @@ export const AppBootGate: React.FC = () => {
     const lock = useLockState();
     const prevLockedRef = useRef(false);
     const motion = useMotion();
+    const { splashEnabled } = usePreferences();
     // 圆形揭示 = 主题切换同一套 View Transition（快照 + mask-size）。
     // 能用它时壳的入场动画让位（新快照必须是终态，不能拍在动画首帧）。
-    const irisReveal = supportsCircleReveal() && motion.enabled && motion.level !== 'elegant';
+    // 关闭启动动画时没有启动层可揭示，壳直接走自己的入场动画。
+    const irisReveal =
+        splashEnabled && supportsCircleReveal() && motion.enabled && motion.level !== 'elegant';
 
     useEffect(() => {
         applySideEffects();
@@ -61,6 +64,14 @@ export const AppBootGate: React.FC = () => {
         const id = requestAnimationFrame(() => setShellReady(true));
         return () => cancelAnimationFrame(id);
     }, [prefsReady]);
+
+    // 关闭启动动画：偏好就绪后立即揭示主界面，不等启动层。
+    useEffect(() => {
+        if (!prefsReady || splashEnabled) return;
+        setRevealed(true);
+        setSplashDone(true);
+        document.getElementById('root')?.removeAttribute('aria-busy');
+    }, [prefsReady, splashEnabled]);
 
     // 启动页签：偏好就绪后、主壳揭示前落位（壳此时还在 data-boot-reveal="off" 阶段，
     // 用户看不到中间的切换）。
@@ -110,8 +121,8 @@ export const AppBootGate: React.FC = () => {
                 </RouteErrorBoundary>
             </div>
 
-            {/* 启动层：执行完毕后平滑透明度溶图淡出 */}
-            {!splashDone ? (
+            {/* 启动层：执行完毕后平滑透明度溶图淡出（关闭启动动画时不挂载） */}
+            {splashEnabled && !splashDone ? (
                 <StartupSplash
                     shellReady={shellReady}
                     irisReveal={irisReveal}

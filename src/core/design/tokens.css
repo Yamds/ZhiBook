@@ -52,6 +52,18 @@
    --blue-600: #3d96ed;
    --purple-500: #a280e8;
 
+   /* semantic: 分类 / 图表语义色板（9 色相：红橙黄绿青蓝靛紫粉）。
+      基础主题沿用品牌暖橙 / 桃粉与状态色；其余主题在各自块里覆写官方色。 */
+   --palette-red: #e85b57;
+   --palette-orange: #f2762f;
+   --palette-yellow: #e8a72e;
+   --palette-green: #4fb477;
+   --palette-cyan: #14a3a0;
+   --palette-blue: #3d96ed;
+   --palette-indigo: #5b6ee1;
+   --palette-purple: #a280e8;
+   --palette-pink: #f58fb6;
+
    /* semantic: 表面层 */
    --surface-canvas: var(--neutral-50);
    /* 整窗画布 */
@@ -225,6 +237,17 @@
       --brand-500: #ff8a57;
       --brand-600: #e87040;
 
+      /* palette：深色下提亮一档，保证在深底上的可辨识度 */
+      --palette-red: #f0716d;
+      --palette-orange: #ff9a5c;
+      --palette-yellow: #f3c04a;
+      --palette-green: #63c98c;
+      --palette-cyan: #2bb8b3;
+      --palette-blue: #62aef7;
+      --palette-indigo: #7f8cf0;
+      --palette-purple: #b492f2;
+      --palette-pink: #f6a0c4;
+
       /* semantic: 柔和品牌/点缀背景（深底微透/调和，保证浅色文字可读性） */
       --brand-soft: color-mix(in srgb, var(--brand-500) 16%, var(--surface-card));
       --brand-tint: color-mix(in srgb, var(--brand-500) 8%, transparent);
@@ -276,6 +299,17 @@
    --brand-400: #ff9a6b;
    --brand-500: #ff8a57;
    --brand-600: #e87040;
+
+   /* palette：深色下提亮一档，保证在深底上的可辨识度 */
+   --palette-red: #f0716d;
+   --palette-orange: #ff9a5c;
+   --palette-yellow: #f3c04a;
+   --palette-green: #63c98c;
+   --palette-cyan: #2bb8b3;
+   --palette-blue: #62aef7;
+   --palette-indigo: #7f8cf0;
+   --palette-purple: #b492f2;
+   --palette-pink: #f6a0c4;
 
    /* semantic: 柔和品牌/点缀背景（深底微透/调和，保证浅色文字可读性） */
    --brand-soft: color-mix(in srgb, var(--brand-500) 16%, var(--surface-card));
@@ -359,6 +393,17 @@
    --accent-500: #ea76cb;
    --accent-600: #d45eb5;
    --accent-700: #b8489a;
+
+   /* palette → Catppuccin Latte 官方色：red / peach / yellow / green / teal / blue / lavender / mauve / pink */
+   --palette-red: #d20f39;
+   --palette-orange: #fe640b;
+   --palette-yellow: #df8e1d;
+   --palette-green: #40a02b;
+   --palette-cyan: #179299;
+   --palette-blue: #1e66f5;
+   --palette-indigo: #7287fd;
+   --palette-purple: #8839ef;
+   --palette-pink: #ea76cb;
 
    --action-primary: var(--brand-500);
    --action-primary-hover: var(--brand-600);
@@ -461,6 +506,17 @@
    --accent-600: #e0a0d0;
    --accent-700: #c888ba;
 
+   /* palette → Catppuccin Frappé 官方色 */
+   --palette-red: #e78284;
+   --palette-orange: #ef9f76;
+   --palette-yellow: #e5c890;
+   --palette-green: #a6d189;
+   --palette-cyan: #81c8be;
+   --palette-blue: #8caaee;
+   --palette-indigo: #babbf1;
+   --palette-purple: #ca9ee6;
+   --palette-pink: #f4b8e4;
+
    --action-primary: var(--brand-500);
    --action-primary-hover: var(--brand-600);
    --action-primary-active: var(--brand-700);
@@ -561,6 +617,17 @@
    --accent-500: #f5bde6;
    --accent-600: #e0a5d0;
    --accent-700: #c88eb8;
+
+   /* palette → Catppuccin Macchiato 官方色 */
+   --palette-red: #ed8796;
+   --palette-orange: #f5a97f;
+   --palette-yellow: #eed49f;
+   --palette-green: #a6da95;
+   --palette-cyan: #8bd5ca;
+   --palette-blue: #8aadf4;
+   --palette-indigo: #b7bdf8;
+   --palette-purple: #c6a0f6;
+   --palette-pink: #f5bde6;
 
    --action-primary: var(--brand-500);
    --action-primary-hover: var(--brand-600);
@@ -663,6 +730,17 @@
    --accent-600: #e0a8d0;
    --accent-700: #c890b8;
 
+   /* palette → Catppuccin Mocha 官方色 */
+   --palette-red: #f38ba8;
+   --palette-orange: #fab387;
+   --palette-yellow: #f9e2af;
+   --palette-green: #a6e3a1;
+   --palette-cyan: #94e2d5;
+   --palette-blue: #89b4fa;
+   --palette-indigo: #b4befe;
+   --palette-purple: #cba6f7;
+   --palette-pink: #f5c2e7;
+
    --action-primary: var(--brand-500);
    --action-primary-hover: var(--brand-600);
    --action-primary-active: var(--brand-700);
@@ -710,6 +788,17 @@
    --ev-bg1: #2e383c;
    --ev-bg2: #374145;
    --ev-bg3: #414b50;
+
+   /* palette → Everforest 官方色；靖 / 粉官方没有，按同风格混色生成 */
+   --palette-red: var(--ev-red);
+   --palette-orange: #e69875;
+   --palette-yellow: var(--ev-yellow);
+   --palette-green: var(--ev-green);
+   --palette-cyan: var(--ev-aqua);
+   --palette-blue: var(--ev-blue);
+   --palette-indigo: color-mix(in srgb, var(--ev-blue) 62%, var(--ev-purple) 38%);
+   --palette-purple: var(--ev-purple);
+   --palette-pink: color-mix(in srgb, var(--ev-purple) 68%, var(--ev-red) 32%);
    --ev-fg: #d3c6aa;
    --ev-grey: #859289;
    --ev-red: #e67e80;
@@ -807,6 +896,17 @@
    --ev-bg1: #3a464c;
    --ev-bg2: #434f55;
    --ev-bg3: #4d5960;
+
+   /* palette → Everforest 官方色；靖 / 粉官方没有，按同风格混色生成 */
+   --palette-red: var(--ev-red);
+   --palette-orange: #e69875;
+   --palette-yellow: var(--ev-yellow);
+   --palette-green: var(--ev-green);
+   --palette-cyan: var(--ev-aqua);
+   --palette-blue: var(--ev-blue);
+   --palette-indigo: color-mix(in srgb, var(--ev-blue) 62%, var(--ev-purple) 38%);
+   --palette-purple: var(--ev-purple);
+   --palette-pink: color-mix(in srgb, var(--ev-purple) 68%, var(--ev-red) 32%);
    --ev-fg: #d3c6aa;
    --ev-grey: #859289;
    --ev-red: #e67e80;
@@ -896,6 +996,17 @@
    --ev-bg1: #f8f5e4;
    --ev-bg2: #f2efdf;
    --ev-bg3: #edeada;
+
+   /* palette → Everforest 官方色；靖 / 粉官方没有，按同风格混色生成 */
+   --palette-red: var(--ev-red);
+   --palette-orange: #f57d26;
+   --palette-yellow: var(--ev-yellow);
+   --palette-green: var(--ev-green);
+   --palette-cyan: var(--ev-aqua);
+   --palette-blue: var(--ev-blue);
+   --palette-indigo: color-mix(in srgb, var(--ev-blue) 62%, var(--ev-purple) 38%);
+   --palette-purple: var(--ev-purple);
+   --palette-pink: color-mix(in srgb, var(--ev-purple) 68%, var(--ev-red) 32%);
    --ev-fg: #5c6a72;
    --ev-grey: #939f91;
    --ev-red: #f85552;
@@ -985,6 +1096,17 @@
    --ev-bg1: #f2efdf;
    --ev-bg2: #edeada;
    --ev-bg3: #e8e5d5;
+
+   /* palette → Everforest 官方色；靖 / 粉官方没有，按同风格混色生成 */
+   --palette-red: var(--ev-red);
+   --palette-orange: #f57d26;
+   --palette-yellow: var(--ev-yellow);
+   --palette-green: var(--ev-green);
+   --palette-cyan: var(--ev-aqua);
+   --palette-blue: var(--ev-blue);
+   --palette-indigo: color-mix(in srgb, var(--ev-blue) 62%, var(--ev-purple) 38%);
+   --palette-purple: var(--ev-purple);
+   --palette-pink: color-mix(in srgb, var(--ev-purple) 68%, var(--ev-red) 32%);
    --ev-fg: #5c6a72;
    --ev-grey: #939f91;
    --ev-red: #f85552;
@@ -1078,10 +1200,23 @@
    --nord4: #d8dee9;
    --nord8: #88c0d0;
    --nord9: #81a1c1;
+   --nord10: #5e81ac;
    --nord11: #bf616a;
+   --nord12: #d08770;
    --nord13: #ebcb8b;
    --nord14: #a3be8c;
    --nord15: #b48ead;
+
+   /* palette → Nord Aurora + Frost 官方色；粉用紫 × 红混出 */
+   --palette-red: var(--nord11);
+   --palette-orange: var(--nord12);
+   --palette-yellow: var(--nord13);
+   --palette-green: var(--nord14);
+   --palette-cyan: var(--nord8);
+   --palette-blue: var(--nord9);
+   --palette-indigo: var(--nord10);
+   --palette-purple: var(--nord15);
+   --palette-pink: color-mix(in srgb, var(--nord15) 70%, var(--nord11) 30%);
 
    /* surface */
    --surface-canvas: var(--nord0);

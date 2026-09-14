@@ -17,21 +17,34 @@ export const TINT_RATIO_DARK = 0.22;
 /** 判定亮/暗面的亮度阈值（0..1，相对亮度）。 */
 export const DARK_SURFACE_LUMINANCE = 0.5;
 
-/** 可为分类挑选的固定色（前景色）。 */
-export const CATEGORY_COLOR_PALETTE: readonly string[] = [
-    '#ef4444',
-    '#f97316',
-    '#f59e0b',
-    '#22c55e',
-    '#14b8a6',
-    '#06b6d4',
-    '#3b82f6',
-    '#6366f1',
-    '#8b5cf6',
-    '#ec4899',
-    '#78716c',
-    '#0ea5e9',
-];
+/** 语义色板的色相键（与 `tokens.css` 的 `--palette-*` 一一对应）。 */
+export const PALETTE_HUE_KEYS = [
+    'red',
+    'orange',
+    'yellow',
+    'green',
+    'cyan',
+    'blue',
+    'indigo',
+    'purple',
+    'pink',
+] as const;
+
+export type PaletteHueKey = (typeof PALETTE_HUE_KEYS)[number];
+
+/**
+ * 中性灰阶：由**当前主题**的画布面与主文字混出，不写死灰色。
+ * 顺序固定为「淡 → 深」：
+ *   - 亮面（浅色主题）：向文字色靠得越多越深，占比递增；
+ *   - 暗面（深色主题）：向文字色（浅）靠得越多越淡，占比递减。
+ */
+export function neutralRamp(surface: string, text: string): string[] {
+    const ratios =
+        relativeLuminance(surface) < DARK_SURFACE_LUMINANCE
+            ? [0.72, 0.56, 0.4, 0.26]
+            : [0.22, 0.4, 0.58, 0.76];
+    return ratios.map((ratio) => mixHex(text, surface, ratio));
+}
 
 /** `#RGB` / `#RRGGBB` → [r, g, b]；非法返回 null。 */
 export function parseHexColor(value: string): [number, number, number] | null {

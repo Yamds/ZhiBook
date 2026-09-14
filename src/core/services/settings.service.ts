@@ -20,6 +20,7 @@ export const DEFAULT_UI_PREFERENCES: AppUiPreferences = {
     motionLevel: 'standard',
     motionSpeed: MOTION_SPEED_DEFAULT,
     radiusStyle: 'standard',
+    splashEnabled: true,
     infoBarDismissInfoMs: 5000,
     infoBarDismissSuccessMs: 4000,
     infoBarDismissWarningMs: 6000,
@@ -57,6 +58,7 @@ export function clientPrefsFromBackend(settings: AppSettings): AppPreferences {
         motionLevel: normalizeMotionLevel(ui.motionLevel),
         motionSpeed: normalizeMotionSpeed(ui.motionSpeed),
         radiusStyle: normalizeRadiusStyle(ui.radiusStyle),
+        splashEnabled: ui.splashEnabled !== false,
     };
 }
 
@@ -83,6 +85,7 @@ export function settingsWithPreferences(settings: AppSettings, prefs: AppPrefere
             motionLevel: prefs.motionLevel,
             motionSpeed: prefs.motionSpeed,
             radiusStyle: prefs.radiusStyle,
+            splashEnabled: prefs.splashEnabled,
         },
     };
 }

@@ -7,7 +7,6 @@
 // 数值换算也集中在 `*ForKind` 里，页面只做接线。
 
 import {
-    CATEGORY_COLOR_PALETTE,
     THEME_COLOR_TOKEN,
     categoryColors,
     parseHexColor,
@@ -283,12 +282,21 @@ export function yearTrendPoints(summary: YearSummary | undefined, kind: StatsKin
  * 图表里的分类颜色。
  *
  * 分类颜色默认是 `theme`（跟随品牌色）——直接用到环形图上会让 Top10 全是同一个颜色，
- * 完全看不出结构。所以这里对 `theme` 走内置调色板（按条目顺序取），
+ * 完全看不出结构。所以这里对 `theme` 走**主题自带色板**（按条目顺序取），
  * 用户显式选过颜色的分类仍用它自己的颜色。
+ *
+ * @param palette 主题色板（9 色相 + 4 灰阶，由 `useThemePalette` 解析）；
+ *                色板为空时退到品牌色。
  */
-export function chartColor(color: string, index: number, brand: string, surface: string): string {
+export function chartColor(
+    color: string,
+    index: number,
+    brand: string,
+    surface: string,
+    palette: readonly string[],
+): string {
     if (color === THEME_COLOR_TOKEN || parseHexColor(color) === null) {
-        return CATEGORY_COLOR_PALETTE[index % CATEGORY_COLOR_PALETTE.length] ?? brand;
+        return palette.length > 0 ? palette[index % palette.length] ?? brand : brand;
     }
     return categoryColors(color, brand, surface).foreground;
 }
@@ -317,11 +325,12 @@ export function shareColorMap(
     set: CategoryShareSet | undefined,
     brand: string,
     surface: string,
+    palette: readonly string[],
 ): Map<string, string> {
     const map = new Map<string, string>();
     if (!set) return map;
     set.all.forEach((item, index) => {
-        map.set(item.categoryId, chartColor(item.color, index, brand, surface));
+        map.set(item.categoryId, chartColor(item.color, index, brand, surface, palette));
     });
     for (const item of set.items) {
         if (!map.has(item.categoryId)) map.set(item.categoryId, brand);

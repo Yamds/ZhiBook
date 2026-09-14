@@ -2,13 +2,14 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-    CATEGORY_COLOR_PALETTE,
+    PALETTE_HUE_KEYS,
     THEME_COLOR_TOKEN,
     TINT_RATIO_DARK,
     TINT_RATIO_LIGHT,
     categoryColors,
     isFixedColor,
     mixHex,
+    neutralRamp,
     parseHexColor,
     relativeLuminance,
     resolveCategoryForeground,
@@ -85,11 +86,36 @@ describe('categoryColors', () => {
     });
 
     it('调色板里的颜色都能算出一组色', () => {
-        expect(CATEGORY_COLOR_PALETTE.length).toBeGreaterThanOrEqual(8);
-        for (const color of CATEGORY_COLOR_PALETTE) {
+        const palette = [
+            '#e85b57', '#f2762f', '#e8a72e', '#4fb477', '#14a3a0',
+            '#3d96ed', '#5b6ee1', '#a280e8', '#f58fb6',
+            ...neutralRamp('#ffffff', '#2c1f18'),
+        ];
+        expect(palette.length).toBeGreaterThanOrEqual(9);
+        for (const color of palette) {
             const { foreground, background } = categoryColors(color, '#ff6b3d', '#1e1e2e');
             expect(parseHexColor(foreground)).not.toBeNull();
             expect(parseHexColor(background)).not.toBeNull();
+        }
+    });
+});
+
+describe('neutralRamp', () => {
+    it('语义色相固定为红橙黄绿青蓝靛紫粉', () => {
+        expect(PALETTE_HUE_KEYS).toEqual([
+            'red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'indigo', 'purple', 'pink',
+        ]);
+    });
+
+    it('4 级灰阶按「淡 → 深」排列（浅色与暗色主题一致）', () => {
+        const light = neutralRamp('#ffffff', '#111111');
+        const dark = neutralRamp('#1e1e2e', '#e6e6e6');
+        expect(light).toHaveLength(4);
+        expect(dark).toHaveLength(4);
+        for (const ramp of [light, dark]) {
+            for (let i = 1; i < ramp.length; i += 1) {
+                expect(relativeLuminance(ramp[i]!)).toBeLessThan(relativeLuminance(ramp[i - 1]!));
+            }
         }
     });
 });

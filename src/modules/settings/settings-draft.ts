@@ -36,6 +36,7 @@ export async function applyClientPrefsFromDraft(draft: SettingsDraft): Promise<v
             motionLevel: draft.motionLevel,
             motionSpeed: draft.motionSpeed,
             radiusStyle: draft.radiusStyle,
+            splashEnabled: draft.splashEnabled,
         });
     };
 
