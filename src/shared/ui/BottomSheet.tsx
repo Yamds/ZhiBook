@@ -4,11 +4,12 @@
 // 进退场用 CSS keyframes（index.css 里的 .ndf-bottom-sheet-*），
 // Radix 会等动画结束再卸载；动效关闭时（data-motion="off"）直接落终态。
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { useMotion } from '../../hooks/preferences/useMotion';
 import { cn } from '../utils/cn';
 import { OverlayPortalContext } from './OverlayPortalContext';
+import { pushOverlay } from './overlayStack';
 
 export interface BottomSheetProps {
     open: boolean;
@@ -36,6 +37,14 @@ export function BottomSheet({
     const motion = useMotion();
     // 弹层内容节点：既作为 Radix 的滚动 shard，也作为内部浮层（日期 / 时刻选择等）的 portal 目标。
     const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
+
+    // Android 返回键：打开的弹层入全局栈，壳会先关最上层（见 shared/ui/overlayStack）。
+    const onOpenChangeRef = useRef(onOpenChange);
+    onOpenChangeRef.current = onOpenChange;
+    useEffect(() => {
+        if (!open) return;
+        return pushOverlay(() => onOpenChangeRef.current(false));
+    }, [open]);
 
     return (
         <RadixDialog.Root open={open} onOpenChange={onOpenChange}>

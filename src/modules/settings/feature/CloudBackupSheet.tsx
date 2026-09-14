@@ -130,6 +130,7 @@ function ConnectionForm({
     const [token, setToken] = useState('');
     const [branch, setBranch] = useState(state.branch || 'backup');
     const [busy, setBusy] = useState(false);
+    const invalidate = useInvalidateCloudBackupState();
 
     const handleSave = async () => {
         if (!repoUrl.trim()) {
@@ -154,6 +155,8 @@ function ConnectionForm({
                     : '连接成功，但 backup 分支不是制账的备份分支'
                 : '连接成功，云端还没有备份';
             showSuccess('cloud-config', '仓库配置已保存', detail);
+            // 先刷新查询再切回总览：否则总览仍显示旧仓库 / 旧分支，且查询已挂载不会自动重拉。
+            await invalidate();
             onSaved();
         } catch (error) {
             showError(error);

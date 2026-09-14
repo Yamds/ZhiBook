@@ -36,6 +36,7 @@ import { useMotion } from '../../hooks/preferences/useMotion';
 import { GsapPresence, type EnterFn, type ExitFn } from './motion/GsapPresence';
 import { MotionIcon } from './motion/MotionIcon';
 import { DIALOG_SIZE_CLASS, type DialogSize } from './dialogSizes';
+import { pushOverlay } from './overlayStack';
 
 const DialogOpenContext = createContext<boolean>(false);
 
@@ -85,6 +86,14 @@ export function Dialog({
         if (!isControlled) setInternal(next);
         onOpenChange?.(next);
     };
+
+    // Android 返回键：打开的 Dialog 同样入全局弹层栈（与 BottomSheet 同一套）。
+    const handleChangeRef = useRef(handleChange);
+    handleChangeRef.current = handleChange;
+    useEffect(() => {
+        if (!actualOpen) return;
+        return pushOverlay(() => handleChangeRef.current(false));
+    }, [actualOpen]);
     return (
         <DialogOpenContext.Provider value={actualOpen}>
             <DialogAnchorContext.Provider value={anchor ?? null}>

@@ -39,6 +39,7 @@ import {
 } from './navigation';
 import { backActionFor, navigateTo, retapScreen, useNavigation, useRetapHandler } from './navigationStore';
 import { runPageBackHandler } from './pageBackHandler';
+import { closeTopOverlay } from '../shared/ui/overlayStack';
 import { SwipeProvider, neighborOf, type NestedSwipeHandler, type SwipeDirection } from './swipeNavigation';
 
 /** 顶部栏右侧的账本入口：数据未就绪时先显示占位名（正常一帧内就被真实名替换）。 */
@@ -157,8 +158,10 @@ export function AppNext() {
     useHorizontalSwipe(mainRef, handleSwipe);
 
     // ===== Android 返回键 =====
-    // 优先级：页面拦截（弹层 / 分类编辑模式）> 非首页回首页 > 首页退出确认。
+    // 优先级：最上层弹层（BottomSheet / Dialog）> 页面拦截（分类编辑模式 / 全屏图等）
+    //         > 非首页回首页 > 首页退出确认。
     useEffect(() => registerBackButtonHandler(() => {
+        if (closeTopOverlay()) return 'handled';
         if (runPageBackHandler()) return 'handled';
         switch (backActionFor(screen, exitGateOpen)) {
             case 'close-overlay':
