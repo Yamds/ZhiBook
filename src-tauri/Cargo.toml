@@ -22,6 +22,7 @@ tk-config = { path = "../crates/tk-config" }
 tk-ledger = { path = "../crates/tk-ledger" }
 tk-security = { path = "../crates/tk-security" }
 tk-backup = { path = "../crates/tk-backup" }
+tk-cloud = { path = "../crates/tk-cloud" }
 tk-log = { path = "../crates/tk-log" }
 tk-runtime = { path = "../crates/tk-runtime" }
 serde = { workspace = true }
@@ -36,6 +37,10 @@ chrono = "0.4"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+
+# Android：Rust → Kotlin 的原生 HTTP 桥（JNI）。
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
 
 [dev-dependencies]
 tempfile = "3"

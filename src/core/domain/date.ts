@@ -110,6 +110,24 @@ export function todayKey(now?: Date): string {
     return toDayKey(todayParts(now));
 }
 
+/**
+ * 「逻辑日」：以本地 `boundaryHour`（默认 05:00）为分界，分界之前算**前一天**。
+ *
+ * 用于「每天 5 点之后第一次打开 App」这类按日一次的任务：
+ * 凌晨 4:59 打开 → 仍属于昨天的逻辑日；5:00 打开 → 属于今天。
+ */
+export function logicalDayKey(now: Date = new Date(), boundaryHour = 5): string {
+    const today = todayKey(now);
+    return now.getHours() >= boundaryHour ? today : shiftDayKey(today, -1);
+}
+
+/** 距下一个本地 `boundaryHour:00`（+5s 余量，避开边界抖动）的毫秒数。 */
+export function msUntilNextHourBoundary(now: Date = new Date(), boundaryHour = 5): number {
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), boundaryHour, 0, 5, 0);
+    if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
+    return next.getTime() - now.getTime();
+}
+
 /** 0=周日 … 6=周六（本地日历）。 */
 export function weekdayIndex({ year, month, day }: CalendarDate): number {
     return new Date(year, month - 1, day).getDay();

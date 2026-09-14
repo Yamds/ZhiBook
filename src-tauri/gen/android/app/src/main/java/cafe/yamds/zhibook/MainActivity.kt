@@ -1,4 +1,4 @@
-package cafe.yamds.bill
+package cafe.yamds.zhibook
 
 import android.Manifest
 import android.content.Context
@@ -61,6 +61,13 @@ class MainActivity : TauriActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // 云端备份：把 JavaVM 交给 Rust（src-tauri/src/http_transport/android.rs 成对维护）。
+        try {
+            registerCloudHttp()
+        } catch (error: Throwable) {
+            android.util.Log.e("YamdsCloud", "register cloud http bridge failed", error)
+        }
 
         // 备份导出：让用户选保存位置（SAF）。
         createDocumentLauncher = registerForActivityResult(
@@ -242,6 +249,12 @@ class MainActivity : TauriActivity() {
         if (raw == null || raw == "null") return ""
         return raw.trim().removeSurrounding("\"")
     }
+
+    /**
+     * Rust 侧注册入口：JNI 符号 = Java_cafe_yamds_zhibook_MainActivity_registerCloudHttp。
+     * 与 src-tauri/src/http_transport/android.rs 成对维护。
+     */
+    private external fun registerCloudHttp()
 
     private companion object {
         const val BACK_PRESS_QUERY =

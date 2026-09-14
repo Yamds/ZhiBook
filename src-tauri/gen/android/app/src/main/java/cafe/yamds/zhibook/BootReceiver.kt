@@ -1,4 +1,4 @@
-package cafe.yamds.bill
+package cafe.yamds.zhibook
 
 import android.content.BroadcastReceiver
 import android.content.Context

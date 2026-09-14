@@ -3,7 +3,7 @@
 // 时区处理全部留在前端：`day` = 本地日历日（YYYY-MM-DD），
 // `occurredAtMs` = 当天 05:00 的本地时间戳；Rust 侧不做时区推断。
 
-import { shiftDayKey, todayKey } from '../../../core/domain/date';
+import { logicalDayKey, shiftDayKey, todayKey } from '../../../core/domain/date';
 import { MAX_AMOUNT_CENTS } from '../../../core/domain/money';
 import type { RecurringOccurrence, RecurringRule } from '../../../core/ipc/types';
 
@@ -21,10 +21,9 @@ export function occurredAtMsForDay(day: string, hour = RECURRING_HOUR): number {
     return new Date(year, month - 1, date, hour, 0, 0, 0).getTime();
 }
 
-/** 最新一个「05:00 已经过去」的日期（含当天）。 */
+/** 最新一个「05:00 已经过去」的日期（含当天）；5:00 前算前一天。 */
 export function dueThroughDay(now: Date = new Date()): string {
-    const today = todayKey(now);
-    return now.getHours() >= RECURRING_HOUR ? today : shiftDayKey(today, -1);
+    return logicalDayKey(now, RECURRING_HOUR);
 }
 
 /**

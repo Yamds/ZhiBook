@@ -6,6 +6,18 @@ export type { BackupSummary } from './generated/domain/BackupSummary';
 export type { ImportSummary } from './generated/domain/ImportSummary';
 export type { ReminderPreferences } from './generated/domain/ReminderPreferences';
 
+// Git 云端备份（P15，Rust `tk-domain/src/cloud.rs` 定义）
+export type { CloudBackupState } from './generated/domain/CloudBackupState';
+export type { CloudBackupSummary } from './generated/domain/CloudBackupSummary';
+export type { CloudConnectionInfo } from './generated/domain/CloudConnectionInfo';
+export type { CloudCreatedKey } from './generated/domain/CloudCreatedKey';
+export type { CloudKeyInfo } from './generated/domain/CloudKeyInfo';
+export type { CloudKeyInput } from './generated/domain/CloudKeyInput';
+export type { CloudRestorePreview } from './generated/domain/CloudRestorePreview';
+export type { CloudRestoreSummary } from './generated/domain/CloudRestoreSummary';
+export type { MergeDelta } from './generated/domain/MergeDelta';
+export type { MergeSummary } from './generated/domain/MergeSummary';
+
 // 记账域类型（Rust `crates/tk-domain/src/ledger.rs` 定义，pnpm run ts-bindings 生成）
 export type { Account } from './generated/domain/Account';
 export type { AccountKind } from './generated/domain/AccountKind';

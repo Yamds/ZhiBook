@@ -8,7 +8,7 @@ use rusqlite::types::Type;
 use rusqlite::{Connection, OptionalExtension, Row, params};
 use tk_domain::{
     Account, AccountKind, Attachment, Book, Category, EntryKind, RecurringRule, RecurringRun,
-    Transaction,
+    Tombstone, Transaction,
 };
 
 use crate::error::{LedgerError, LedgerResult};
@@ -39,7 +39,7 @@ pub fn map_unique_violation(error: rusqlite::Error, message: &str) -> LedgerErro
 // 行映射
 // ---------------------------------------------------------------------------
 
-const BOOK_COLUMNS: &str = "id, name, created_at_ms, sort_order";
+const BOOK_COLUMNS: &str = "id, name, created_at_ms, sort_order, updated_at_ms";
 const ACCOUNT_COLUMNS: &str = "id, book_id, kind, name, icon_name, color, initial_balance_cents, sort_order, created_at_ms, updated_at_ms";
 const CATEGORY_COLUMNS: &str = "id, kind, name, icon_name, color, sort_order, hidden, created_at_ms, updated_at_ms";
 const TRANSACTION_COLUMNS: &str = "id, book_id, kind, category_id, account_id, amount_cents, note, day, month, occurred_at_ms, created_at_ms, updated_at_ms";
@@ -55,6 +55,7 @@ fn map_book(row: &Row<'_>) -> rusqlite::Result<Book> {
         name: row.get(1)?,
         created_at_ms: row.get(2)?,
         sort_order: row.get(3)?,
+        updated_at_ms: row.get(4)?,
     })
 }
 
@@ -197,16 +198,52 @@ pub fn next_book_sort_order(conn: &Connection) -> LedgerResult<i64> {
 
 pub fn insert_book(conn: &Connection, book: &Book) -> LedgerResult<()> {
     conn.execute(
-        "INSERT INTO books (id, name, created_at_ms, sort_order) VALUES (?1, ?2, ?3, ?4)",
-        params![book.id, book.name, book.created_at_ms, book.sort_order],
+        "INSERT INTO books (id, name, created_at_ms, sort_order, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![
+            book.id,
+            book.name,
+            book.created_at_ms,
+            book.sort_order,
+            book.updated_at_ms
+        ],
     )
     .map_err(|error| map_unique_violation(error, "已存在同名账本"))?;
     Ok(())
 }
 
-pub fn update_book_name(conn: &Connection, id: &str, name: &str) -> LedgerResult<bool> {
+/// 合并用：按主键整行覆盖（名字冲突仍交给唯一索引拦截）。
+pub fn upsert_book(conn: &Connection, book: &Book) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT INTO books (id, name, created_at_ms, sort_order, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET
+             name = excluded.name,
+             sort_order = excluded.sort_order,
+             updated_at_ms = excluded.updated_at_ms",
+        params![
+            book.id,
+            book.name,
+            book.created_at_ms,
+            book.sort_order,
+            book.updated_at_ms
+        ],
+    )
+    .map_err(|error| map_unique_violation(error, "已存在同名账本"))?;
+    Ok(())
+}
+
+pub fn update_book_name(
+    conn: &Connection,
+    id: &str,
+    name: &str,
+    updated_at_ms: i64,
+) -> LedgerResult<bool> {
     let changed = conn
-        .execute("UPDATE books SET name = ?2 WHERE id = ?1", params![id, name])
+        .execute(
+            "UPDATE books SET name = ?2, updated_at_ms = ?3 WHERE id = ?1",
+            params![id, name, updated_at_ms],
+        )
         .map_err(|error| map_unique_violation(error, "已存在同名账本"))?;
     Ok(changed > 0)
 }
@@ -789,6 +826,242 @@ pub fn upsert_recurring_run(conn: &Connection, run: &RecurringRun) -> LedgerResu
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// 合并（upsert）与墓碑
+// ---------------------------------------------------------------------------
+
+/// 合并用：按主键整行覆盖。附件 / 账单等子表不负责级联维护，
+/// 级联语义由合并编排（`tk-backup::merge`）按实体顺序处理。
+pub fn upsert_account(conn: &Connection, account: &Account) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT INTO accounts
+            (id, book_id, kind, name, icon_name, color, initial_balance_cents, sort_order, created_at_ms, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+         ON CONFLICT(id) DO UPDATE SET
+            book_id = excluded.book_id,
+            kind = excluded.kind,
+            name = excluded.name,
+            icon_name = excluded.icon_name,
+            color = excluded.color,
+            initial_balance_cents = excluded.initial_balance_cents,
+            sort_order = excluded.sort_order,
+            updated_at_ms = excluded.updated_at_ms",
+        params![
+            account.id,
+            account.book_id,
+            account.kind.as_str(),
+            account.name,
+            account.icon_name,
+            account.color,
+            account.initial_balance_cents,
+            account.sort_order,
+            account.created_at_ms,
+            account.updated_at_ms,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn upsert_category(conn: &Connection, category: &Category) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT INTO categories
+            (id, kind, name, icon_name, color, sort_order, hidden, created_at_ms, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+         ON CONFLICT(id) DO UPDATE SET
+            kind = excluded.kind,
+            name = excluded.name,
+            icon_name = excluded.icon_name,
+            color = excluded.color,
+            sort_order = excluded.sort_order,
+            hidden = excluded.hidden,
+            updated_at_ms = excluded.updated_at_ms",
+        params![
+            category.id,
+            category.kind.as_str(),
+            category.name,
+            category.icon_name,
+            category.color,
+            category.sort_order,
+            i64::from(category.hidden),
+            category.created_at_ms,
+            category.updated_at_ms,
+        ],
+    )
+    .map_err(|error| map_unique_violation(error, "同类型下已存在同名分类"))?;
+    Ok(())
+}
+
+pub fn upsert_transaction(conn: &Connection, transaction: &Transaction) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT INTO transactions
+            (id, book_id, kind, category_id, account_id, amount_cents, note, day, month, occurred_at_ms, created_at_ms, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+         ON CONFLICT(id) DO UPDATE SET
+            book_id = excluded.book_id,
+            kind = excluded.kind,
+            category_id = excluded.category_id,
+            account_id = excluded.account_id,
+            amount_cents = excluded.amount_cents,
+            note = excluded.note,
+            day = excluded.day,
+            month = excluded.month,
+            occurred_at_ms = excluded.occurred_at_ms,
+            updated_at_ms = excluded.updated_at_ms",
+        params![
+            transaction.id,
+            transaction.book_id,
+            transaction.kind.as_str(),
+            transaction.category_id,
+            transaction.account_id,
+            transaction.amount_cents,
+            transaction.note,
+            transaction.day,
+            transaction.month,
+            transaction.occurred_at_ms,
+            transaction.created_at_ms,
+            transaction.updated_at_ms,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn upsert_attachment(conn: &Connection, attachment: &Attachment) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT INTO attachments
+            (id, transaction_id, path, mime, byte_size, sort_order, created_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT(id) DO UPDATE SET
+            transaction_id = excluded.transaction_id,
+            path = excluded.path,
+            mime = excluded.mime,
+            byte_size = excluded.byte_size,
+            sort_order = excluded.sort_order",
+        params![
+            attachment.id,
+            attachment.transaction_id,
+            attachment.path,
+            attachment.mime,
+            attachment.byte_size,
+            attachment.sort_order,
+            attachment.created_at_ms,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn upsert_recurring_rule(conn: &Connection, rule: &RecurringRule) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT INTO recurring_rules
+            (id, book_id, kind, amount_cents, note, category_id, account_id, enabled, start_day, last_run_day, created_at_ms, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+         ON CONFLICT(id) DO UPDATE SET
+            book_id = excluded.book_id,
+            kind = excluded.kind,
+            amount_cents = excluded.amount_cents,
+            note = excluded.note,
+            category_id = excluded.category_id,
+            account_id = excluded.account_id,
+            enabled = excluded.enabled,
+            start_day = excluded.start_day,
+            last_run_day = excluded.last_run_day,
+            updated_at_ms = excluded.updated_at_ms",
+        params![
+            rule.id,
+            rule.book_id,
+            rule.kind.as_str(),
+            rule.amount_cents,
+            rule.note,
+            rule.category_id,
+            rule.account_id,
+            i64::from(rule.enabled),
+            rule.start_day,
+            rule.last_run_day,
+            rule.created_at_ms,
+            rule.updated_at_ms,
+        ],
+    )?;
+    Ok(())
+}
+
+/// 账本名是否被其它账本占用（合并改名用）。
+pub fn book_name_taken(conn: &Connection, name: &str, exclude_id: Option<&str>) -> LedgerResult<bool> {
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM books WHERE name = ?1 AND id IS NOT ?2",
+        params![name, exclude_id],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
+pub fn account_exists(conn: &Connection, id: &str) -> LedgerResult<bool> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM accounts WHERE id = ?1", [id], |row| {
+        row.get(0)
+    })?;
+    Ok(count > 0)
+}
+
+pub fn transaction_exists(conn: &Connection, id: &str) -> LedgerResult<bool> {
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM transactions WHERE id = ?1",
+        [id],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
+pub fn recurring_rule_exists(conn: &Connection, id: &str) -> LedgerResult<bool> {
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM recurring_rules WHERE id = ?1",
+        [id],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
+/// 写墓碑：同一个实体重复删除时保留更晚的时间戳。
+pub fn insert_tombstone(
+    conn: &Connection,
+    entity: &str,
+    entity_id: &str,
+    deleted_at_ms: i64,
+) -> LedgerResult<()> {
+    conn.execute(
+        "INSERT INTO tombstones (entity, entity_id, deleted_at_ms)
+         VALUES (?1, ?2, ?3)
+         ON CONFLICT(entity, entity_id) DO UPDATE SET
+            deleted_at_ms = MAX(tombstones.deleted_at_ms, excluded.deleted_at_ms)",
+        params![entity, entity_id, deleted_at_ms],
+    )?;
+    Ok(())
+}
+
+/// 删除墓碑（实体被合并复活时清理）。
+pub fn delete_tombstone(conn: &Connection, entity: &str, entity_id: &str) -> LedgerResult<()> {
+    conn.execute(
+        "DELETE FROM tombstones WHERE entity = ?1 AND entity_id = ?2",
+        params![entity, entity_id],
+    )?;
+    Ok(())
+}
+
+/// 全部墓碑（导出备份用）。
+pub fn list_tombstones(conn: &Connection) -> LedgerResult<Vec<Tombstone>> {
+    let mut statement =
+        conn.prepare("SELECT entity, entity_id, deleted_at_ms FROM tombstones ORDER BY entity, entity_id")?;
+    let rows = statement.query_map([], |row| {
+        Ok(Tombstone {
+            entity: row.get(0)?,
+            entity_id: row.get(1)?,
+            deleted_at_ms: row.get(2)?,
+        })
+    })?;
+    let mut items = Vec::new();
+    for row in rows {
+        items.push(row?);
+    }
+    Ok(items)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -804,6 +1077,7 @@ mod tests {
             id: id.to_string(),
             name: name.to_string(),
             created_at_ms: 1,
+            updated_at_ms: 1,
             sort_order: 0,
         }
     }

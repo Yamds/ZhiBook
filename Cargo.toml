@@ -8,6 +8,8 @@ members = [
     "crates/tk-ledger",
     "crates/tk-security",
     "crates/tk-backup",
+    "crates/tk-crypto",
+    "crates/tk-cloud",
     "crates/tk-runtime",
 ]
 resolver = "3"

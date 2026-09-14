@@ -1,6 +1,6 @@
 // JS ↔ Android 原生桥。
 //
-// 原生侧（src-tauri/gen/android/app/src/main/java/cafe/yamds/bill/MainActivity.kt）
+// 原生侧（src-tauri/gen/android/app/src/main/java/cafe/yamds/zhibook/MainActivity.kt）
 // 通过 evaluateJavascript 调用这里注册的全局函数。改这个文件必须同步改 MainActivity.kt。
 //
 //   window.__yamdsBackPressed()  → 'handled' | 'exit'

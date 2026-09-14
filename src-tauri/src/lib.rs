@@ -15,6 +15,7 @@ pub mod app_log;
 pub mod app_log_format;
 pub mod bootstrap;
 pub mod commands;
+pub mod http_transport;
 
 pub struct AppState {
     pub(crate) data_root: PathBuf,
@@ -23,6 +24,8 @@ pub struct AppState {
     /// 记账库句柄。打开失败时保留错误信息，命令层把它转换成可展示的提示，
     /// 而不是让整个应用启动失败。
     pub(crate) ledger: Result<Arc<Ledger>, String>,
+    /// Git 云端备份服务（P15）。
+    pub(crate) cloud: Arc<tk_cloud::service::CloudService>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -42,11 +45,16 @@ pub fn run() {
                     Err(message)
                 }
             };
+            let cloud = Arc::new(tk_cloud::service::CloudService::new(
+                http_transport::build_http_transport(),
+                data_root.clone(),
+            ));
             app.manage(AppState {
                 data_root,
                 snapshot,
                 app_settings: Arc::new(RwLock::new(settings)),
                 ledger,
+                cloud,
             });
 
             // 宿主 EventBus → WebView 事件桥。业务插件/模块发布领域事件后，
@@ -130,6 +138,20 @@ pub fn run() {
             commands::backup::export_data,
             commands::backup::preview_backup,
             commands::backup::import_data,
+            // Git 云端备份（P15）
+            commands::cloud::get_cloud_backup_state,
+            commands::cloud::save_cloud_backup_config,
+            commands::cloud::test_cloud_backup_connection,
+            commands::cloud::set_cloud_auto_backup,
+            commands::cloud::run_cloud_auto_backup,
+            commands::cloud::create_cloud_backup_key,
+            commands::cloud::view_cloud_recovery_key,
+            commands::cloud::set_cloud_backup_passphrase,
+            commands::cloud::clear_cloud_backup_passphrase,
+            commands::cloud::run_cloud_backup,
+            commands::cloud::preview_cloud_restore,
+            commands::cloud::run_cloud_restore,
+            commands::cloud::disconnect_cloud_backup,
         ])
         .build(tauri::generate_context!());
 

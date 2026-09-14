@@ -1,5 +1,5 @@
 // 首屏启动层：在 App 壳就绪前展示品牌动效；尊重 useMotion / prefers-reduced-motion。
-// 五幕：火种（中心亮起一粒光）→ 诞生（火星炸开，立绘从中长出，星点迸发）→ 成形（轨道环、标题、进度到一半）
+// 四幕：诞生（立绘从极光底色里长出，星点迸发）→ 成形（轨道环、标题、进度到一半）
 // → 待机（换词、进度到八成后呼吸）→ 出发（进度冲满、收束、爆发、以立绘为圆心开洞揭示主界面）。
 //
 // Android 端已移除全部「光波」特效（蓄力环 / 冲击波 / 揭示光边），只留点状光与轨道环；
@@ -146,7 +146,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
     const logoWrapRef = useRef<HTMLDivElement>(null);
     const logoBoxRef = useRef<HTMLDivElement>(null);
     const brandPulseRef = useRef<HTMLDivElement>(null);
-    const sparkRef = useRef<HTMLDivElement>(null);
     const titleRef = useRef<HTMLHeadingElement>(null);
     const titleCharRefs = useRef<(HTMLSpanElement | null)[]>([]);
     const subRef = useRef<HTMLDivElement>(null);
@@ -199,14 +198,10 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
         const glow = glowRef.current;
         const aurora = auroraRef.current;
         const brandPulse = brandPulseRef.current;
-        const spark = sparkRef.current;
         const version = versionRef.current;
         const particles = particleRefs.current.filter(Boolean) as HTMLSpanElement[];
         const rings = ringRefs.current.filter(Boolean) as HTMLDivElement[];
         if (!root || !logo || !logoWrap || !logoBox || !title || !sub || !bar) return;
-
-        // 根层特效只剩火种一粒光（位置由 GSAP 按立绘实测中心写入；蓄力环 / 冲击波 / 光边已移除）
-        const rootFx = spark ? [spark] : [];
 
         if (!motion.enabled) {
             gsap.set([stage, logoWrap, logoBox, logo, title, sub, subText, bar, barTrack, version].filter(Boolean), {
@@ -221,7 +216,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
             if (glow) gsap.set(glow, { autoAlpha: 0.35 });
             if (aurora) gsap.set(aurora, { autoAlpha: 0.7 });
             if (brandPulse) gsap.set(brandPulse, { autoAlpha: 0.3, scale: 1 });
-            gsap.set(rootFx, { autoAlpha: 0 });
             gsap.set(rings, { autoAlpha: 0.6, scale: 1, rotation: 0 });
             gsap.set(particles, { autoAlpha: 0.3, scale: 1, x: 0, y: 0 });
             setEnterDone(true);
@@ -261,8 +255,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
 
         gsap.set(root, { autoAlpha: 1 });
         if (stage) gsap.set(stage, { scale: flourish ? 1.05 : 1, transformOrigin: '50% 45%' });
-        gsap.set(rootFx, { left: cx, top: cy, autoAlpha: 0 });
-        if (spark) gsap.set(spark, { scale: 0 });
         gsap.set(logoWrap, {
             autoAlpha: 0,
             scale: flourish ? 0.3 : Math.max(f.popPeak * 0.86, 0.9),
@@ -346,31 +338,10 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
             tl.to(stage, { scale: 1, duration: s(0.9), ease: 'power2.out' }, 0);
         }
 
-        // 第一幕 火种：中心亮起一粒光并微微抖动（细环收拢已随「光波」一起移除）
+        // 第一幕 诞生：立绘从极光底色里长出并翻正，星点顺势迸向四周。
+        // 原来的第一幕「火种」（白色核心的闪烁光点）已移除 —— 它正好出现在立绘之前，
+        // 用户反馈像“立绘出来前的一道闪光”。
         const birthAt = flourish ? s(0.18) : 0;
-        if (flourish) {
-            if (spark) {
-                tl.to(spark, { autoAlpha: 1, scale: 1, duration: s(0.1), ease: 'back.out(2.5)' }, 0).to(
-                    spark,
-                    {
-                        keyframes: {
-                            opacity: [1, 0.55, 1, 0.7, 1],
-                            scale: [1, 0.9, 1.18, 1, 1.25],
-                        },
-                        duration: s(0.08),
-                        ease: 'none',
-                    },
-                    s(0.1),
-                );
-            }
-        }
-
-        // 第二幕 诞生：火种炸开成星点，立绘从火星里长出来翻正，星点顺势迸向四周
-        if (flourish) {
-            if (spark) {
-                tl.to(spark, { scale: 3.4, autoAlpha: 0, duration: s(0.12), ease: 'power2.out' }, birthAt);
-            }
-        }
         if (particles.length > 0) {
             tl.to(
                 particles,
@@ -414,7 +385,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
             );
         }
 
-        // 第三幕 成形：轨道环撑开归位，标题收字距，进度条走到一半
+        // 第二幕 成形：轨道环撑开归位，标题收字距，进度条走到一半
         if (rings.length > 0 && flourish) {
             tl.to(
                 rings,
@@ -498,7 +469,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                     aurora,
                     brandPulse,
                     version,
-                    ...rootFx,
                     ...rings,
                     ...particles,
                 ].filter(Boolean),
@@ -506,7 +476,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
         };
     }, [motion.enabled, motion.speed, motion.level, isRich, flourish]);
 
-    // 第四幕 待机：换词、进度推到八成后呼吸，立绘浮动、轨道环慢转、星点漂移
+    // 第三幕 待机：换词、进度推到八成后呼吸，立绘浮动、轨道环慢转、星点漂移
     useEffect(() => {
         const logoWrap = logoWrapRef.current;
         const brandPulse = brandPulseRef.current;
@@ -623,7 +593,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
         return () => window.clearTimeout(safety);
     }, [shellReady, finish]);
 
-    // 第五幕 出发
+    // 第四幕 出发
     useEffect(() => {
         if (!exiting || finishedRef.current) return;
         const root = rootRef.current;
@@ -874,10 +844,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                     aria-hidden
                 />
             ))}
-
-            {/* 以立绘为圆心的火种挂根层：位置由 GSAP 按立绘实测中心写入，
-                不放进 logoWrap 是因为 logoWrap 自己会整体缩放/淡出 */}
-            <div ref={sparkRef} className="ndf-splash-spark z-20 opacity-0" aria-hidden />
 
             <div ref={stageRef} className="relative z-10 flex flex-col items-center gap-5 px-8">
                 <div ref={logoWrapRef} className="relative flex shrink-0 items-center justify-center opacity-0">

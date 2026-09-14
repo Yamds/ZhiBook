@@ -132,6 +132,9 @@ pub struct Book {
     pub name: String,
     #[ts(type = "number")]
     pub created_at_ms: i64,
+    /// 最后一次改名时间（多设备合并的冲突比较基准）。
+    #[ts(type = "number")]
+    pub updated_at_ms: i64,
     #[ts(type = "number")]
     pub sort_order: i64,
 }
@@ -237,6 +240,18 @@ pub struct Attachment {
 pub struct AttachmentData {
     pub attachment: Attachment,
     pub base64: String,
+}
+
+/// 硬删除墓碑（多设备合并用）：记录某个实体在某刻被删除。
+///
+/// 软删除（分类 `hidden`）不需要墓碑——`updated_at_ms` 已经能表达「改到了最新」。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Tombstone {
+    /// book | account | transaction | attachment | recurring_rule
+    pub entity: String,
+    pub entity_id: String,
+    pub deleted_at_ms: i64,
 }
 
 // ---------------------------------------------------------------------------

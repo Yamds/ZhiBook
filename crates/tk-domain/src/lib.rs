@@ -9,6 +9,7 @@ mod macros;
 pub mod app_config;
 pub mod backup;
 pub mod bootstrap;
+pub mod cloud;
 pub mod domain_event;
 pub mod errors;
 pub mod kinds;
@@ -23,6 +24,10 @@ pub use app_config::{
 };
 pub use backup::{BackupCounts, BackupPreview, BackupSummary, ImportSummary};
 pub use bootstrap::{BootstrapSnapshot, BootstrapStatus, RepairAction};
+pub use cloud::{
+    CloudBackupState, CloudBackupSummary, CloudConnectionInfo, CloudCreatedKey, CloudKeyInfo,
+    CloudKeyInput, CloudRestorePreview, CloudRestoreSummary, MergeDelta, MergeSummary,
+};
 pub use domain_event::{DOMAIN_EVENT_ENVELOPE_VERSION, DomainEvent, DomainEventKind};
 pub use errors::{AppError, ConfigError, MigrationError, PathError};
 pub use kinds::SchemaVersion;
@@ -32,8 +37,8 @@ pub use ledger::{
     EntryKind, KindMonthStats, MAX_AMOUNT_CENTS, MAX_ATTACHMENTS_PER_TRANSACTION, MAX_NOTE_CHARS,
     MonthPoint, MonthStats, NewAccount, NewAttachment, NewBook, NewCategory, NewRecurringRule,
     NewTransaction, RecurringOccurrence, RecurringRule, RecurringRulePatch, RecurringRun,
-    RecurringRunResult, ReorderRequest, ShareBreakdown, StatsKind, Transaction, TransactionPatch,
-    TransactionRank, YearSummary,
+    RecurringRunResult, ReorderRequest, ShareBreakdown, StatsKind, Tombstone, Transaction,
+    TransactionPatch, TransactionRank, YearSummary,
 };
 pub use migration::{
     BackupInfo, MigrationOutcome, MigrationReport, MigrationSource, MigrationStage,

@@ -15,13 +15,18 @@
 //! v2 新增：
 //! - `recurring_rules` 固定收支规则（每日 05:00 自动记一笔）
 //! - `recurring_runs`  幂等台账：同一条规则同一天最多生成一笔
+//!
+//! v3 新增（P15 多设备合并基础）：
+//! - `tombstones` 硬删除墓碑：记录被删除的账本 / 账户 / 账单 / 附件 / 固定收支规则，
+//!   合并时与「更新」比较时间戳，避免已删除的数据被其它设备重新带回来
+//! - `books.updated_at_ms` 改名时间（账本没有独立的更新语义，补齐冲突比较基准）
 
 use rusqlite::{Connection, Transaction};
 
 use crate::error::{LedgerError, LedgerResult};
 
 /// 当前 schema 版本。
-pub const SCHEMA_VERSION: i64 = 2;
+pub const SCHEMA_VERSION: i64 = 3;
 
 /// 说明：`transactions.category_id` 故意不加外键——分类只做软删除，
 /// 且历史账单必须能在分类被隐藏后继续显示，不允许任何级联。
@@ -138,6 +143,21 @@ CREATE TABLE recurring_runs (
 );
 "#;
 
+/// v3：多设备合并所需的墓碑与账本更新时间。
+const V3: &str = r#"
+ALTER TABLE books ADD COLUMN updated_at_ms INTEGER NOT NULL DEFAULT 0;
+UPDATE books SET updated_at_ms = created_at_ms WHERE updated_at_ms = 0;
+
+CREATE TABLE if NOT EXISTS tombstones (
+    entity        TEXT    NOT NULL,
+    entity_id     TEXT    NOT NULL,
+    deleted_at_ms INTEGER NOT NULL,
+    PRIMARY KEY (entity, entity_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tombstones_deleted ON tombstones (deleted_at_ms);
+"#;
+
 /// 把库升到 [`SCHEMA_VERSION`]；已是最新则直接返回。
 pub fn migrate(conn: &mut Connection) -> LedgerResult<()> {
     let current: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
@@ -151,6 +171,9 @@ pub fn migrate(conn: &mut Connection) -> LedgerResult<()> {
     }
     if current < 2 {
         apply_v2(conn)?;
+    }
+    if current < 3 {
+        apply_v3(conn)?;
     }
     conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     Ok(())
@@ -166,6 +189,13 @@ fn apply_v1(conn: &mut Connection) -> LedgerResult<()> {
 fn apply_v2(conn: &mut Connection) -> LedgerResult<()> {
     let tx: Transaction<'_> = conn.transaction()?;
     tx.execute_batch(V2)?;
+    tx.commit()?;
+    Ok(())
+}
+
+fn apply_v3(conn: &mut Connection) -> LedgerResult<()> {
+    let tx: Transaction<'_> = conn.transaction()?;
+    tx.execute_batch(V3)?;
     tx.commit()?;
     Ok(())
 }
@@ -200,6 +230,35 @@ mod tests {
         ));
     }
 
+    /// v2 旧库升级到 v3：补齐 `books.updated_at_ms`（用 created_at_ms 回填）并建墓碑表，旧数据不丢。
+    #[test]
+    fn migration_from_v2_backfills_book_updated_at() {
+        let mut conn = fresh();
+        {
+            let tx = conn.transaction().expect("tx");
+            tx.execute_batch(V1).expect("v1");
+            tx.execute_batch(V2).expect("v2");
+            tx.execute(
+                "INSERT INTO books (id, name, created_at_ms, sort_order) VALUES ('b1', '日常', 111, 0)",
+                [],
+            )
+            .expect("insert book");
+            tx.commit().expect("commit");
+        }
+        conn.pragma_update(None, "user_version", 2).expect("v2 tag");
+        migrate(&mut conn).expect("migrate v2 -> v3");
+        let updated: i64 = conn
+            .query_row("SELECT updated_at_ms FROM books WHERE id = 'b1'", [], |row| {
+                row.get(0)
+            })
+            .expect("read updated_at_ms");
+        assert_eq!(updated, 111);
+        let tombstones: i64 = conn
+            .query_row("SELECT COUNT(*) FROM tombstones", [], |row| row.get(0))
+            .expect("read tombstones");
+        assert_eq!(tombstones, 0);
+    }
+
     #[test]
     fn v1_creates_all_tables() {
         let mut conn = fresh();
@@ -213,6 +272,7 @@ mod tests {
             "meta",
             "recurring_rules",
             "recurring_runs",
+            "tombstones",
         ] {
             let count: i64 = conn
                 .query_row(

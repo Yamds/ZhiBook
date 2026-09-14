@@ -7,7 +7,9 @@ import {
     formatDateLabel,
     formatShortDay,
     isLeapYear,
+    logicalDayKey,
     MONTH_SELECTOR_VALUES,
+    msUntilNextHourBoundary,
     parseDayKey,
     parseMonthKey,
     shiftDayKey,
@@ -143,5 +145,32 @@ describe('其它工具', () => {
         expect(MONTH_SELECTOR_VALUES).toHaveLength(12);
         expect(MONTH_SELECTOR_VALUES[0]).toBe(1);
         expect(MONTH_SELECTOR_VALUES[11]).toBe(12);
+    });
+});
+
+describe('逻辑日（自动备份 / 固定收支的 05:00 边界）', () => {
+    it('05:00 前算前一天，05:00 起算当天', () => {
+        expect(logicalDayKey(new Date(2025, 8, 8, 4, 59))).toBe('2025-09-07');
+        expect(logicalDayKey(new Date(2025, 8, 8, 5, 0))).toBe('2025-09-08');
+        expect(logicalDayKey(new Date(2025, 8, 8, 23, 59))).toBe('2025-09-08');
+    });
+
+    it('跨月 / 跨年时正确回退一天', () => {
+        expect(logicalDayKey(new Date(2025, 8, 1, 3, 0))).toBe('2025-08-31');
+        expect(logicalDayKey(new Date(2026, 0, 1, 2, 0))).toBe('2025-12-31');
+    });
+
+    it('边界小时可配置', () => {
+        expect(logicalDayKey(new Date(2025, 8, 8, 9, 0), 10)).toBe('2025-09-07');
+        expect(logicalDayKey(new Date(2025, 8, 8, 10, 0), 10)).toBe('2025-09-08');
+    });
+
+    it('距下一个边界：当天没过就是今天，过了就是明天', () => {
+        // 04:55 → 5 分钟后到 05:00（再加 5s 余量）
+        expect(msUntilNextHourBoundary(new Date(2025, 8, 8, 4, 55, 0))).toBe(5 * 60_000 + 5_000);
+        // 边界刚过、还在 5s 余量内 → 立即再检查一次
+        expect(msUntilNextHourBoundary(new Date(2025, 8, 8, 5, 0, 0))).toBe(5_000);
+        // 边界已过 → 顺延到第二天 05:00
+        expect(msUntilNextHourBoundary(new Date(2025, 8, 8, 5, 0, 10))).toBe(24 * 60 * 60_000 - 5_000);
     });
 });

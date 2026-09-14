@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 及以下的自动备份范围：全部排除（allowBackup=false 的双保险）。 -->
+<full-backup-content>
+    <exclude domain="root" path="." />
+</full-backup-content>

@@ -19,11 +19,14 @@ use serde::{Deserialize, Serialize};
 use tk_config::DataPaths;
 use tk_domain::{
     Account, Attachment, BackupCounts, BackupPreview, BackupSummary, Book, Category, ImportSummary,
-    RecurringRule, RecurringRun, Transaction,
+    RecurringRule, RecurringRun, Tombstone, Transaction,
 };
 use tk_ledger::{repo, seed, Ledger};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
+
+mod merge;
+pub use merge::{merge_into, merged_counts};
 
 /// 备份包标识与格式版本。
 pub const FORMAT: &str = "yamds-bill-backup";
@@ -53,18 +56,21 @@ impl From<tk_ledger::LedgerError> for BackupError {
 
 pub type BackupResult<T> = Result<T, BackupError>;
 
-/// data.json 的结构。
+/// data.json 的结构（云端备份包的 data.json 同构，见 `tk-cloud`）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct BackupData {
-    books: Vec<Book>,
-    accounts: Vec<Account>,
-    categories: Vec<Category>,
-    transactions: Vec<Transaction>,
-    attachments: Vec<Attachment>,
-    recurring_rules: Vec<RecurringRule>,
-    recurring_runs: Vec<RecurringRun>,
-    current_book_id: Option<String>,
+pub struct BackupData {
+    pub books: Vec<Book>,
+    pub accounts: Vec<Account>,
+    pub categories: Vec<Category>,
+    pub transactions: Vec<Transaction>,
+    pub attachments: Vec<Attachment>,
+    pub recurring_rules: Vec<RecurringRule>,
+    pub recurring_runs: Vec<RecurringRun>,
+    /// 硬删除墓碑（v3 起）；旧备份包没有这个字段，缺省为空。
+    #[serde(default)]
+    pub tombstones: Vec<Tombstone>,
+    pub current_book_id: Option<String>,
 }
 
 /// manifest.json 的结构。
@@ -94,7 +100,7 @@ struct BackupFileEntry {
 
 /// 导出全量数据到 `tmp/exports/zz-backup-<时间戳>.zip`。
 pub fn export_to_zip(ledger: &Ledger, data_root: &Path) -> BackupResult<BackupSummary> {
-    let data = gather(ledger)?;
+    let data = gather_data(ledger)?;
     let paths = DataPaths::new(data_root);
     fs::create_dir_all(paths.export_dir())?;
 
@@ -189,7 +195,8 @@ pub fn import_from_zip(
 // 内部
 // ---------------------------------------------------------------------------
 
-fn gather(ledger: &Ledger) -> BackupResult<BackupData> {
+/// 读出全量业务数据（内存结构，不落盘）。
+pub fn gather_data(ledger: &Ledger) -> BackupResult<BackupData> {
     ledger
         .with_conn(|conn| {
             let books = repo::list_books(conn)?;
@@ -204,6 +211,7 @@ fn gather(ledger: &Ledger) -> BackupResult<BackupData> {
             let recurring_rules = repo::list_recurring_rules(conn)?;
             let recurring_runs = repo::list_recurring_runs(conn)?;
             let attachments = repo::list_all_attachments(conn)?;
+            let tombstones = repo::list_tombstones(conn)?;
             let current_book_id = seed::get_meta(conn, seed::META_CURRENT_BOOK_KEY)?;
             Ok(BackupData {
                 books,
@@ -213,10 +221,29 @@ fn gather(ledger: &Ledger) -> BackupResult<BackupData> {
                 attachments,
                 recurring_rules,
                 recurring_runs,
+                tombstones,
                 current_book_id,
             })
         })
         .map_err(BackupError::from)
+}
+
+/// 从内存数据覆盖恢复（云端恢复用；附件文件由调用方处理）。
+pub fn restore_from_data(ledger: &Ledger, data: &BackupData) -> BackupResult<()> {
+    ledger.with_tx(|conn| replace_all(conn, data))?;
+    Ok(())
+}
+
+/// 数据计数（云端预览 / 导入结果复用）。
+pub fn counts_of(data: &BackupData) -> BackupCounts {
+    BackupCounts {
+        books: data.books.len() as i64,
+        accounts: data.accounts.len() as i64,
+        categories: data.categories.len() as i64,
+        transactions: data.transactions.len() as i64,
+        attachments: data.attachments.len() as i64,
+        recurring_rules: data.recurring_rules.len() as i64,
+    }
 }
 
 fn read_zip(zip_path: &Path) -> BackupResult<(BackupManifest, BackupData)> {
@@ -274,6 +301,7 @@ fn replace_all(conn: &rusqlite::Connection, data: &BackupData) -> tk_ledger::Led
     // 删账本 → 级联清空账单 / 账户 / 附件 / 固定收支；分类全局共享，单独清。
     conn.execute("DELETE FROM books", [])?;
     conn.execute("DELETE FROM categories", [])?;
+    conn.execute("DELETE FROM tombstones", [])?;
 
     for category in &data.categories {
         repo::insert_category(conn, category)?;
@@ -296,6 +324,14 @@ fn replace_all(conn: &rusqlite::Connection, data: &BackupData) -> tk_ledger::Led
     for run in &data.recurring_runs {
         repo::upsert_recurring_run(conn, run)?;
     }
+    for tombstone in &data.tombstones {
+        repo::insert_tombstone(
+            conn,
+            &tombstone.entity,
+            &tombstone.entity_id,
+            tombstone.deleted_at_ms,
+        )?;
+    }
     if let Some(book_id) = &data.current_book_id
         && repo::book_exists(conn, book_id)?
     {
@@ -303,17 +339,6 @@ fn replace_all(conn: &rusqlite::Connection, data: &BackupData) -> tk_ledger::Led
     }
     seed::ensure_current_book(conn)?;
     Ok(())
-}
-
-fn counts_of(data: &BackupData) -> BackupCounts {
-    BackupCounts {
-        books: data.books.len() as i64,
-        accounts: data.accounts.len() as i64,
-        categories: data.categories.len() as i64,
-        transactions: data.transactions.len() as i64,
-        attachments: data.attachments.len() as i64,
-        recurring_rules: data.recurring_rules.len() as i64,
-    }
 }
 
 fn file_entry(path: &str, bytes: &[u8]) -> BackupFileEntry {

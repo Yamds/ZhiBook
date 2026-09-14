@@ -1,0 +1,27 @@
+[package]
+name = "tk-cloud"
+description = "Git 云端备份：smart HTTP 最小客户端 + pack 生成 + raw 下载 + 云端包组装"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tk-domain = { path = "../tk-domain" }
+tk-config = { path = "../tk-config" }
+tk-ledger = { path = "../tk-ledger" }
+tk-backup = { path = "../tk-backup" }
+tk-crypto = { path = "../tk-crypto" }
+tk-traits = { path = "../tk-traits" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+base64 = "0.22"
+flate2 = "1"
+sha1 = "0.10"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

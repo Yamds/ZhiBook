@@ -17,6 +17,7 @@ import { useGlobalInfoBars } from '../hooks/ui/useGlobalInfoBars';
 import { useHorizontalSwipe } from '../hooks/ui/useHorizontalSwipe';
 import { useCurrentBook } from '../hooks/ledger/useLedgerBooks';
 import { useRecurringCatchUp } from '../hooks/ledger/useRecurringCatchUp';
+import { useCloudAutoBackup } from '../hooks/cloud/useCloudAutoBackup';
 import { useAppLockLifecycle } from '../hooks/security/usePinLock';
 import { useReminderSync } from '../hooks/preferences/useReminderSync';
 import { useMotion } from '../hooks/preferences/useMotion';
@@ -82,6 +83,8 @@ export function AppNext() {
     const { currentBook } = useCurrentBook();
     // 固定收支补账：启动 / 回前台 / 前台跨 05:00 时各检查一次。
     useRecurringCatchUp();
+    // 云端自动备份：同一个逻辑日（本地 05:00 起算）最多自动备份一次。
+    useCloudAutoBackup();
     // 离开后台超过 30 秒回前台时重新锁定（密码锁）。
     useAppLockLifecycle();
     // 记账提醒：把配置下发给原生排闹钟。

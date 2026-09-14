@@ -130,6 +130,23 @@ export function ReminderSettingsSheet({ open, onOpenChange }: ReminderSettingsSh
                         <p className="text-[11px] leading-relaxed text-text-tertiary">
                             国产 ROM 的省电策略可能延迟提醒；在系统里「强行停止」App 会取消闹钟，重新打开 App 后自动恢复。
                         </p>
+                        <div className="mt-0.5 flex flex-col gap-1.5 border-t border-border-subtle pt-2.5">
+                            <p className="text-[12px] font-medium text-text">提高通知到达率</p>
+                            <p className="text-[11px] leading-relaxed text-text-secondary">
+                                1. 打开系统「最近任务」，把制账卡片
+                                <span className="font-medium text-text"> 向下滑 </span>
+                                并点「锁定 / 加锁」，让系统不要清理它。
+                            </p>
+                            <p className="text-[11px] leading-relaxed text-text-secondary">
+                                2. 允许通知、加入电池优化白名单（见上）。
+                            </p>
+                            <p className="text-[11px] leading-relaxed text-text-secondary">
+                                3. 不要在系统设置里「强行停止」App，那会取消已排的闹钟。
+                            </p>
+                            <p className="text-[11px] leading-relaxed text-text-tertiary">
+                                没锁住时，后台被清理后通知有概率发不出来。
+                            </p>
+                        </div>
                     </div>
                 ) : null}
 

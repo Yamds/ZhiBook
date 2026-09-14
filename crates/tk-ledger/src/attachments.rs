@@ -130,6 +130,7 @@ impl AttachmentStore {
         let attachment = repo::get_attachment(conn, attachment_id)?
             .ok_or_else(|| LedgerError::not_found(format!("附件不存在：{attachment_id}")))?;
         self.remove_files(std::slice::from_ref(&attachment.path))?;
+        repo::insert_tombstone(conn, "attachment", attachment_id, now_ms())?;
         repo::delete_attachment_row(conn, attachment_id)?;
         Ok(())
     }

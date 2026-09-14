@@ -384,27 +384,6 @@ samp,
     box-shadow: 0 0 2px var(--neutral-0);
 }
 
-/* 火种：立绘诞生前中心那一粒光。
-   光晕用径向渐变而不是 box-shadow：box-shadow 的模糊半径是元素尺寸的好几倍，
-   而它会被 scale 到 4.5 倍 —— 每帧重新栅格化大模糊就是「散发粒子」卡顿的元凶。 */
-.ndf-splash-spark {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 64px;
-    height: 64px;
-    margin: -32px;
-    border-radius: 9999px;
-    background: radial-gradient(circle,
-            var(--neutral-0) 0%,
-            color-mix(in srgb, var(--brand-300) 92%, transparent) 16%,
-            color-mix(in srgb, var(--brand-400) 52%, transparent) 34%,
-            color-mix(in srgb, var(--accent-400) 22%, transparent) 52%,
-            transparent 72%);
-    pointer-events: none;
-    will-change: transform, opacity;
-}
-
 /* 极光底色：三团大色斑缓慢游走，只动 transform，独占合成层。
    不再用 filter: blur(64px) —— 渐变本身就是软的，加一层大模糊只是白白加重栅格化；
    纯色平面主题按规范保持纯色画布，直接关掉。 */

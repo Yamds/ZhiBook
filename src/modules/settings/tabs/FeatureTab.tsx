@@ -6,11 +6,13 @@
 
 import { useState } from 'react';
 import { UI_ICONS } from '../../../core/design/icons';
+import { useCloudBackupState } from '../../../hooks/cloud/useCloudBackup';
 import { useCurrentBook } from '../../../hooks/ledger';
 import { useRecurringRules } from '../../../hooks/ledger/useLedgerRecurring';
 import { useBackendSettings } from '../../../hooks/preferences/useBackendSettings';
 import { useLockState } from '../../../hooks/security/usePinLock';
 import { PinSettingsSheet } from '../../security/PinSettingsSheet';
+import { CloudBackupSheet } from '../feature/CloudBackupSheet';
 import { DataTransferSheet } from '../feature/DataTransferSheet';
 import { ReminderSettingsSheet } from '../feature/ReminderSettingsSheet';
 import type { SettingsDraft } from '../settings-draft';
@@ -33,10 +35,12 @@ export function FeatureTab({ draft, patchDraft }: Props) {
     const { data: rules } = useRecurringRules();
     const { settings } = useBackendSettings();
     const { configured } = useLockState();
+    const { data: cloudState } = useCloudBackupState();
     const [recurringOpen, setRecurringOpen] = useState(false);
     const [pinOpen, setPinOpen] = useState(false);
     const [reminderOpen, setReminderOpen] = useState(false);
     const [dataOpen, setDataOpen] = useState(false);
+    const [cloudOpen, setCloudOpen] = useState(false);
 
     const bookRules = (rules ?? []).filter((rule) => rule.bookId === currentBook?.id);
     const enabledCount = bookRules.filter((rule) => rule.enabled).length;
@@ -95,6 +99,21 @@ export function FeatureTab({ draft, patchDraft }: Props) {
 
                 <SettingsSection title="数据" description="备份与迁移">
                     <SettingsEntryRow
+                        icon={UI_ICONS.cloudUpload}
+                        label="云端备份"
+                        description="加密后推送到自己的 Git 仓库；多设备共用同一分支自动合并"
+                        value={
+                            !cloudState?.configured
+                                ? '未配置'
+                                : cloudState.autoBackupEnabled
+                                  ? '自动备份'
+                                  : cloudState.lastBackupAtMs
+                                    ? '已备份'
+                                    : '待首次备份'
+                        }
+                        onClick={() => setCloudOpen(true)}
+                    />
+                    <SettingsEntryRow
                         icon={UI_ICONS.databaseExport}
                         label="导入 / 导出"
                         description="导出 zip 备份包（含附件）；导入为覆盖式恢复"
@@ -112,6 +131,7 @@ export function FeatureTab({ draft, patchDraft }: Props) {
             <PinSettingsSheet open={pinOpen} onOpenChange={setPinOpen} />
             <ReminderSettingsSheet open={reminderOpen} onOpenChange={setReminderOpen} />
             <DataTransferSheet open={dataOpen} onOpenChange={setDataOpen} />
+            <CloudBackupSheet open={cloudOpen} onOpenChange={setCloudOpen} />
         </>
     );
 }

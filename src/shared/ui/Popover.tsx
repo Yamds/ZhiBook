@@ -10,6 +10,8 @@
 //   - 视觉:bg-elevated + shadow-popover + border-border-subtle,
 //     与 Dialog/Tooltip 保持同一套语义 token
 //   - Arrow 颜色跟随 elevated + border-subtle,适配所有主题
+//   - Portal 目标:默认用所在弹层(BottomSheet)的内容节点,避免浮层落在弹层的
+//     滚动锁 shard 之外而被拦掉 wheel / touchmove(见 OverlayPortalContext)
 
 import * as RadixPopover from '@radix-ui/react-popover';
 import { useGSAP } from '@gsap/react';
@@ -26,6 +28,7 @@ import {
 } from 'react';
 import { cn } from '../utils/cn';
 import { useMotion } from '../../hooks/preferences/useMotion';
+import { useOverlayPortalContainer } from './OverlayPortalContext';
 
 gsap.registerPlugin(useGSAP);
 
@@ -129,6 +132,7 @@ export const PopoverContent = forwardRef<
     ) => {
         const open = useContext(PopoverOpenContext);
         const m = useMotion();
+        const overlayContainer = useOverlayPortalContainer();
         const elRef = useRef<HTMLDivElement | null>(null);
 
         // 首次打开后才挂载 Portal，彻底避免冷启动 forceMount DOM 遮挡下层点击
@@ -216,9 +220,11 @@ export const PopoverContent = forwardRef<
             { dependencies: [open, m.enabled, side, hasBeenOpened] },
         );
 
-        // 冷启动：Portal 始终渲染（让 Radix 正常工作），但 Content 延迟到首次打开后才挂载
+        // 冷启动：Portal 始终渲染（让 Radix 正常工作），但 Content 延迟到首次打开后才挂载。
+        // container 指向外层弹层内容节点：这样浮层落在 Radix Dialog 的滚动 shard 内，
+        // 滚轮 / 触摸滚动不会被弹层的滚动锁拦掉（见 OverlayPortalContext）。
         return (
-            <RadixPopover.Portal forceMount>
+            <RadixPopover.Portal forceMount container={overlayContainer ?? undefined}>
                 {(open || hasBeenOpened) && (
                     <RadixPopover.Content
                         ref={(node) => {

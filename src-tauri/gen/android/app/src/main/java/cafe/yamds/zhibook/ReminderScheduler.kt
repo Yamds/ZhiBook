@@ -1,4 +1,4 @@
-package cafe.yamds.bill
+package cafe.yamds.zhibook
 
 import android.app.AlarmManager
 import android.app.NotificationChannel

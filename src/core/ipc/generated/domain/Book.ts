@@ -3,4 +3,8 @@
 /**
  * 账本：数据分区（账单 / 账户 / 统计的最小隔离单位）。
  */
-export type Book = { id: string, name: string, createdAtMs: number, sortOrder: number, };
+export type Book = { id: string, name: string, createdAtMs: number, 
+/**
+ * 最后一次改名时间（多设备合并的冲突比较基准）。
+ */
+updatedAtMs: number, sortOrder: number, };

@@ -15,10 +15,10 @@ val tauriProperties = Properties().apply {
 
 android {
     compileSdk = 36
-    namespace = "cafe.yamds.bill"
+    namespace = "cafe.yamds.zhibook"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "cafe.yamds.bill"
+        applicationId = "cafe.yamds.zhibook"
         minSdk = 24
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
@@ -37,6 +37,8 @@ android {
             }
         }
         getByName("release") {
+            // 用户确认：自建 Git 仓库允许 HTTP（HTTPS 仍是推荐做法）。
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }

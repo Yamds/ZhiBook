@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ 的备份 / 设备迁移规则：P15 云端备份的密文本应由制账自己管，
+     禁止系统把账本数据库（含云端 Token、主密钥）纳入自动备份。 -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+    </device-transfer>
+</data-extraction-rules>

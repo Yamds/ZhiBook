@@ -115,6 +115,7 @@ impl Ledger {
                 id: id::new_id("book"),
                 name: name.clone(),
                 created_at_ms: id::now_ms(),
+                updated_at_ms: id::now_ms(),
                 sort_order: repo::next_book_sort_order(conn)?,
             };
             repo::insert_book(conn, &book)?;
@@ -125,7 +126,7 @@ impl Ledger {
     pub fn update_book(&self, input: BookPatch) -> LedgerResult<Book> {
         let name = validate::book_name(&input.name)?;
         self.with_tx(|conn| {
-            if !repo::update_book_name(conn, &input.id, &name)? {
+            if !repo::update_book_name(conn, &input.id, &name, id::now_ms())? {
                 return Err(LedgerError::not_found(format!("账本不存在：{}", input.id)));
             }
             repo::get_book(conn, &input.id)?
@@ -145,6 +146,7 @@ impl Ledger {
             }
             let paths = repo::attachment_paths_for_book(conn, &book.id)?;
             self.attachments.remove_files(&paths)?;
+            repo::insert_tombstone(conn, "book", &book.id, id::now_ms())?;
             repo::delete_book(conn, &book.id)?;
             seed::ensure_current_book(conn)?;
             Ok(())
@@ -153,6 +155,11 @@ impl Ledger {
 
     pub fn current_book_id(&self) -> LedgerResult<Option<String>> {
         self.with_conn(|conn| seed::get_meta(conn, seed::META_CURRENT_BOOK_KEY))
+    }
+
+    /// 全部墓碑（多设备合并 / 导出用）。
+    pub fn list_tombstones(&self) -> LedgerResult<Vec<tk_domain::Tombstone>> {
+        self.with_conn(repo::list_tombstones)
     }
 
     pub fn set_current_book(&self, book_id: &str) -> LedgerResult<()> {
@@ -239,6 +246,7 @@ impl Ledger {
             if !repo::delete_account(conn, id)? {
                 return Err(LedgerError::not_found(format!("账户不存在：{id}")));
             }
+            repo::insert_tombstone(conn, "account", id, id::now_ms())?;
             Ok(())
         })
     }
@@ -454,6 +462,7 @@ impl Ledger {
                 .ok_or_else(|| LedgerError::not_found(format!("账单不存在：{id}")))?;
             let paths = repo::attachment_paths_for_transaction(conn, &transaction.id)?;
             self.attachments.remove_files(&paths)?;
+            repo::insert_tombstone(conn, "transaction", &transaction.id, id::now_ms())?;
             repo::delete_transaction(conn, &transaction.id)?;
             Ok(transaction.id)
         })?;
@@ -572,6 +581,11 @@ impl Ledger {
         self.with_conn(repo::list_recurring_rules)
     }
 
+    /// 全部固定收支台账（云端备份 / 合并用）。
+    pub fn list_recurring_runs(&self) -> LedgerResult<Vec<tk_domain::RecurringRun>> {
+        self.with_conn(repo::list_recurring_runs)
+    }
+
     /// 新建固定收支规则：`start_day` 由前端按本地时区给出（创建时刻之后的下一个 05:00）。
     pub fn create_recurring_rule(&self, input: NewRecurringRule) -> LedgerResult<RecurringRule> {
         validate::amount_cents(input.amount_cents)?;
@@ -659,6 +673,7 @@ impl Ledger {
             if !repo::delete_recurring_rule(conn, id)? {
                 return Err(LedgerError::not_found(format!("固定收支不存在：{id}")));
             }
+            repo::insert_tombstone(conn, "recurring_rule", id, id::now_ms())?;
             Ok(())
         })
     }
@@ -860,6 +875,98 @@ mod tests {
                 .expect("search")
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn hard_deletes_write_tombstones() {
+        let ledger = TestLedger::new();
+        let book_id = seed::DEFAULT_BOOK_ID.to_string();
+
+        let transaction = ledger
+            .create_transaction(NewTransaction {
+                book_id: book_id.clone(),
+                kind: EntryKind::Expense,
+                category_id: "expense_food".to_string(),
+                account_id: None,
+                amount_cents: 100,
+                note: String::new(),
+                day: "2025-09-08".to_string(),
+                month: "2025-09".to_string(),
+                occurred_at_ms: 1,
+            })
+            .expect("create transaction");
+        ledger
+            .delete_transaction(&transaction.id)
+            .expect("delete transaction");
+
+        let account = ledger
+            .create_account(NewAccount {
+                book_id: book_id.clone(),
+                kind: tk_domain::AccountKind::Asset,
+                name: "现金".to_string(),
+                icon_name: "mdi:cash".to_string(),
+                color: "theme".to_string(),
+                initial_balance_cents: 0,
+            })
+            .expect("create account");
+        ledger.delete_account(&account.id).expect("delete account");
+
+        let rule = sample_rule(&ledger, "2025-09-10");
+        ledger
+            .delete_recurring_rule(&rule.id)
+            .expect("delete rule");
+
+        let extra_book = ledger
+            .create_book(NewBook {
+                name: "旅行账".to_string(),
+            })
+            .expect("create book");
+        ledger.delete_book(&extra_book.id).expect("delete book");
+
+        let tombstones = ledger.list_tombstones().expect("tombstones");
+        let has = |entity: &str, id: &str| {
+            tombstones
+                .iter()
+                .any(|item| item.entity == entity && item.entity_id == id && item.deleted_at_ms > 0)
+        };
+        assert!(has("transaction", &transaction.id), "{tombstones:?}");
+        assert!(has("account", &account.id), "{tombstones:?}");
+        assert!(has("recurring_rule", &rule.id), "{tombstones:?}");
+        assert!(has("book", &extra_book.id), "{tombstones:?}");
+        // 软删除（分类 hidden）不写墓碑
+        assert!(!tombstones.iter().any(|item| item.entity == "category"));
+    }
+
+    #[test]
+    fn attachment_delete_writes_tombstone() {
+        let ledger = TestLedger::new();
+        let transaction = ledger
+            .create_transaction(NewTransaction {
+                book_id: seed::DEFAULT_BOOK_ID.to_string(),
+                kind: EntryKind::Expense,
+                category_id: "expense_food".to_string(),
+                account_id: None,
+                amount_cents: 100,
+                note: String::new(),
+                day: "2025-09-08".to_string(),
+                month: "2025-09".to_string(),
+                occurred_at_ms: 1,
+            })
+            .expect("create transaction");
+        let attachment = ledger
+            .save_attachment(NewAttachment {
+                transaction_id: transaction.id.clone(),
+                mime: "image/png".to_string(),
+                base64: "cG5n".to_string(),
+            })
+            .expect("save attachment");
+        ledger
+            .delete_attachment(&attachment.id)
+            .expect("delete attachment");
+        let tombstones = ledger.list_tombstones().expect("tombstones");
+        assert!(tombstones.iter().any(|item| {
+            item.entity == "attachment" && item.entity_id == attachment.id
+        }));
     }
 
     #[test]

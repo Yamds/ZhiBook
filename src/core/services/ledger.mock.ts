@@ -14,6 +14,7 @@ const mockBook: Book = {
     id: MOCK_CURRENT_BOOK_ID,
     name: '默认账本',
     createdAtMs: 0,
+    updatedAtMs: 0,
     sortOrder: 0,
 };
 

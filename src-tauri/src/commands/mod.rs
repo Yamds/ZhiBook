@@ -6,6 +6,7 @@
 pub mod app_log;
 pub mod app_settings;
 pub mod backup;
+pub mod cloud;
 pub mod exit;
 pub mod ledger;
 pub mod security;
