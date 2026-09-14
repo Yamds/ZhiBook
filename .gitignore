@@ -2,9 +2,8 @@
 node_modules/
 .pnpm-store/
 
-# ===== 文档不入库（用户要求：README 与 docs 只保留在工作区，不提交）=====
-# 跟踪过的旧版本已用 `git rm --cached` 移出版本控制，文件仍在磁盘上。
-/README.md
+# ===== 文档策略：根 README 入库（面向用户），docs/ 不入库（开发用索引）=====
+# docs/ 只保留在工作区，不提交；根 README.md 面向使用者，随代码入库。
 /docs/
 
 # ===== 前端产物 =====

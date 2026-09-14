@@ -3968,7 +3968,7 @@ dependencies = [
 
 [[package]]
 name = "tk-backup"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "rusqlite",
  "serde",
@@ -3984,7 +3984,7 @@ dependencies = [
 
 [[package]]
 name = "tk-cloud"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "flate2",
@@ -4004,7 +4004,7 @@ dependencies = [
 
 [[package]]
 name = "tk-config"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4017,7 +4017,7 @@ dependencies = [
 
 [[package]]
 name = "tk-crypto"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "argon2",
  "base32",
@@ -4035,7 +4035,7 @@ dependencies = [
 
 [[package]]
 name = "tk-domain"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4045,7 +4045,7 @@ dependencies = [
 
 [[package]]
 name = "tk-ledger"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "rusqlite",
@@ -4059,18 +4059,18 @@ dependencies = [
 
 [[package]]
 name = "tk-log"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
 ]
 
 [[package]]
 name = "tk-runtime"
-version = "0.1.0"
+version = "1.0.0"
 
 [[package]]
 name = "tk-security"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "getrandom 0.2.17",
@@ -4087,7 +4087,7 @@ dependencies = [
 
 [[package]]
 name = "tk-traits"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde_json",
  "tk-domain",
@@ -5320,7 +5320,7 @@ dependencies = [
 
 [[package]]
 name = "yamds-bill"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "dirs 5.0.1",

@@ -1,7 +1,7 @@
 {
   "name": "yamds-bill",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "packageManager": "pnpm@9.15.9",
   "description": "Yamds记账 · Android 端 Tauri 模板（Rust + React）",
