@@ -35,7 +35,7 @@ interface Props {
 export function FeatureTab({ draft, patchDraft }: Props) {
     const { currentBook } = useCurrentBook();
     const { data: rules } = useRecurringRules();
-    const { settings } = useBackendSettings();
+    const { settings, patchBackend } = useBackendSettings();
     const { configured } = useLockState();
     const { data: cloudState } = useCloudBackupState();
     const [recurringOpen, setRecurringOpen] = useState(false);
@@ -132,7 +132,12 @@ export function FeatureTab({ draft, patchDraft }: Props) {
                         value="重新播放"
                         onClick={() => {
                             navigateTo('home');
-                            startOnboarding();
+                            // 重新武装添加页分段引导：下次进入添加页会再播一次
+                            patchBackend((current) => ({
+                                ...current,
+                                uiPreferences: { ...current.uiPreferences, addTourCompleted: false },
+                            }));
+                            startOnboarding('main');
                         }}
                     />
                 </SettingsSection>

@@ -10,6 +10,7 @@ import { UI_ICONS } from '../../../core/design/icons';
 import { APP_PRODUCT_NAME, APP_VERSION_LABEL } from '../../../core/domain/app-meta';
 import { openExternalUrl } from '../../../core/ipc/transport';
 import { useAppInfo } from '../../../hooks/app/useAppInfo';
+import { useBackendSettings } from '../../../hooks/preferences/useBackendSettings';
 import { startOnboarding } from '../../onboarding/onboardingStore';
 import { AppIcon } from '../../../shared/ui/AppIcon';
 import {
@@ -25,6 +26,7 @@ const REPO_LABEL = 'github.com/Yamds/ZhiBook';
 
 export function AboutTab() {
     const { data, isLoading } = useAppInfo();
+    const { patchBackend } = useBackendSettings();
     const [helpOpen, setHelpOpen] = useState(false);
     const [licensesOpen, setLicensesOpen] = useState(false);
 
@@ -95,7 +97,12 @@ export function AboutTab() {
                         value="重新播放"
                         onClick={() => {
                             navigateTo('home');
-                            startOnboarding();
+                            // 重新武装添加页分段引导：下次进入添加页会再播一次
+                            patchBackend((current) => ({
+                                ...current,
+                                uiPreferences: { ...current.uiPreferences, addTourCompleted: false },
+                            }));
+                            startOnboarding('main');
                         }}
                     />
                 </SettingsSection>
