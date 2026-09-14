@@ -1,6 +1,7 @@
 // 配置原文编辑。着色和光标都由 CodeMirror 画，避免 pre+textarea 叠层在 WebView2 里错位。
 
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Decoration,
     EditorView,
@@ -118,6 +119,7 @@ export function SyntaxTextEditor({
     'aria-label': ariaLabel,
     className,
 }: SyntaxTextEditorProps) {
+    const { t } = useTranslation();
     const hostRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const gateRef = useRef(new Compartment());
@@ -144,7 +146,7 @@ export function SyntaxTextEditor({
                     cmPlaceholder(EMPTY[mode]),
                     wrap ? EditorView.lineWrapping : [],
                     EditorView.contentAttributes.of({
-                        'aria-label': ariaLabel ?? '配置文件',
+                        'aria-label': ariaLabel ?? t('shared.configEditorAria'),
                         spellcheck: 'false',
                         autocorrect: 'off',
                         autocapitalize: 'off',
@@ -171,7 +173,7 @@ export function SyntaxTextEditor({
         };
         // value 只作初始文档；之后由下面的 effect 对齐。
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mode, wrap, ariaLabel]);
+    }, [mode, wrap, ariaLabel, t]);
 
     useEffect(() => {
         viewRef.current?.dispatch({

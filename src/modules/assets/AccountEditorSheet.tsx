@@ -4,6 +4,7 @@
 // 后端校验允许到单笔上限，也允许负数（透支 / 多还款），输入解析走 `parseBalanceCents`。
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { THEME_COLOR_TOKEN, categoryColors } from '../../core/design/categoryColor';
 import { toIconName, type IconName } from '../../core/design/icons';
 import { formatCents } from '../../core/domain/money';
@@ -41,9 +42,10 @@ export interface AccountEditorSheetProps {
 
 const DEFAULT_ICON: IconName = 'mdi:wallet-outline';
 
+/** 账户类型选项（文案在 `assets.accountKind.*`）。 */
 const KIND_ITEMS = [
-    { value: 'asset' as const, label: '资产' },
-    { value: 'liability' as const, label: '负债' },
+    { value: 'asset' as const, labelKey: 'assets.accountKind.asset' },
+    { value: 'liability' as const, labelKey: 'assets.accountKind.liability' },
 ];
 
 export function AccountEditorSheet({
@@ -56,6 +58,7 @@ export function AccountEditorSheet({
     onSubmit,
     onRequestDelete,
 }: AccountEditorSheetProps) {
+    const { t } = useTranslation();
     const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
 
     const [kind, setKind] = useState<AccountKind>(defaultKind);
@@ -85,8 +88,8 @@ export function AccountEditorSheet({
         <BottomSheet
             open={open}
             onOpenChange={onOpenChange}
-            title={account ? '编辑账户' : '新增账户'}
-            description="账户决定「钱放在哪」；账本决定「账记在哪」"
+            title={account ? t('assets.editAccount') : t('assets.newAccount')}
+            description={t('assets.accountSheetDesc')}
             maxHeightRatio={0.92}
         >
             <div className="flex flex-col gap-3">
@@ -102,8 +105,8 @@ export function AccountEditorSheet({
                             value={name}
                             onChange={(event) => setName(event.target.value)}
                             maxLength={ACCOUNT_NAME_MAX}
-                            placeholder="账户名称（如 现金 / 微信 / 信用卡）"
-                            aria-label="账户名称"
+                            placeholder={t('assets.accountNamePlaceholder')}
+                            aria-label={t('assets.accountName')}
                             className={cn(
                                 'h-9 w-full rounded-md border bg-field px-2.5 text-[14px] text-text',
                                 'placeholder:text-text-disabled focus-visible:outline-none',
@@ -113,28 +116,28 @@ export function AccountEditorSheet({
                             )}
                         />
                         <p className="mt-1 text-[11px] text-text-tertiary">
-                            {trimmed === '' ? '必填' : `${nameLength} / ${ACCOUNT_NAME_MAX} 字`}
+                            {trimmed === '' ? t('common.required') : t('add.nameLengthCounter', { current: nameLength, max: ACCOUNT_NAME_MAX })}
                         </p>
                     </div>
                 </div>
 
                 <section className="flex flex-col gap-1.5">
-                    <h3 className="text-[12px] font-medium text-text">类型</h3>
+                    <h3 className="text-[12px] font-medium text-text">{t('assets.type')}</h3>
                     <SegmentedControl
-                        items={KIND_ITEMS}
+                        items={KIND_ITEMS.map((item) => ({ value: item.value, label: t(item.labelKey) }))}
                         value={kind}
                         onChange={setKind}
-                        ariaLabel="账户类型"
+                        ariaLabel={t('assets.accountType')}
                     />
                     <p className="text-[11px] leading-relaxed text-text-tertiary">
                         {kind === 'asset'
-                            ? '资产账户：收入 +、支出 −（现金 / 银行卡 / 余额）'
-                            : '负债账户：支出 +（欠更多）、收入 −（还款，如信用卡 / 花呗）'}
+                            ? t('assets.assetKindHint')
+                            : t('assets.liabilityKindHint')}
                     </p>
                 </section>
 
                 <section className="flex flex-col gap-1.5">
-                    <h3 className="text-[12px] font-medium text-text">初始余额</h3>
+                    <h3 className="text-[12px] font-medium text-text">{t('assets.initialBalance')}</h3>
                     <div
                         className={cn(
                             'flex h-10 items-center gap-1.5 rounded-md border bg-field px-2.5',
@@ -147,26 +150,26 @@ export function AccountEditorSheet({
                             onChange={(event) => setBalanceText(event.target.value)}
                             inputMode="decimal"
                             placeholder="0.00"
-                            aria-label="初始余额"
+                            aria-label={t('assets.initialBalance')}
                             className="min-w-0 flex-1 bg-transparent text-[14px] tabular-nums text-text placeholder:text-text-disabled focus:outline-none"
                         />
                     </div>
                     <p className="text-[11px] text-text-tertiary">
                         {!balanceValid
-                            ? '金额格式不正确（最多 9 位整数 + 2 位小数）'
+                            ? t('assets.balanceFormatInvalid')
                             : kind === 'liability'
-                              ? `欠款量级：当前填 ${formatCents(balanceCents)}`
-                              : `持有金额：当前填 ${formatCents(balanceCents)}`}
+                              ? t('assets.debtScale', { amount: formatCents(balanceCents) })
+                              : t('assets.holdingAmount', { amount: formatCents(balanceCents) })}
                     </p>
                 </section>
 
                 <section className="flex flex-col gap-1.5">
-                    <h3 className="text-[12px] font-medium text-text">颜色</h3>
+                    <h3 className="text-[12px] font-medium text-text">{t('add.color')}</h3>
                     <ColorSwatchRow value={color} onChange={setColor} />
                 </section>
 
                 <section className="flex flex-col gap-1.5">
-                    <h3 className="text-[12px] font-medium text-text">图标</h3>
+                    <h3 className="text-[12px] font-medium text-text">{t('add.icon')}</h3>
                     <IconPicker value={iconName} onChange={setIconName} columns={6} />
                 </section>
 
@@ -203,7 +206,7 @@ export function AccountEditorSheet({
                             canSubmit ? 'bg-brand text-white shadow-card active:opacity-90' : 'bg-inset text-text-disabled',
                         )}
                     >
-                        {busy ? '保存中' : account ? '保存修改' : '创建账户'}
+                        {busy ? t('common.saving') : account ? t('add.saveChanges') : t('assets.createAccount')}
                     </button>
                 </div>
             </div>

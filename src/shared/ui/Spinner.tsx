@@ -3,6 +3,7 @@
 // 列表 / 配置页 fetch loading 时居中展示。
 
 import { forwardRef, type HTMLAttributes } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../utils/cn';
 
@@ -34,7 +35,9 @@ export interface SpinnerProps
 }
 
 export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>(
-    ({ className, size, tone, label = '加载中', ...props }, ref) => (
+    ({ className, size, tone, label, ...props }, ref) => {
+        const { t } = useTranslation();
+        return (
         <span
             ref={ref}
             role="status"
@@ -42,8 +45,9 @@ export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>(
             className={cn(spinnerVariants({ size, tone }), className)}
             {...props}
         >
-            <span className="sr-only">{label}</span>
+            <span className="sr-only">{label ?? t('common.loading')}</span>
         </span>
-    ),
+        );
+    },
 );
 Spinner.displayName = 'Spinner';

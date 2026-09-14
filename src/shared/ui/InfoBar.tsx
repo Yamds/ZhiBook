@@ -16,6 +16,7 @@
 // forwardRef 把 root div 暴露给外部，GsapPresence 才能拿到节点。
 
 import { forwardRef, useEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cva } from 'class-variance-authority';
 import { UI_ICONS, type IconName } from '../../core/design/icons';
 import { cn } from '../utils/cn';
@@ -84,6 +85,7 @@ export const InfoBar = forwardRef<HTMLDivElement, InfoBarProps>(
         },
         ref,
     ) => {
+        const { t } = useTranslation();
         const onDismissRef = useRef(onDismiss);
         onDismissRef.current = onDismiss;
         const onAutoDismissRef = useRef(onAutoDismiss);
@@ -138,7 +140,7 @@ export const InfoBar = forwardRef<HTMLDivElement, InfoBarProps>(
                 {showClose ? (
                     <button
                         type="button"
-                        aria-label="关闭"
+                        aria-label={t('common.close')}
                         onClick={() => onDismiss?.()}
                         className={cn(
                             '-mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm',

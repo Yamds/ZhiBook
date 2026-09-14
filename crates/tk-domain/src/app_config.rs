@@ -43,6 +43,11 @@ fn default_ui_radius_style() -> String {
     "standard".to_string()
 }
 
+/// 界面语言。`auto` = 跟随系统（支持列表与回落规则见前端 `core/i18n/languages.ts`）。
+fn default_ui_language() -> String {
+    "auto".to_string()
+}
+
 fn default_ui_motion_speed() -> f64 {
     0.5
 }
@@ -148,6 +153,9 @@ pub struct AppUiPreferences {
     /// 启动动画(启动页)。关闭后冷启动直接进主界面,不再播放启动层。
     #[serde(rename = "splashEnabled", default = "default_true")]
     pub splash_enabled: bool,
+    /// 界面语言（auto / zh-CN）。auto 时由前端按设备语言解析。
+    #[serde(rename = "language", default = "default_ui_language")]
+    pub language: String,
     /// InfoBar info tone 自动关闭毫秒,0 = 不自动关
     #[serde(
         rename = "infoBarDismissInfoMs",
@@ -181,6 +189,7 @@ impl Default for AppUiPreferences {
             motion_speed: default_ui_motion_speed(),
             radius_style: default_ui_radius_style(),
             splash_enabled: true,
+            language: default_ui_language(),
             info_bar_dismiss_info_ms: default_infobar_dismiss_info_ms(),
             info_bar_dismiss_success_ms: default_infobar_dismiss_success_ms(),
             info_bar_dismiss_warning_ms: default_infobar_dismiss_warning_ms(),

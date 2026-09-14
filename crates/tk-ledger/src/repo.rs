@@ -26,11 +26,18 @@ fn unknown_enum(label: &str, value: &str) -> rusqlite::Error {
 }
 
 /// 唯一索引冲突转成可展示的校验错误。
-pub fn map_unique_violation(error: rusqlite::Error, message: &str) -> LedgerError {
+///
+/// `code` 是给前端翻译用的稳定错误码（如 `ledger.book.duplicate`），
+/// `message` 是中文兑底文案。
+pub fn map_unique_violation(
+    error: rusqlite::Error,
+    code: &'static str,
+    message: &str,
+) -> LedgerError {
     if let rusqlite::Error::SqliteFailure(inner, _) = &error
         && inner.code == rusqlite::ErrorCode::ConstraintViolation
     {
-        return LedgerError::validation(message);
+        return LedgerError::reported(tk_domain::ErrorPayload::new(code, message));
     }
     LedgerError::Sqlite(error)
 }
@@ -208,7 +215,7 @@ pub fn insert_book(conn: &Connection, book: &Book) -> LedgerResult<()> {
             book.updated_at_ms
         ],
     )
-    .map_err(|error| map_unique_violation(error, "已存在同名账本"))?;
+    .map_err(|error| map_unique_violation(error, "ledger.book.duplicate", "已存在同名账本"))?;
     Ok(())
 }
 
@@ -229,7 +236,7 @@ pub fn upsert_book(conn: &Connection, book: &Book) -> LedgerResult<()> {
             book.updated_at_ms
         ],
     )
-    .map_err(|error| map_unique_violation(error, "已存在同名账本"))?;
+    .map_err(|error| map_unique_violation(error, "ledger.book.duplicate", "已存在同名账本"))?;
     Ok(())
 }
 
@@ -244,7 +251,7 @@ pub fn update_book_name(
             "UPDATE books SET name = ?2, updated_at_ms = ?3 WHERE id = ?1",
             params![id, name, updated_at_ms],
         )
-        .map_err(|error| map_unique_violation(error, "已存在同名账本"))?;
+        .map_err(|error| map_unique_violation(error, "ledger.book.duplicate", "已存在同名账本"))?;
     Ok(changed > 0)
 }
 
@@ -426,7 +433,7 @@ pub fn insert_category(conn: &Connection, category: &Category) -> LedgerResult<(
             category.updated_at_ms,
         ],
     )
-    .map_err(|error| map_unique_violation(error, "同类型下已存在同名分类"))?;
+    .map_err(|error| map_unique_violation(error, "ledger.category.duplicate", "同类型下已存在同名分类"))?;
     Ok(())
 }
 
@@ -444,7 +451,7 @@ pub fn update_category(conn: &Connection, category: &Category) -> LedgerResult<b
                 category.updated_at_ms,
             ],
         )
-        .map_err(|error| map_unique_violation(error, "同类型下已存在同名分类"))?;
+        .map_err(|error| map_unique_violation(error, "ledger.category.duplicate", "同类型下已存在同名分类"))?;
     Ok(changed > 0)
 }
 
@@ -892,7 +899,7 @@ pub fn upsert_category(conn: &Connection, category: &Category) -> LedgerResult<(
             category.updated_at_ms,
         ],
     )
-    .map_err(|error| map_unique_violation(error, "同类型下已存在同名分类"))?;
+    .map_err(|error| map_unique_violation(error, "ledger.category.duplicate", "同类型下已存在同名分类"))?;
     Ok(())
 }
 
@@ -1092,7 +1099,7 @@ mod tests {
         let conn = memory_db();
         insert_book(&conn, &sample_book("book_a", "日常账")).expect("first insert");
         let error = insert_book(&conn, &sample_book("book_b", "日常账")).expect_err("duplicate");
-        assert!(matches!(error, LedgerError::Validation(_)), "{error:?}");
+        assert!(matches!(error, LedgerError::Reported(_)), "{error:?}");
     }
 
     #[test]

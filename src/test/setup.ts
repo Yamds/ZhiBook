@@ -1,5 +1,10 @@
 import '@testing-library/jest-dom/vitest';
 
+// i18n 必须在使用任何 `useTranslation()` 的组件之前就绪。
+// 应用侧靠 `main.tsx` → preferencesStore → core/i18n 的引用链保证；
+// 测试会直接渲染单个组件，所以这里显式引一次（模块加载即完成初始化）。
+import '../core/i18n';
+
 // jsdom 没有实现 Element.scrollTo（PeriodSelector 用它做吸附定位）。
 // 不补这个 shim，任何渲染周期选择器的测试都会在挂载时抛
 // `track.scrollTo is not a function`。这里只做空实现：测试不校验滚动位置，

@@ -6,6 +6,7 @@
 // 挂到 document.body（BodyPortal）：不受壳滚动容器与 BottomSheet 层级影响。
 
 import { useCallback, useRef, useState, type PointerEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FALLBACK_ICON_NAME, UI_ICONS } from '../../core/design/icons';
 import type { Attachment } from '../../core/ipc/types';
 import { useAttachmentData } from '../../hooks/ledger';
@@ -23,6 +24,7 @@ export interface ImageViewerProps {
 }
 
 export function ImageViewer({ items, index, onIndexChange, onClose }: ImageViewerProps) {
+    const { t } = useTranslation();
     const motion = useMotion();
     const [dx, setDx] = useState(0);
     const startRef = useRef<{ x: number; y: number } | null>(null);
@@ -57,7 +59,7 @@ export function ImageViewer({ items, index, onIndexChange, onClose }: ImageViewe
                 className="fixed inset-0 z-[70] flex flex-col bg-black/95"
                 data-no-swipe
                 role="dialog"
-                aria-label="图片查看器"
+                aria-label={t('details.imageViewerAria')}
             >
                 <header className="flex shrink-0 items-center justify-between px-3 pt-[var(--safe-top)] pb-1">
                     <span className="text-[12px] text-white/70 tabular-nums">
@@ -66,7 +68,7 @@ export function ImageViewer({ items, index, onIndexChange, onClose }: ImageViewe
                     <button
                         type="button"
                         onClick={onClose}
-                        aria-label="关闭图片查看器"
+                        aria-label={t('details.closeImageViewer')}
                         className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white active:bg-white/20"
                     >
                         <AppIcon name={UI_ICONS.close} size={18} />
@@ -105,6 +107,7 @@ export function ImageViewer({ items, index, onIndexChange, onClose }: ImageViewe
 }
 
 function ViewerSlide({ attachment }: { attachment: Attachment }) {
+    const { t } = useTranslation();
     const { data, isError } = useAttachmentData(attachment.id);
     const dataUrl = data ? `data:${data.attachment.mime};base64,${data.base64}` : undefined;
 
@@ -113,14 +116,14 @@ function ViewerSlide({ attachment }: { attachment: Attachment }) {
             {dataUrl ? (
                 <img
                     src={dataUrl}
-                    alt="账单附件大图"
+                    alt={t('details.imageLargeAlt')}
                     draggable={false}
                     className="max-h-full max-w-full object-contain"
                 />
             ) : isError ? (
                 <span className="flex flex-col items-center gap-2 text-white/60">
                     <AppIcon name={FALLBACK_ICON_NAME} size={28} />
-                    <span className="text-[12px]">这张图片读不出来</span>
+                    <span className="text-[12px]">{t('details.imageReadFailed')}</span>
                 </span>
             ) : (
                 <Spinner size="lg" className="text-white/70" />

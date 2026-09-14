@@ -39,11 +39,11 @@ export const RADIUS_SCALE: Record<RadiusStyle, number> = {
     round: 1.5,
 };
 
-/** 每档的中文标签，供 UI 显示。 */
-export const RADIUS_LABELS: Record<RadiusStyle, string> = {
-    square: '方正',
-    standard: '标准',
-    round: '圆润',
+/** 每档的标签 i18n key，供 UI 显示。 */
+export const RADIUS_LABEL_KEYS: Record<RadiusStyle, string> = {
+    square: 'radius.square',
+    standard: 'radius.standard',
+    round: 'radius.round',
 };
 
 /** 校验未知值，兜底 standard。 */

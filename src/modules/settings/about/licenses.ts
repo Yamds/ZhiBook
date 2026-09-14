@@ -2,31 +2,37 @@
 //
 // 许可名以各包自带的 LICENSE / package.json 为准（前端部分逐个核对过；
 // Rust 依赖绝大多数为 MIT OR Apache-2.0，这里按类别归并）。
+//
+// 只有「分组标题」与「备注」是可翻译文案，走语言文件；
+// 依赖名与 SPDX 许可名是专有名词，原样展示。
 
 export interface LicenseEntry {
     readonly name: string;
-    /** SPDX 风格许可名，或该依赖自报的许可说明。 */
+    /** SPDX 风格许可名，或该依赖自报的许可说明（不翻译）。 */
     readonly license: string;
-    readonly note?: string;
+    /** 备注的 i18n key（可选）。 */
+    readonly noteKey?: string;
     readonly url?: string;
 }
 
 export interface LicenseGroup {
-    readonly title: string;
+    /** 分组标题的 i18n key。 */
+    readonly titleKey: string;
     readonly entries: readonly LicenseEntry[];
 }
 
 /** 本项目自身的许可。与仓库根目录的 `LICENSE` 文件一致。 */
 export const OWN_LICENSE = {
-    name: '制账（ZhiBook）',
+    nameKey: 'settings.about.ownLicenseName',
+    /** 协议名（专有名词，不翻译）。 */
     license: 'GNU General Public License v3.0',
-    note: '本项目的框架与界面基于 NapCatQQ-Desktop（GPL-3.0）搭建，因此同样以 GPL-3.0 发布。',
+    noteKey: 'settings.about.ownLicenseNote',
     url: 'https://github.com/Yamds/ZhiBook',
 } as const;
 
 export const LICENSE_GROUPS: readonly LicenseGroup[] = [
     {
-        title: '应用框架与运行时（Rust / Tauri）',
+        titleKey: 'settings.about.groupRuntime',
         entries: [
             { name: 'Tauri', license: 'MIT OR Apache-2.0', url: 'https://tauri.app' },
             {
@@ -42,7 +48,7 @@ export const LICENSE_GROUPS: readonly LicenseGroup[] = [
         ],
     },
     {
-        title: '前端',
+        titleKey: 'settings.about.groupFrontend',
         entries: [
             { name: 'React · React DOM', license: 'MIT' },
             { name: 'Vite', license: 'MIT' },
@@ -52,7 +58,7 @@ export const LICENSE_GROUPS: readonly LicenseGroup[] = [
             {
                 name: 'GSAP',
                 license: "Standard 'no charge' License",
-                note: 'GreenSock 标准许可（非 MIT）',
+                noteKey: 'settings.about.gsapNote',
                 url: 'https://gsap.com/standard-license/',
             },
             { name: 'class-variance-authority', license: 'Apache-2.0' },
@@ -60,7 +66,7 @@ export const LICENSE_GROUPS: readonly LicenseGroup[] = [
         ],
     },
     {
-        title: '字体与图标',
+        titleKey: 'settings.about.groupFontsIcons',
         entries: [
             { name: 'Inter · JetBrains Mono · Plus Jakarta Sans', license: 'SIL OFL-1.1' },
             { name: 'Iconify', license: 'MIT' },

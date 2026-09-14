@@ -11,6 +11,7 @@
 // 网格几何与文案全在 `homePage.logic.ts`（纯函数 + 单测），这里只渲染。
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     MONTH_SELECTOR_VALUES,
     YEAR_SELECTOR_SPAN,
@@ -25,7 +26,7 @@ import { cn } from '../../shared/utils/cn';
 import {
     CALENDAR_CELL_HEIGHT_PX,
     CALENDAR_ROWS,
-    CALENDAR_WEEKDAYS,
+    calendarWeekdays,
     buildCalendarCells,
     calendarCellAmounts,
     calendarCellLabel,
@@ -72,6 +73,8 @@ export function CalendarPanel({
     onPickDay,
     onOpenDayDetails,
 }: CalendarPanelProps) {
+    // 订阅语言变化：切语言后日历标题 / 周标题 / 无障碍文案一起重算。
+    const { t } = useTranslation();
     const [panelOpen, setPanelOpen] = useState(false);
 
     const yearValues = useMemo(() => yearOptions(undefined, YEAR_SELECTOR_SPAN), []);
@@ -155,21 +158,21 @@ export function CalendarPanel({
                         value={year}
                         onChange={(next) => onPeriodChange({ year: next, month })}
                         visible={3}
-                        unit="年"
-                        ariaLabel="选择年份"
+                        unit={t('date.yearUnit')}
+                        ariaLabel={t('date.selectYear')}
                     />
                     <PeriodSelector
                         values={MONTH_SELECTOR_VALUES}
                         value={month}
                         onChange={(next) => onPeriodChange({ year, month: next })}
-                        unit="月"
-                        ariaLabel="选择月份"
+                        unit={t('date.monthUnit')}
+                        ariaLabel={t('date.selectMonth')}
                     />
                 </div>
             </ExpandPresence>
 
             <div className="grid grid-cols-7" aria-hidden>
-                {CALENDAR_WEEKDAYS.map((label, index) => (
+                {calendarWeekdays().map((label, index) => (
                     <span
                         key={label}
                         className={cn(
@@ -229,6 +232,7 @@ function MonthGrid({
     onPickDay: (dayKey: string) => void;
     onOpenDayDetails: (dayKey: string) => void;
 }) {
+    const { t } = useTranslation();
     const cells = useMemo(
         () => buildCalendarCells({ year, month, todayKey, summaries }),
         [month, summaries, todayKey, year],
@@ -239,7 +243,7 @@ function MonthGrid({
             className="grid snap-center snap-always grid-cols-7"
             style={{ height: CALENDAR_ROWS * CALENDAR_CELL_HEIGHT_PX }}
             role="group"
-            aria-label={`${monthTitle(year, month)}日历`}
+            aria-label={t('date.calendarTitle', { month: monthTitle(year, month) })}
         >
             {cells.map((cell) => (
                 <CalendarDayCell

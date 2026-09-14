@@ -11,7 +11,9 @@
 // 用「容器宽 ÷ 列数」会让跨行位移积累几十 px 偏差。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Category, EntryKind } from '../../core/ipc/types';
+import { categoryDisplayName } from '../../core/domain/categoryName';
 import { categoryColors } from '../../core/design/categoryColor';
 import { UI_ICONS, toIconName } from '../../core/design/icons';
 import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
@@ -134,6 +136,7 @@ export function CategoryGrid({
     onExitEditing,
     onReorder,
 }: CategoryGridProps) {
+    const { t } = useTranslation();
     const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
 
     const entries = useMemo(() => buildGridEntries(categories, kind), [categories, kind]);
@@ -516,7 +519,7 @@ export function CategoryGrid({
                         <button
                             key={index}
                             type="button"
-                            aria-label={`第 ${index + 1} 页`}
+                            aria-label={t('add.pageAria', { page: index + 1 })}
                             aria-current={index === pageIndex}
                             onClick={() => setPageIndex(Math.min(Math.max(0, index), pageCount - 1))}
                             className={cn(
@@ -550,7 +553,7 @@ export function CategoryGrid({
                                 <AppIcon name={toIconName(draggedEntry.category.iconName)} size={28} />
                             </span>
                             <span className="max-w-full truncate text-[12.5px] font-medium text-text">
-                                {draggedEntry.category.name}
+                                {categoryDisplayName(draggedEntry.category, t, draggedEntry.category.name)}
                             </span>
                         </div>
                     </div>
@@ -579,6 +582,7 @@ function CategoryCell({
     onClick,
     onDelete,
 }: CategoryCellProps) {
+    const { t } = useTranslation();
     // 按压反馈只给图标本身（圆底弹一下）：整格加灰色底会变成一个方块，
     // 与圆形图标 + 名称的造型不搭。
     const motion = useMotion();
@@ -608,7 +612,7 @@ function CategoryCell({
                     <span
                         role="button"
                         tabIndex={-1}
-                        aria-label={`删除分类 ${category.name}`}
+                        aria-label={t('add.deleteCategoryAria', { name: category.name })}
                         onClick={(event) => {
                             event.stopPropagation();
                             onDelete();
@@ -625,13 +629,14 @@ function CategoryCell({
                     selected ? 'font-medium text-text' : 'text-text-secondary',
                 )}
             >
-                {category.name}
+                {categoryDisplayName(category, t, category.name)}
             </span>
         </button>
     );
 }
 
 function AddCard({ onClick }: { onClick: () => void }) {
+    const { t } = useTranslation();
     const motion = useMotion();
     const iconRef = useRef<HTMLSpanElement | null>(null);
     return (
@@ -641,7 +646,7 @@ function AddCard({ onClick }: { onClick: () => void }) {
                 if (iconRef.current) motion.pop(iconRef.current);
                 onClick();
             }}
-            aria-label="新增自定义分类"
+            aria-label={t('add.newCustomCategory')}
             className="flex w-full flex-col items-center gap-1.5 rounded-md py-1"
         >
             <span
@@ -650,7 +655,7 @@ function AddCard({ onClick }: { onClick: () => void }) {
             >
                 <AppIcon name={UI_ICONS.plus} size={26} />
             </span>
-            <span className="text-[12.5px] leading-tight text-text-tertiary">新增</span>
+            <span className="text-[12.5px] leading-tight text-text-tertiary">{t('common.new')}</span>
         </button>
     );
 }

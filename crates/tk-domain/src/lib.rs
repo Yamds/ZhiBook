@@ -11,6 +11,7 @@ pub mod backup;
 pub mod bootstrap;
 pub mod cloud;
 pub mod domain_event;
+pub mod error_payload;
 pub mod errors;
 pub mod kinds;
 pub mod ledger;
@@ -29,6 +30,7 @@ pub use cloud::{
     CloudKeyInput, CloudRestorePreview, CloudRestoreSummary, MergeDelta, MergeSummary,
 };
 pub use domain_event::{DOMAIN_EVENT_ENVELOPE_VERSION, DomainEvent, DomainEventKind};
+pub use error_payload::{ErrorPayload, IntoErrorPayload};
 pub use errors::{AppError, ConfigError, MigrationError, PathError};
 pub use kinds::SchemaVersion;
 pub use ledger::{

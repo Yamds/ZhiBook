@@ -4,7 +4,9 @@
 // 失效矩阵在 `hooks/ledger/queryKeys.ts` 的 `afterBookWrite` 里已覆盖。
 
 import type { Book } from '../../core/ipc/types';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
+import { bookDisplayName } from '../../core/domain/categoryName';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { Badge, Card } from '../../shared/ui';
 import { cn } from '../../shared/utils/cn';
@@ -26,17 +28,18 @@ export function BookSection({
     onCreate,
     onEdit,
 }: BookSectionProps) {
+    const { t } = useTranslation();
     return (
         <Card className="flex flex-col gap-2 rounded-lg p-3.5">
             <header className="flex items-center justify-between gap-2">
-                <h2 className="text-[13px] font-semibold text-text">账本</h2>
+                <h2 className="text-[13px] font-semibold text-text">{t('assets.booksSection')}</h2>
                 <button
                     type="button"
                     onClick={onCreate}
                     className="inline-flex h-7 items-center gap-1 rounded-pill bg-brand-soft px-2.5 text-[11.5px] font-medium text-brand active:opacity-80"
                 >
                     <AppIcon name={UI_ICONS.plus} size={13} />
-                    新建账本
+                    {t('assets.newBook')}
                 </button>
             </header>
 
@@ -60,18 +63,18 @@ export function BookSection({
                                 )}
                             >
                                 <span className="min-w-0 flex-1 truncate text-[13px] text-text">
-                                    {book.name}
+                                    {bookDisplayName(book, t, book.name)}
                                 </span>
                                 {current ? (
                                     <Badge tone="brand" appearance="soft">
-                                        {busyBookId === book.id ? '切换中…' : '当前'}
+                                        {busyBookId === book.id ? t('assets.switching') : t('assets.current')}
                                     </Badge>
                                 ) : null}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onEdit(book)}
-                                aria-label={`管理账本 ${book.name}`}
+                                aria-label={t('assets.manageBookAria', { name: bookDisplayName(book, t, book.name) })}
                                 className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-tertiary active:bg-inset"
                             >
                                 <AppIcon name={UI_ICONS.edit} size={16} />

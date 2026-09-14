@@ -1,6 +1,8 @@
 // 账单页 · 明细排行卡片（FR-BILL-11）：本期金额最大的若干**单笔**账单。
 
 import type { TransactionRank } from '../../core/ipc/types';
+import { categoryDisplayName } from '../../core/domain/categoryName';
+import { useTranslation } from 'react-i18next';
 import { RankRow } from '../../shared/charts';
 import { EmptyState, Spinner } from '../../shared/ui';
 import { BillsCard, CategoryBadge } from './BillsCardParts';
@@ -28,6 +30,7 @@ export function TransactionRankCard({
     surface,
     isLoading,
 }: TransactionRankCardProps) {
+    const { t } = useTranslation();
     const colorOf = colorResolver(colors, brand, surface);
     const ratioOf = transactionRankRatio(ranks);
 
@@ -38,7 +41,7 @@ export function TransactionRankCard({
                     <Spinner size="sm" />
                 </div>
             ) : ranks.length === 0 ? (
-                <EmptyState size="compact" title="本期还没有单笔记录" />
+                <EmptyState size="compact" title={t('bills.noTransactionToRank')} />
             ) : (
                 <div className="flex flex-col">
                     {ranks.map((rank) => (
@@ -52,7 +55,7 @@ export function TransactionRankCard({
                                     surface={surface}
                                 />
                             }
-                            title={rank.categoryName}
+                            title={categoryDisplayName({ id: rank.categoryId, name: rank.categoryName }, t, rank.categoryName)}
                             subtitle={transactionRankSubtitle(rank)}
                             trailing={formatKindTotal(rank.amountCents, rank.kind)}
                             ratio={ratioOf(rank)}

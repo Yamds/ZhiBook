@@ -3,7 +3,7 @@
 //! 校验规则来自 BRD（名称长度、金额上限、日期键格式、颜色与图标名形态）。
 //! 前端也会做一遍即时校验，但入库前必须再校验一次：数据层的规则不依赖 UI。
 
-use tk_domain::{MAX_AMOUNT_CENTS, MAX_NOTE_CHARS};
+use tk_domain::{ErrorPayload, MAX_AMOUNT_CENTS, MAX_NOTE_CHARS, error_payload};
 
 use crate::dates;
 use crate::error::{LedgerError, LedgerResult};
@@ -15,31 +15,67 @@ pub const ACCOUNT_NAME_MAX: usize = 12;
 /// 分类名：1~8 字。
 pub const CATEGORY_NAME_MAX: usize = 8;
 
+/// 名称字段。
+///
+/// 为什么要枚举而不是像以前那样传 `label: &str`：`{label}不能为空` 里的 `label` 是
+/// **中文参数**，译文里它是死的（英文界面会中英混排）。改成每个字段一个错误码、
+/// 字段名写进语言文件，文案才能整句翻译。
+#[derive(Debug, Clone, Copy)]
+pub enum NameField {
+    Book,
+    Account,
+    Category,
+}
+
+impl NameField {
+    /// 名称为空。
+    fn empty_payload(self) -> ErrorPayload {
+        match self {
+            Self::Book => error_payload!("ledger.book.name_empty", "账本名不能为空"),
+            Self::Account => error_payload!("ledger.account.name_empty", "账户名不能为空"),
+            Self::Category => error_payload!("ledger.category.name_empty", "分类名不能为空"),
+        }
+    }
+
+    /// 名称超长（`max` 是字符数上限）。
+    fn too_long_payload(self, max: usize) -> ErrorPayload {
+        match self {
+            Self::Book => error_payload!(
+                "ledger.book.name_too_long", "账本名不能超过 {max} 个字"; max = max
+            ),
+            Self::Account => error_payload!(
+                "ledger.account.name_too_long", "账户名不能超过 {max} 个字"; max = max
+            ),
+            Self::Category => error_payload!(
+                "ledger.category.name_too_long", "分类名不能超过 {max} 个字"; max = max
+            ),
+        }
+    }
+}
+
 /// 名称通用校验：去首尾空白后不能为空、字符数在区间内。
-pub fn name_in_range(value: &str, label: &str, max: usize) -> LedgerResult<String> {
+pub fn name_in_range(value: &str, field: NameField, max: usize) -> LedgerResult<String> {
     let trimmed = value.trim();
     let chars = trimmed.chars().count();
     if chars == 0 {
-        return Err(LedgerError::validation(format!("{label}不能为空")));
+        return Err(LedgerError::reported(field.empty_payload()));
     }
     if chars > max {
-        return Err(LedgerError::validation(format!(
-            "{label}不能超过 {max} 个字"
-        )));
+        return Err(LedgerError::reported(field.too_long_payload(max)));
     }
     Ok(trimmed.to_string())
 }
 
 pub fn book_name(value: &str) -> LedgerResult<String> {
-    name_in_range(value, "账本名", BOOK_NAME_MAX)
+    name_in_range(value, NameField::Book, BOOK_NAME_MAX)
 }
 
 pub fn account_name(value: &str) -> LedgerResult<String> {
-    name_in_range(value, "账户名", ACCOUNT_NAME_MAX)
+    name_in_range(value, NameField::Account, ACCOUNT_NAME_MAX)
 }
 
 pub fn category_name(value: &str) -> LedgerResult<String> {
-    name_in_range(value, "分类名", CATEGORY_NAME_MAX)
+    name_in_range(value, NameField::Category, CATEGORY_NAME_MAX)
 }
 
 /// 备注：可为空，最长 [`MAX_NOTE_CHARS`] 字。
@@ -47,8 +83,10 @@ pub fn note(value: &str) -> LedgerResult<String> {
     let trimmed = value.trim();
     let chars = trimmed.chars().count();
     if chars > MAX_NOTE_CHARS {
-        return Err(LedgerError::validation(format!(
-            "备注不能超过 {MAX_NOTE_CHARS} 个字"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.note.too_long",
+            "备注不能超过 {max} 个字";
+            max = MAX_NOTE_CHARS
         )));
     }
     Ok(trimmed.to_string())
@@ -57,10 +95,14 @@ pub fn note(value: &str) -> LedgerResult<String> {
 /// 金额：必须 > 0 且不超过上限（分）。
 pub fn amount_cents(value: i64) -> LedgerResult<()> {
     if value <= 0 {
-        return Err(LedgerError::validation("金额必须大于 0"));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.amount.not_positive", "金额必须大于 0"
+        )));
     }
     if value > MAX_AMOUNT_CENTS {
-        return Err(LedgerError::validation("金额超过单笔上限"));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.amount.over_cap", "金额超过单笔上限"
+        )));
     }
     Ok(())
 }
@@ -77,8 +119,10 @@ pub fn color(value: &str) -> LedgerResult<()> {
     if valid {
         Ok(())
     } else {
-        Err(LedgerError::validation(format!(
-            "颜色格式不合法：{value}（应为 theme 或 #RRGGBB）"
+        Err(LedgerError::reported(error_payload!(
+            "ledger.color.invalid",
+            "颜色格式不合法：{value}（应为 theme 或 #RRGGBB）";
+            value = value
         )))
     }
 }
@@ -97,8 +141,10 @@ pub fn icon_name(value: &str) -> LedgerResult<()> {
     if valid {
         Ok(())
     } else {
-        Err(LedgerError::validation(format!(
-            "图标名不合法：{value}（应为 mdi: 或 simple-icons: 前缀的 Iconify 名字）"
+        Err(LedgerError::reported(error_payload!(
+            "ledger.icon.invalid",
+            "图标名不合法：{value}（应为 mdi: 或 simple-icons: 前缀的 Iconify 名字）";
+            value = value
         )))
     }
 }
@@ -106,19 +152,19 @@ pub fn icon_name(value: &str) -> LedgerResult<()> {
 /// day / month 键格式，以及两者必须匹配（month = day 的前 7 位）。
 pub fn day_and_month(day: &str, month: &str) -> LedgerResult<()> {
     if !dates::is_valid_day_key(day) {
-        return Err(LedgerError::validation(format!(
-            "日期格式不合法：{day}（应为 YYYY-MM-DD）"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.date.invalid_day", "日期格式不合法：{day}（应为 YYYY-MM-DD）"; day = day
         )));
     }
     if !dates::is_valid_month_key(month) {
-        return Err(LedgerError::validation(format!(
-            "月份格式不合法：{month}（应为 YYYY-MM）"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.date.invalid_month", "月份格式不合法：{month}（应为 YYYY-MM）"; month = month
         )));
     }
     if dates::month_key_of_day(day).as_deref() != Some(month) {
-        return Err(LedgerError::validation(
-            "账单的月份与日期不一致".to_string(),
-        ));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.date.month_mismatch", "账单的月份与日期不一致"
+        )));
     }
     Ok(())
 }
@@ -133,11 +179,15 @@ pub fn like_pattern(keyword: &str) -> LedgerResult<String> {
     let trimmed = keyword.trim();
     let chars = trimmed.chars().count();
     if chars == 0 {
-        return Err(LedgerError::validation("搜索关键字不能为空"));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.search.empty", "搜索关键字不能为空"
+        )));
     }
     if chars > SEARCH_KEYWORD_MAX {
-        return Err(LedgerError::validation(format!(
-            "搜索关键字不能超过 {SEARCH_KEYWORD_MAX} 个字"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.search.too_long",
+            "搜索关键字不能超过 {max} 个字";
+            max = SEARCH_KEYWORD_MAX
         )));
     }
     let mut pattern = String::with_capacity(trimmed.len() + 2);
@@ -182,14 +232,18 @@ fn is_safe_path_component(segment: &str) -> bool {
 /// 就能覆盖应用私有目录里的任意文件。
 pub fn attachment_relative_path(path: &str) -> LedgerResult<()> {
     let Some(rest) = path.strip_prefix(ATTACHMENT_PATH_PREFIX) else {
-        return Err(LedgerError::validation(format!(
-            "附件路径必须以 {ATTACHMENT_PATH_PREFIX} 开头：{path}"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.attachment.path_prefix",
+            "附件路径必须以 {prefix} 开头：{path}";
+            prefix = ATTACHMENT_PATH_PREFIX, path = path
         )));
     };
     let segments: Vec<&str> = rest.split('/').collect();
     if segments.len() < 2 {
-        return Err(LedgerError::validation(format!(
-            "附件路径至少需要「账单 id / 文件名」两段：{path}"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.attachment.path_too_short",
+            "附件路径至少需要「账单 id / 文件名」两段：{path}";
+            path = path
         )));
     }
     // 目录段：纯 id 形态
@@ -197,23 +251,27 @@ pub fn attachment_relative_path(path: &str) -> LedgerResult<()> {
         .iter()
         .all(|item| is_safe_path_component(item))
     {
-        return Err(LedgerError::validation(format!(
-            "附件路径的目录名含有非法字符或越界分量：{path}"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.attachment.path_unsafe_dir",
+            "附件路径的目录名含有非法字符或越界分量：{path}";
+            path = path
         )));
     }
     // 文件段：`<附件 id>.<扩展名>`（各只允许一个 `.`）
     let file_name = segments[segments.len() - 1];
     let Some((stem, extension)) = file_name.split_once('.') else {
-        return Err(LedgerError::validation(format!(
-            "附件路径缺少扩展名：{path}"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.attachment.path_no_extension", "附件路径缺少扩展名：{path}"; path = path
         )));
     };
     if !is_safe_path_component(stem)
         || !is_safe_path_component(extension)
         || extension.contains('.')
     {
-        return Err(LedgerError::validation(format!(
-            "附件文件名不合法（应为 <附件 id>.<扩展名>）：{path}"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.attachment.path_bad_filename",
+            "附件文件名不合法（应为 <附件 id>.<扩展名>）：{path}";
+            path = path
         )));
     }
     Ok(())
@@ -230,8 +288,10 @@ pub fn attachment_mime(value: &str) -> LedgerResult<&'static str> {
         "image/jpeg" | "image/jpg" => Ok("image/jpeg"),
         "image/png" => Ok("image/png"),
         "image/webp" => Ok("image/webp"),
-        other => Err(LedgerError::validation(format!(
-            "不支持的附件类型：{other}（仅支持 JPEG / PNG / WebP）"
+        other => Err(LedgerError::reported(error_payload!(
+            "ledger.attachment.mime_unsupported",
+            "不支持的附件类型：{other}（仅支持 JPEG / PNG / WebP）";
+            other = other
         ))),
     }
 }

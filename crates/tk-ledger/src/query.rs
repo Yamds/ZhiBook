@@ -14,6 +14,7 @@ use rusqlite::{Connection, params};
 use tk_domain::{
     AccountKind, AssetPoint, AssetsOverview, CategoryShare, CategoryShareSet, DaySummary, EntryKind,
     KindMonthStats, MonthPoint, MonthStats, ShareBreakdown, StatsKind, TransactionRank, YearSummary,
+    error_payload,
 };
 
 use crate::dates;
@@ -192,7 +193,9 @@ fn shares_for_kind(
 /// 某月的每日汇总（只返回有数据的日期，日历页用）。
 pub fn day_summaries(conn: &Connection, book_id: &str, month: &str) -> LedgerResult<Vec<DaySummary>> {
     if !dates::is_valid_month_key(month) {
-        return Err(LedgerError::validation(format!("月份格式不合法：{month}")));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.date.invalid_month", "月份格式不合法：{month}（应为 YYYY-MM）"; month = month
+        )));
     }
     let mut statement = conn.prepare(
         "SELECT day,
@@ -224,8 +227,11 @@ pub fn day_summaries(conn: &Connection, book_id: &str, month: &str) -> LedgerRes
 
 /// 月份统计：三种口径的总额 / 笔数 / 单日最高 / 日均 / 逐日序列。
 pub fn month_stats(conn: &Connection, book_id: &str, month: &str) -> LedgerResult<MonthStats> {
-    let (year, month_number) =
-        dates::parse_month_key(month).ok_or_else(|| LedgerError::validation("月份格式不合法"))?;
+    let (year, month_number) = dates::parse_month_key(month).ok_or_else(|| {
+        LedgerError::reported(error_payload!(
+            "ledger.date.invalid_month_short", "月份格式不合法"
+        ))
+    })?;
     let days = dates::days_in_month(year, month_number);
 
     let mut expense_daily = vec![0_i64; days as usize];
@@ -250,7 +256,9 @@ pub fn month_stats(conn: &Connection, book_id: &str, month: &str) -> LedgerResul
     for row in rows {
         let (day, kind, total, count) = row?;
         let Some((_, _, day_number)) = dates::parse_day_key(&day) else {
-            return Err(LedgerError::corrupt(format!("账单日期非法：{day}")));
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.db.corrupt_day", "账单日期非法：{day}"; day = day
+            )));
         };
         let index = (day_number - 1) as usize;
         match EntryKind::from_db(&kind) {
@@ -262,7 +270,11 @@ pub fn month_stats(conn: &Connection, book_id: &str, month: &str) -> LedgerResul
                 income_daily[index] += total;
                 income_count += count;
             }
-            None => return Err(LedgerError::corrupt(format!("账单类型非法：{kind}"))),
+            None => {
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.db.corrupt_kind", "账单类型非法：{kind}"; kind = kind
+                )));
+            }
         }
     }
 
@@ -352,7 +364,9 @@ pub fn year_summary(conn: &Connection, book_id: &str, year: i32) -> LedgerResult
     for row in rows {
         let (month, expense_cents, income_cents, expense_count, income_count) = row?;
         let Some((_, month_number)) = dates::parse_month_key(&month) else {
-            return Err(LedgerError::corrupt(format!("账单月份非法：{month}")));
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.db.corrupt_month", "账单月份非法：{month}"; month = month
+            )));
         };
         let point = &mut months[(month_number - 1) as usize];
         point.expense_cents = expense_cents;
@@ -381,7 +395,9 @@ pub fn share_breakdown(
     to_month: &str,
 ) -> LedgerResult<ShareBreakdown> {
     if !dates::is_valid_month_key(from_month) || !dates::is_valid_month_key(to_month) {
-        return Err(LedgerError::validation("月份格式不合法"));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.date.invalid_month_short", "月份格式不合法"
+        )));
     }
     let totals = category_totals(conn, book_id, from_month, to_month)?;
     let meta = category_meta(conn)?;
@@ -401,7 +417,9 @@ pub fn transaction_ranks(
     limit: i64,
 ) -> LedgerResult<Vec<TransactionRank>> {
     if !dates::is_valid_month_key(month) {
-        return Err(LedgerError::validation(format!("月份格式不合法：{month}")));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.date.invalid_month", "月份格式不合法：{month}（应为 YYYY-MM）"; month = month
+        )));
     }
     transaction_ranks_in_range(conn, book_id, month, month, kind, limit)
 }
@@ -456,8 +474,11 @@ fn transaction_ranks_in_range(
     let mut items = Vec::new();
     for row in rows {
         let (id, kind_value, category_id, amount_cents, day, occurred_at_ms, note) = row?;
-        let entry_kind = EntryKind::from_db(&kind_value)
-            .ok_or_else(|| LedgerError::corrupt(format!("账单类型非法：{kind_value}")))?;
+        let entry_kind = EntryKind::from_db(&kind_value).ok_or_else(|| {
+            LedgerError::reported(error_payload!(
+                "ledger.db.corrupt_kind", "账单类型非法：{kind}"; kind = kind_value
+            ))
+        })?;
         let fallback = CategoryMeta {
             name: "未知分类".to_string(),
             icon_name: OTHER_BUCKET_ICON.to_string(),
@@ -491,11 +512,17 @@ pub fn assets_overview(
     until_day: &str,
     months: usize,
 ) -> LedgerResult<AssetsOverview> {
-    let (year, month, _) = dates::parse_day_key(until_day)
-        .ok_or_else(|| LedgerError::validation(format!("日期格式不合法：{until_day}")))?;
+    let (year, month, _) = dates::parse_day_key(until_day).ok_or_else(|| {
+        LedgerError::reported(error_payload!(
+            "ledger.date.invalid_day", "日期格式不合法：{day}（应为 YYYY-MM-DD）"; day = until_day
+        ))
+    })?;
     let end_month = dates::month_key(year, month);
-    let month_list = dates::trailing_months(&end_month, months.max(1))
-        .ok_or_else(|| LedgerError::validation("月份格式不合法"))?;
+    let month_list = dates::trailing_months(&end_month, months.max(1)).ok_or_else(|| {
+        LedgerError::reported(error_payload!(
+            "ledger.date.invalid_month_short", "月份格式不合法"
+        ))
+    })?;
 
     let mut accounts: Vec<(String, AccountKind)> = Vec::new();
     let mut asset_total: i64 = 0;
@@ -512,8 +539,13 @@ pub fn assets_overview(
         })?;
         for row in rows {
             let (id, kind_value, initial) = row?;
-            let kind = AccountKind::from_db(&kind_value)
-                .ok_or_else(|| LedgerError::corrupt(format!("账户类型非法：{kind_value}")))?;
+            let kind = AccountKind::from_db(&kind_value).ok_or_else(|| {
+                LedgerError::reported(error_payload!(
+                    "ledger.db.corrupt_account_kind",
+                    "账户类型非法：{kind}";
+                    kind = kind_value
+                ))
+            })?;
             match kind {
                 AccountKind::Asset => asset_total += initial,
                 AccountKind::Liability => liability_total += initial,

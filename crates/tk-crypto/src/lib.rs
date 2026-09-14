@@ -59,6 +59,27 @@ pub enum CryptoError {
 
 pub type CryptoResult<T> = Result<T, CryptoError>;
 
+impl tk_domain::IntoErrorPayload for CryptoError {
+    fn into_error_payload(self) -> tk_domain::ErrorPayload {
+        use tk_domain::error_payload;
+        match self {
+            Self::InvalidKey(detail) => error_payload!(
+                "crypto.invalid_key", "密钥材料不合法：{detail}"; detail = detail
+            ),
+            Self::Tampered => error_payload!("crypto.tampered", "密文已损坏或被篡改"),
+            Self::WrongPassphrase => error_payload!("crypto.wrong_passphrase", "口令不正确"),
+            Self::WrongRecoveryKey => {
+                error_payload!("crypto.wrong_recovery_key", "恢复密钥不正确或格式错误")
+            }
+            Self::Random => error_payload!("crypto.random", "随机数生成失败"),
+            Self::Wrap => error_payload!("crypto.wrap", "密钥包装失败"),
+            Self::Json(error) => {
+                error_payload!("crypto.json", "JSON 解析失败：{detail}"; detail = error)
+            }
+        }
+    }
+}
+
 /// 主密钥：32B 随机字节，Drop 时清零。
 pub struct MasterKey(Zeroizing<[u8; KEY_BYTES]>);
 

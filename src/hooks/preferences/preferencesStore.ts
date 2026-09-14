@@ -12,6 +12,7 @@
 //   motionSpeed     0.5 ~ 1.5（内部值）。0.5 = 体感 1× 基准，越大越快
 //   radiusStyle     square / standard / round。全局圆角风格（统一系数缩放）
 //   splashEnabled   启动动画开关。关闭后冷启动直接进主界面，不播启动层
+//   language        auto / zh-CN。界面文案语言，auto = 跟随系统（合法值见 core/i18n/languages）
 //
 // 退出行为 / 后台策略 / 双指缩放 / 开机自启已不是设置项：
 // 首页返回键固定弹退出确认、退到后台不做特殊处理、缩放始终关闭。
@@ -31,6 +32,8 @@ import {
 } from '../../core/design/radius';
 import { findTheme, normalizeThemeValue, type ThemeMode } from '../../core/design/themes';
 import { syncRootChromeBackground, readSurfaceCanvasColor } from '../../core/design/surfaceCanvas';
+import { DEFAULT_LANGUAGE, normalizeLanguage, type AppLanguage } from '../../core/i18n/languages';
+import { applyLanguage } from '../../core/i18n';
 import {
     DEFAULT_STARTUP_TAB,
     normalizeStartupTab,
@@ -47,6 +50,7 @@ export interface AppPreferences {
     motionSpeed: number;
     radiusStyle: RadiusStyle;
     splashEnabled: boolean;
+    language: AppLanguage;
 }
 
 const STORAGE_KEY = 'zhibook:preferences:v1';
@@ -65,6 +69,7 @@ const defaultPrefs: AppPreferences = {
     motionSpeed: MOTION_SPEED_DEFAULT,
     radiusStyle: RADIUS_STYLE_DEFAULT,
     splashEnabled: true,
+    language: DEFAULT_LANGUAGE,
 };
 
 let state: AppPreferences = loadFromStorage();
@@ -84,6 +89,7 @@ function loadFromStorage(): AppPreferences {
             motionSpeed: normalizeMotionSpeed(parsed.motionSpeed),
             radiusStyle: normalizeRadiusStyle(parsed.radiusStyle),
             splashEnabled: parsed.splashEnabled !== false,
+            language: normalizeLanguage(parsed.language),
         };
     } catch {
         return defaultPrefs;
@@ -136,6 +142,8 @@ export function applySideEffects() {
     root.setAttribute('data-theme-flat', definition?.flat ? 'true' : 'false');
     // 圆角风格：覆盖 :root 上的 --radius-* CSS 变量。
     applyRadiusStyle(state.radiusStyle);
+    // 语言：落到 i18next 与 <html lang>。同步执行，首帧文案就是对的。
+    applyLanguage(state.language);
     syncRootChromeBackground();
     mirrorCanvasColorForBoot();
     if (typeof window !== 'undefined') {
@@ -183,6 +191,9 @@ export const preferencesStore = {
     setRadiusStyle(style: RadiusStyle) {
         update({ radiusStyle: normalizeRadiusStyle(style) });
     },
+    setLanguage(language: AppLanguage) {
+        update({ language: normalizeLanguage(language) });
+    },
     reset() {
         state = { ...defaultPrefs };
         persist();
@@ -205,6 +216,7 @@ export const preferencesStore = {
             ),
             splashEnabled:
                 patch.splashEnabled !== undefined ? !!patch.splashEnabled : state.splashEnabled,
+            language: patch.language !== undefined ? normalizeLanguage(patch.language) : state.language,
         };
         persist();
         notify();

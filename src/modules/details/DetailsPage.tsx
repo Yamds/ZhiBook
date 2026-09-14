@@ -10,6 +10,7 @@
 // 分组头、窗口推进、合并去重都是纯逻辑（`detailsPage.logic.ts`）并有单测。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     clampDay,
     daysOfMonth,
@@ -60,6 +61,7 @@ import {
 } from './detailsPage.logic';
 
 export function DetailsPage() {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const { currentBook } = useCurrentBook();
     const bookId = currentBook?.id;
@@ -227,21 +229,21 @@ export function DetailsPage() {
             pushInfoBar({
                 key: 'details-delete',
                 tone: 'success',
-                title: '账单已删除',
-                content: '相关图片附件也一并清理了',
+                title: t('details.entryDeleted'),
+                content: t('details.entryDeletedBody'),
             });
             setPendingDelete(null);
         } catch (error) {
             pushInfoBar({
                 key: 'details-delete-error',
                 tone: 'danger',
-                title: '删除失败',
+                title: t('common.deleteFailed'),
                 content: describeError(error),
             });
         } finally {
             setDeleting(false);
         }
-    }, [deleteTransaction, pendingDelete]);
+    }, [deleteTransaction, pendingDelete, t]);
 
     const handleEdit = useCallback(
         (transaction: Transaction) => {
@@ -270,8 +272,8 @@ export function DetailsPage() {
     });
 
     const detailAccountName = detail
-        ? accounts.find((account) => account.id === detail.accountId)?.name ?? '未指定账户'
-        : '未指定账户';
+        ? accounts.find((account) => account.id === detail.accountId)?.name ?? t('add.accountUnspecified')
+        : t('add.accountUnspecified');
 
     const shownGroups = searchActive ? searchGroups : groups;
 
@@ -282,9 +284,9 @@ export function DetailsPage() {
                 {searchActive ? (
                     <div className="flex items-center gap-2 px-1 pb-0.5">
                         <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">
-                            搜索「{searchKeyword.trim()}」
+                             {t('details.searchFor', { keyword: searchKeyword.trim() })}
                             <span className="ml-1 text-text-tertiary tabular-nums">
-                                {searchQuery.isFetching ? '查询中…' : `${searchResults.length} 条`}
+                                {searchQuery.isFetching ? t('details.searching') : t('details.resultCount', { count: searchResults.length })}
                             </span>
                         </span>
                         <button
@@ -302,22 +304,22 @@ export function DetailsPage() {
                             value={year}
                             onChange={setYear}
                             visible={3}
-                            unit="年"
-                            ariaLabel="选择年份"
+                            unit={t('date.yearUnit')}
+                            ariaLabel={t('date.selectYear')}
                         />
                         <PeriodSelector
                             values={MONTH_SELECTOR_VALUES}
                             value={month}
                             onChange={setMonth}
-                            unit="月"
-                            ariaLabel="选择月份"
+                            unit={t('date.monthUnit')}
+                            ariaLabel={t('date.selectMonth')}
                         />
                         <PeriodSelector
                             values={dayValues}
                             value={day}
                             onChange={setDay}
-                            unit="日"
-                            ariaLabel="选择日期"
+                            unit={t('date.dayUnit')}
+                            ariaLabel={t('date.selectDay')}
                             isMarked={(value) =>
                                 year === today.year && month === today.month && value === today.day
                             }
@@ -334,15 +336,15 @@ export function DetailsPage() {
                         value={searchInput}
                         onChange={(event) => setSearchInput(event.target.value)}
                         maxLength={32}
-                        placeholder="搜索备注 / 分类"
-                        aria-label="搜索账单"
+                        placeholder={t('details.searchPlaceholder')}
+                        aria-label={t('details.searchAria')}
                         className="min-w-0 flex-1 bg-transparent text-[13px] text-text placeholder:text-text-disabled focus:outline-none"
                     />
                     {searchInput.length > 0 ? (
                         <button
                             type="button"
                             onClick={handleSearchClear}
-                            aria-label="清空搜索"
+                            aria-label={t('details.clearSearch')}
                             className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-text-tertiary active:bg-muted"
                         >
                             <AppIcon name={UI_ICONS.close} size={13} />
@@ -355,13 +357,13 @@ export function DetailsPage() {
                 {listError && !searchActive ? (
                     <EmptyState
                         icon={UI_ICONS.danger}
-                        title="账单加载失败"
+                        title={t('details.loadFailed')}
                         description={describeError(listError)}
                     />
                 ) : searchActive && searchQuery.isError ? (
                     <EmptyState
                         icon={UI_ICONS.danger}
-                        title="搜索失败"
+                        title={t('details.searchFailed')}
                         description={describeError(searchQuery.error)}
                     />
                 ) : initialLoading || (searchActive && searchQuery.isLoading) ? (
@@ -371,11 +373,11 @@ export function DetailsPage() {
                 ) : shownGroups.length === 0 ? (
                     <EmptyState
                         icon={searchActive ? UI_ICONS.search : UI_ICONS.details}
-                        title={searchActive ? '没有匹配的账单' : '这天及更早的 7 天都没有账单'}
+                        title={searchActive ? t('details.noMatch') : t('details.windowEmpty')}
                         description={
                             searchActive
-                                ? '换个关键字试试（支持备注与分类名）'
-                                : '换个日期，或到「添加」页记一笔'
+                                ? t('details.noMatchDesc')
+                                : t('details.windowEmptyDesc')
                         }
                     />
                 ) : (
@@ -398,7 +400,7 @@ export function DetailsPage() {
 
                 {searchActive && searchTruncated ? (
                     <p className="py-3 text-center text-[11.5px] text-text-tertiary">
-                        只显示前 {SEARCH_RESULT_LIMIT} 条，缩小关键字范围更准
+                        {t('details.searchTruncated', { count: SEARCH_RESULT_LIMIT })}
                     </p>
                 ) : null}
 
@@ -412,7 +414,7 @@ export function DetailsPage() {
                         ) : null}
                         {atEnd && shownGroups.length > 0 ? (
                             <p className="py-3 text-center text-[11.5px] text-text-tertiary">
-                                {overflowed ? '这一天记录太多，只显示了最近的一部分' : '没有更早的账单了'}
+                                {overflowed ? t('details.dayOverflow') : t('details.noMoreHistory')}
                             </p>
                         ) : null}
                     </>
@@ -446,8 +448,8 @@ export function DetailsPage() {
                 onOpenChange={(open) => {
                     if (!open) setPendingDelete(null);
                 }}
-                title="删除这条账单？"
-                description="账单与其图片附件会被一并删除，且无法恢复；统计与账户余额会同步更新。"
+                title={t('details.confirmDeleteTitle')}
+                description={t('details.confirmDeleteBody')}
                 busy={deleting}
                 onConfirm={() => void handleDelete()}
             />

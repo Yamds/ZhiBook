@@ -16,6 +16,7 @@ use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use tk_backup::BackupData;
 use tk_crypto::{NONCE_BYTES, WrapBlob, seal, open};
+use tk_domain::error_payload;
 
 use crate::manifest::{
     ATTACHMENTS_PREFIX, CloudFileEntry, CloudManifest, DATA_PATH, KEY_WRAP_PATH, file_aad,
@@ -115,7 +116,11 @@ impl<'a> PackageBuilder<'a> {
         // 附件：复用密文缓存。
         for (db_path, plaintext) in attachments {
             let cloud_path = cloud_path_for_attachment(db_path).ok_or_else(|| {
-                CloudError::State(format!("附件路径不在 attachments 下：{db_path}"))
+                CloudError::reported(error_payload!(
+                    "cloud.attachment.path_invalid",
+                    "附件路径不在 attachments 下：{db_path}";
+                    db_path = db_path
+                ))
             })?;
             let sealed = seal_cached(self.key, self.key_id, self.cache_dir, &cloud_path, plaintext)?;
             files.push(BuiltFile {
@@ -182,9 +187,10 @@ pub fn decrypt_entry(
 /// 校验密文与 manifest 的 sha256 一致（下载后立刻校验，损坏直接报错）。
 pub fn verify_ciphertext(entry: &CloudFileEntry, ciphertext: &[u8]) -> CloudResult<()> {
     if sha256_hex(ciphertext) != entry.sha256 {
-        return Err(CloudError::Protocol(format!(
-            "{} 与 manifest 记录的校验值不一致（下载不完整或已被改动）",
-            entry.path
+        return Err(CloudError::reported(error_payload!(
+            "cloud.package.checksum_mismatch",
+            "{path} 与 manifest 记录的校验值不一致（下载不完整或已被改动）";
+            path = entry.path
         )));
     }
     Ok(())

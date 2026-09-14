@@ -135,7 +135,7 @@ for (const group of PICKER_GROUPS) {
             .flatMap(([, list]) => list);
         catalog.push({
             name: full,
-            group: group.label,
+            group: group.id,
             aliases: [...new Set([...chineseAliases, ...aliases.filter((a) => a !== name)])],
         });
     }
@@ -143,7 +143,7 @@ for (const group of PICKER_GROUPS) {
 
 const unionLines = entries.map((entry) => `    | '${entry.full}'`).join('\n');
 const iconNameListLines = entries.map((entry) => `    '${entry.full}',`).join('\n');
-const groupLines = PICKER_GROUPS.map((group) => `    ${JSON.stringify(group.label)},`).join('\n');
+const groupLines = PICKER_GROUPS.map((group) => `    ${JSON.stringify(group.id)},`).join('\n');
 const uiIconLines = Object.entries(UI_ICONS)
     .map(([key, name]) => `    ${key}: 'mdi:${name}',`)
     .join('\n');

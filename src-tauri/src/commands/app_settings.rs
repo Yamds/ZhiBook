@@ -4,10 +4,11 @@ use std::path::Path;
 
 use tauri::State;
 use tk_config::LocalConfigStore;
-use tk_domain::AppSettings;
+use tk_domain::{AppSettings, ErrorPayload, error_payload};
 use tk_traits::ConfigStore;
 
 use crate::AppState;
+use crate::commands::CommandResult;
 
 const APP_SETTINGS_FILE: &str = "app-settings.json";
 
@@ -26,12 +27,16 @@ pub fn read_app_settings(data_root: &Path) -> AppSettings {
 }
 
 /// 把 AppSettings 原子写入 `config/app-settings.json`。启动装配层与命令层共用。
-pub fn write_app_settings(data_root: &Path, settings: &AppSettings) -> Result<(), String> {
+pub fn write_app_settings(data_root: &Path, settings: &AppSettings) -> Result<(), ErrorPayload> {
     let store = LocalConfigStore::new(data_root);
-    let payload = serde_json::to_value(settings).map_err(|error| error.to_string())?;
+    let payload = serde_json::to_value(settings).map_err(|error| {
+        error_payload!("app.settings.serialize_failed", "设置序列化失败：{detail}"; detail = error)
+    })?;
     store
         .write_json_atomic(&store.config_dir().join(APP_SETTINGS_FILE), &payload)
-        .map_err(|error| error.to_string())
+        .map_err(|error| {
+            error_payload!("app.settings.write_failed", "设置保存失败：{detail}"; detail = error)
+        })
 }
 
 #[tauri::command]
@@ -43,7 +48,7 @@ pub fn get_app_settings(state: State<'_, AppState>) -> AppSettings {
 pub fn set_app_settings(
     state: State<'_, AppState>,
     mut settings: AppSettings,
-) -> Result<(), String> {
+) -> CommandResult<()> {
     settings.normalize();
     write_app_settings(&state.data_root, &settings)?;
     *state.app_settings.blocking_write() = settings;

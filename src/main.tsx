@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { AppBootGate } from './app/AppBootGate';
 import { AppProvidersNext } from './app/AppProvidersNext';
+// 显式引一次：i18n 必须在任何 `useTranslation()` 渲染前就绪（模块加载即初始化）。
+import './core/i18n';
 
 document.addEventListener('contextmenu', (event) => {
     const target = event.target as HTMLElement | null;

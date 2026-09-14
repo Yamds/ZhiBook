@@ -5,6 +5,7 @@
 // Radix 会等动画结束再卸载；动效关闭时（data-motion="off"）直接落终态。
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { useMotion } from '../../hooks/preferences/useMotion';
 import { cn } from '../utils/cn';
@@ -34,6 +35,7 @@ export function BottomSheet({
     className,
     scrollable = true,
 }: BottomSheetProps) {
+    const { t } = useTranslation();
     const motion = useMotion();
     // 弹层内容节点：既作为 Radix 的滚动 shard，也作为内部浮层（日期 / 时刻选择等）的 portal 目标。
     const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
@@ -80,7 +82,7 @@ export function BottomSheet({
                                 </header>
                             </RadixDialog.Title>
                         ) : (
-                            <RadixDialog.Title className="sr-only">面板</RadixDialog.Title>
+                            <RadixDialog.Title className="sr-only">{t('shared.sheetPanel')}</RadixDialog.Title>
                         )}
                         <div className={cn('min-h-0 flex-1 px-4 pb-4 pt-2', scrollable && 'overflow-y-auto overscroll-contain')}>
                             {children}

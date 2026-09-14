@@ -4,6 +4,7 @@
 // 用 BottomSheet 而不是系统 confirm：移动端更顺手，也能带上「影响范围」文案。
 
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BottomSheet } from './BottomSheet';
 import { cn } from '../utils/cn';
 
@@ -26,12 +27,15 @@ export function ConfirmSheet({
     onOpenChange,
     title,
     description,
-    confirmLabel = '确认删除',
-    cancelLabel = '取消',
+    confirmLabel,
+    cancelLabel,
     tone = 'danger',
     busy = false,
     onConfirm,
 }: ConfirmSheetProps) {
+    const { t } = useTranslation();
+    const resolvedConfirmLabel = confirmLabel ?? t('common.confirmDelete');
+    const resolvedCancelLabel = cancelLabel ?? t('common.cancel');
     return (
         <BottomSheet open={open} onOpenChange={onOpenChange} title={title} maxHeightRatio={0.6}>
             <div className="flex flex-col gap-4">
@@ -42,7 +46,7 @@ export function ConfirmSheet({
                         onClick={() => onOpenChange(false)}
                         className="h-10 flex-1 rounded-md bg-inset text-[14px] font-medium text-text-secondary active:bg-muted"
                     >
-                        {cancelLabel}
+                        {resolvedCancelLabel}
                     </button>
                     <button
                         type="button"
@@ -54,7 +58,7 @@ export function ConfirmSheet({
                             busy ? 'opacity-60' : 'active:opacity-90',
                         )}
                     >
-                        {busy ? '处理中' : confirmLabel}
+                        {busy ? t('common.processing') : resolvedConfirmLabel}
                     </button>
                 </div>
             </div>

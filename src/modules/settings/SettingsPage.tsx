@@ -5,6 +5,7 @@
 // 返回：点「设置」页签或按返回键都回日历页。
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../shared/ui';
 import { useBackendSettings } from '../../hooks/preferences/useBackendSettings';
 import { neighborOf, useNestedSwipe } from '../../app/swipeNavigation';
@@ -20,6 +21,7 @@ import { AppearanceTab } from './tabs/AppearanceTab';
 import { FeatureTab } from './tabs/FeatureTab';
 
 export function SettingsPage() {
+    const { t } = useTranslation();
     const { settings, patch } = useBackendSettings();
     const [tab, setTab] = useState<SettingsTab>(DEFAULT_SETTINGS_TAB);
     const draft = settings ? draftFromBackendAndPrefs(settings) : null;
@@ -38,7 +40,7 @@ export function SettingsPage() {
                 <div className="sticky top-0 z-[5] shrink-0 border-b border-border-subtle bg-canvas/95 backdrop-blur-sm">
                     <TabsList className="scrollbar-hide min-w-0 shrink overflow-x-auto border-b-0">
                         {SETTINGS_TABS.map((item) => (
-                            <TabsTrigger key={item.value} value={item.value}>{item.label}</TabsTrigger>
+                            <TabsTrigger key={item.value} value={item.value}>{t(item.labelKey)}</TabsTrigger>
                         ))}
                     </TabsList>
                 </div>

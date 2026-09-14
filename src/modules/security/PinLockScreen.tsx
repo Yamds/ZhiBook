@@ -3,6 +3,7 @@
 // 锁定期间不挂载 AppNext（避免数据在锁屏后面渲染），返回键 = 退出应用。
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import { registerBackButtonHandler } from '../../core/platform/androidBridge';
 import { securityService } from '../../core/services/security.service';
@@ -14,6 +15,7 @@ const MAX_ATTEMPTS = 5;
 const COOLDOWN_MS = 30_000;
 
 export function PinLockScreen() {
+    const { t } = useTranslation();
     const [value, setValue] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -48,13 +50,13 @@ export function PinLockScreen() {
             if (attemptsRef.current >= MAX_ATTEMPTS) {
                 attemptsRef.current = 0;
                 setCooldownUntil(Date.now() + COOLDOWN_MS);
-                setError('错误次数过多，请等待后再试');
+                setError(t('security.tooManyAttempts'));
             } else {
-                setError('密码不正确');
+                setError(t('security.pinIncorrect'));
             }
         } catch (caught) {
             setValue('');
-            setError(caught instanceof Error ? caught.message : '验证失败');
+            setError(caught instanceof Error ? caught.message : t('security.verifyFailed'));
         } finally {
             setBusy(false);
         }
@@ -65,15 +67,15 @@ export function PinLockScreen() {
             <div className="mb-7 flex h-16 w-16 items-center justify-center rounded-full bg-brand-soft text-brand">
                 <AppIcon name={UI_ICONS.lock} size={30} />
             </div>
-            <h1 className="mb-1 text-[17px] font-semibold text-text">输入密码</h1>
-            <p className="mb-8 text-[12.5px] text-text-tertiary">解锁后进入制账</p>
+            <h1 className="mb-1 text-[17px] font-semibold text-text">{t('security.enterPin')}</h1>
+            <p className="mb-8 text-[12.5px] text-text-tertiary">{t('security.unlockHint')}</p>
             <PinPad
                 value={value}
                 onChange={setValue}
                 onSubmit={() => void submit()}
                 disabled={busy || cooling}
                 error={error}
-                hint={cooling ? `请等待 ${remaining} 秒` : undefined}
+                hint={cooling ? t('security.waitSeconds', { count: remaining }) : undefined}
             />
         </div>
     );

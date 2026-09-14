@@ -15,7 +15,7 @@ import {
     bottomNavTabs,
     navPeekTarget,
     routeContentClass,
-    routeTitle,
+    routeTitleKey,
 } from './navigation';
 import {
     backActionFor,
@@ -32,7 +32,13 @@ beforeEach(() => {
 describe('navigation registry', () => {
     it('页签顺序为 账单 → 明细 → 日历 → 添加 → 资产', () => {
         expect(ROUTE_ORDER).toEqual(['bills', 'details', 'home', 'add', 'assets']);
-        expect(APP_ROUTES.map((route) => route.label)).toEqual(['账单', '明细', '日历', '添加', '资产']);
+        expect(APP_ROUTES.map((route) => route.labelKey)).toEqual([
+            'nav.bills',
+            'nav.details',
+            'nav.home',
+            'nav.add',
+            'nav.assets',
+        ]);
     });
 
     it('首页固定是日历页', () => {
@@ -40,10 +46,10 @@ describe('navigation registry', () => {
         expect(navigationStore.getSnapshot().screen).toBe('home');
     });
 
-    it('设置页不在页签里，但可以取到标题', () => {
+    it('设置页不在页签里，但可以取到标题 key', () => {
         expect(ROUTE_ORDER).not.toContain('settings');
-        expect(routeTitle('settings')).toBe('设置');
-        expect(routeTitle('bills')).toBe('账单');
+        expect(routeTitleKey('settings')).toBe('nav.settings');
+        expect(routeTitleKey('bills')).toBe('nav.bills');
     });
 
     it('在设置页时，日历槽位被设置替身占用', () => {
@@ -58,7 +64,7 @@ describe('navigation registry', () => {
     it('设置替身页签与普通页签同源（图标 / 文案复用注册表）', () => {
         const slot = bottomNavTabs('settings')[2];
         expect(slot).toBe(SETTINGS_TAB);
-        expect(slot?.label).toBe('设置');
+        expect(slot?.labelKey).toBe('nav.settings');
         expect(slot?.icon).toBeDefined();
     });
 

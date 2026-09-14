@@ -4,6 +4,7 @@
 //! 密文 sha256 + nonce）。业务计数与原始文件名都不上云。
 
 use serde::{Deserialize, Serialize};
+use tk_domain::error_payload;
 
 use crate::CloudResult;
 
@@ -69,19 +70,22 @@ impl CloudManifest {
     /// 校验 manifest 的基本合法性（格式 / 版本 / 算法）。
     pub fn validate(&self) -> CloudResult<()> {
         if self.format != CLOUD_FORMAT {
-            return Err(crate::CloudError::Protocol(
-                "不是制账的云端备份（manifest 标识不匹配）".to_string(),
-            ));
+            return Err(crate::CloudError::reported(error_payload!(
+                "cloud.manifest.foreign",
+                "不是制账的云端备份（manifest 标识不匹配）"
+            )));
         }
         if self.format_version > CLOUD_FORMAT_VERSION {
-            return Err(crate::CloudError::Protocol(
-                "云端备份比当前 App 新，请先升级 App".to_string(),
-            ));
+            return Err(crate::CloudError::reported(error_payload!(
+                "cloud.manifest.too_new",
+                "云端备份比当前 App 新，请先升级 App"
+            )));
         }
         if self.alg != CLOUD_ALG {
-            return Err(crate::CloudError::Protocol(format!(
-                "不支持的加密算法：{}",
-                self.alg
+            return Err(crate::CloudError::reported(error_payload!(
+                "cloud.manifest.bad_alg",
+                "不支持的加密算法：{alg}";
+                alg = self.alg
             )));
         }
         Ok(())

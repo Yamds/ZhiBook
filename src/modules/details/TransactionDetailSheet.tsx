@@ -5,7 +5,9 @@
 // 查看器单独挂在页面层，避免和 BottomSheet 的焦点陷阱 / 外点关闭互相干扰。
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { categoryColors } from '../../core/design/categoryColor';
+import { categoryDisplayName } from '../../core/domain/categoryName';
 import { FALLBACK_ICON_NAME, toIconName, UI_ICONS } from '../../core/design/icons';
 import { formatDateLabel, formatClockTime } from '../../core/domain/date';
 import { formatMoney, formatSignedMoney } from '../../core/domain/money';
@@ -41,6 +43,7 @@ export function TransactionDetailSheet({
     onDelete,
     onViewImages,
 }: TransactionDetailSheetProps) {
+    const { t } = useTranslation();
     // 关闭过程中保留最后一条账单，避免退场动画里内容先是空的（一闪）
     const [shown, setShown] = useState<Transaction | null>(transaction);
     useEffect(() => {
@@ -51,7 +54,7 @@ export function TransactionDetailSheet({
         <BottomSheet
             open={open && shown !== null}
             onOpenChange={onOpenChange}
-            title="账单详情"
+            title={t('details.sheetTitle')}
             maxHeightRatio={0.9}
         >
             {shown ? (
@@ -89,6 +92,7 @@ function DetailBody({
     onDelete: () => void;
     onViewImages: (attachments: Attachment[], index: number) => void;
 }) {
+    const { t } = useTranslation();
     const colors = categoryColors(category?.color ?? 'theme', brand, surface);
     const { data: attachments = [] } = useAttachments(transaction.id);
     const isIncome = transaction.kind === 'income';
@@ -104,10 +108,10 @@ function DetailBody({
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-[15px] font-semibold text-text">
-                        {category?.name ?? '未知分类'}
+                        {categoryDisplayName(category, t, t('settings.recurring.unknownCategory'))}
                     </span>
                     <span className="text-[11.5px] text-text-tertiary">
-                        {isIncome ? '收入' : '支出'}
+                        {isIncome ? t('entryKind.income') : t('entryKind.expense')}
                     </span>
                 </div>
                 <span
@@ -121,17 +125,17 @@ function DetailBody({
             </div>
 
             <div className="flex flex-col gap-0.5 rounded-lg bg-inset px-3">
-                <InfoRow label="日期" value={formatDateLabel(transaction.occurredAtMs)} />
-                <InfoRow label="时间" value={formatClockTime(transaction.occurredAtMs)} />
-                <InfoRow label="账户" value={accountName} />
+                <InfoRow label={t('details.date')} value={formatDateLabel(transaction.occurredAtMs)} />
+                <InfoRow label={t('details.time')} value={formatClockTime(transaction.occurredAtMs)} />
+                <InfoRow label={t('add.account')} value={accountName} />
                 <InfoRow
-                    label="备注"
+                    label={t('add.note')}
                     value={transaction.note || '—'}
                     valueClassName={transaction.note ? undefined : 'text-text-disabled'}
                 />
-                <InfoRow label="金额" value={formatMoney(transaction.amountCents)} />
+                <InfoRow label={t('add.amount')} value={formatMoney(transaction.amountCents)} />
                 <InfoRow
-                    label="创建"
+                    label={t('details.createdAt')}
                     value={`${formatDateLabel(transaction.createdAtMs)} ${formatClockTime(transaction.createdAtMs)}`}
                     valueClassName="text-text-tertiary"
                 />
@@ -202,6 +206,7 @@ function AttachmentThumb({
     attachment: Attachment;
     onOpen: () => void;
 }) {
+    const { t } = useTranslation();
     const { data, isError } = useAttachmentData(attachment.id);
     const dataUrl = data ? `data:${data.attachment.mime};base64,${data.base64}` : undefined;
 
@@ -209,11 +214,11 @@ function AttachmentThumb({
         <button
             type="button"
             onClick={onOpen}
-            aria-label={dataUrl ? '查看大图' : '图片读取失败'}
+            aria-label={dataUrl ? t('details.viewFullImage') : t('details.imageReadFailed')}
             className="relative aspect-square overflow-hidden rounded-md border border-border-subtle active:opacity-90"
         >
             {dataUrl ? (
-                <img src={dataUrl} alt="账单附件" className="h-full w-full object-cover" />
+                <img src={dataUrl} alt={t('details.attachmentAlt')} className="h-full w-full object-cover" />
             ) : (
                 <span className="flex h-full w-full items-center justify-center bg-inset text-text-tertiary">
                     <AppIcon name={isError ? UI_ICONS.warning : UI_ICONS.image} size={18} />

@@ -27,15 +27,16 @@ describe('icons.generated', () => {
             expect(known.has(entry.name)).toBe(true);
             expect(ICON_GROUPS).toContain(entry.group);
         }
-        // 「支付与账户」在前（账户编辑器默认展示），紧随其后的品牌分组是 P9 新增
-        expect(ICON_GROUPS[0]).toBe('支付与账户');
-        expect(ICON_GROUPS[1]).toBe('支付品牌');
+        // 分组 id 稳定，「支付与账户」在前（账户编辑器默认展示），紧随其后的品牌分组是 P9 新增；
+        // 展示用的中文名在语言文件里（`iconGroup.<id>`）。
+        expect(ICON_GROUPS[0]).toBe('payment');
+        expect(ICON_GROUPS[1]).toBe('paymentBrand');
     });
 
     it('支付品牌分组带中文别名（支付宝 / 微信可搜到）', () => {
         const alipay = ICON_CATALOG.find((entry) => entry.name === 'simple-icons:alipay');
         const wechat = ICON_CATALOG.find((entry) => entry.name === 'simple-icons:wechat');
-        expect(alipay?.group).toBe('支付品牌');
+        expect(alipay?.group).toBe('paymentBrand');
         expect(alipay?.aliases).toContain('支付宝');
         expect(wechat?.aliases).toContain('微信');
     });

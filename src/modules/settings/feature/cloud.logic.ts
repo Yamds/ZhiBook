@@ -1,10 +1,25 @@
 // 云端备份的纯展示逻辑（可单测，不依赖 React / IPC）。
+//
+// 文案一律走 `core/i18n` 的 `t()`：本模块不是组件，拿不到 `useTranslation`
+// 的订阅，但调用方都是「语言变化时会重渲染」的组件（设置页 / 云端弹层），
+// 所以读「当下语言」即可。
 
+import { t } from '../../../core/i18n';
 import type { BackupCounts, CloudBackupSummary, CloudRestorePreview, MergeSummary } from '../../../core/ipc/types';
+
+/** 单条计数的量词单位（借 i18next 的 count 复数：中文只有 other，英文会走 one/other）。 */
+function unit(key: string, count: number): string {
+    return t(`unit.${key}`, { count });
+}
 
 /** 迁移 / 备份计数文案（与导入导出口径一致）。 */
 export function countsSummary(counts: BackupCounts): string {
-    return `${counts.books} 个账本 · ${counts.transactions} 笔账单 · ${counts.attachments} 张附件 · ${counts.recurringRules} 条固定收支`;
+    return [
+        unit('book', counts.books),
+        unit('transaction', counts.transactions),
+        unit('attachment', counts.attachments),
+        unit('recurringRule', counts.recurringRules),
+    ].join(t('common.dotSeparator'));
 }
 
 /** 密钥指纹：8 位 hex → 两组 4 位（便于肉眼核对）。 */
@@ -18,24 +33,21 @@ export function formatFingerprint(fingerprint: string): string {
 export function mergeSummaryText(merge: MergeSummary | null | undefined): string | null {
     if (!merge) return null;
     const parts: string[] = [];
-    if (merge.transactions.added > 0) parts.push(`新增 ${merge.transactions.added} 笔账单`);
-    if (merge.transactions.updated > 0) parts.push(`更新 ${merge.transactions.updated} 笔账单`);
-    if (merge.transactions.deleted > 0) parts.push(`删除 ${merge.transactions.deleted} 笔账单`);
-    if (merge.recurringRules.added > 0) parts.push(`新增 ${merge.recurringRules.added} 条固定收支`);
-    if (merge.recurringRules.updated > 0) parts.push(`更新 ${merge.recurringRules.updated} 条固定收支`);
-    if (merge.recurringRules.deleted > 0) parts.push(`删除 ${merge.recurringRules.deleted} 条固定收支`);
-    if (merge.books.added > 0) parts.push(`新增 ${merge.books.added} 个账本`);
-    if (merge.books.updated > 0) parts.push(`更新 ${merge.books.updated} 个账本`);
-    if (merge.books.deleted > 0) parts.push(`删除 ${merge.books.deleted} 个账本`);
-    if (merge.accounts.added > 0) parts.push(`新增 ${merge.accounts.added} 个账户`);
-    if (merge.accounts.updated > 0) parts.push(`更新 ${merge.accounts.updated} 个账户`);
-    if (merge.accounts.deleted > 0) parts.push(`删除 ${merge.accounts.deleted} 个账户`);
-    if (merge.categories.added > 0) parts.push(`新增 ${merge.categories.added} 个分类`);
-    if (merge.categories.updated > 0) parts.push(`更新 ${merge.categories.updated} 个分类`);
-    if (merge.attachments.added > 0) parts.push(`新增 ${merge.attachments.added} 张附件`);
-    if (merge.attachments.deleted > 0) parts.push(`删除 ${merge.attachments.deleted} 张附件`);
+    const collect = (key: string, added: number, updated: number, deleted: number) => {
+        if (added > 0) parts.push(t('settings.cloud.merge.added', { item: unit(key, added) }));
+        if (updated > 0) parts.push(t('settings.cloud.merge.updated', { item: unit(key, updated) }));
+        if (deleted > 0) parts.push(t('settings.cloud.merge.deleted', { item: unit(key, deleted) }));
+    };
+    collect('transaction', merge.transactions.added, merge.transactions.updated, merge.transactions.deleted);
+    collect('recurringRule', merge.recurringRules.added, merge.recurringRules.updated, merge.recurringRules.deleted);
+    collect('book', merge.books.added, merge.books.updated, merge.books.deleted);
+    collect('account', merge.accounts.added, merge.accounts.updated, merge.accounts.deleted);
+    collect('category', merge.categories.added, merge.categories.updated, 0);
+    collect('attachment', merge.attachments.added, 0, merge.attachments.deleted);
     if (parts.length === 0) return null;
-    return `已合并另一台设备的更新：${parts.join('、')}`;
+    return t('settings.cloud.merge.summary', {
+        parts: parts.join(t('common.enumSeparator')),
+    });
 }
 
 /** 字节数 → 人类可读。 */
@@ -47,20 +59,23 @@ export function formatBytes(bytes: number): string {
 
 /** 备份结果主文案。 */
 export function backupSummaryText(summary: CloudBackupSummary): string {
-    if (!summary.pushed) return '内容没有变化，无需新增备份';
-    return `已备份 ${summary.fileCount} 个文件（上传 ${formatBytes(summary.uploadedBytes)}）`;
+    if (!summary.pushed) return t('settings.cloud.backupNoChange');
+    return t('settings.cloud.backupPushed', {
+        count: summary.fileCount,
+        size: formatBytes(summary.uploadedBytes),
+    });
 }
 
 /** 恢复预览文案（含密钥来源提示）。 */
 export function restorePreviewText(preview: CloudRestorePreview): string {
     if (preview.needsKey) {
         return preview.hasPassphrase
-            ? '本机没有备份密钥：输入口令或恢复密钥后可预览云端内容'
-            : '本机没有备份密钥：输入恢复密钥后可预览云端内容';
+            ? t('settings.cloud.restoreNeedKeyWithPassphrase')
+            : t('settings.cloud.restoreNeedKeyRecoveryOnly');
     }
-    if (!preview.counts) return '云端内容已就绪';
+    if (!preview.counts) return t('settings.cloud.restoreReady');
     const base = countsSummary(preview.counts);
-    return preview.fromLocalKey ? base : `${base}（使用新解锁的密钥）`;
+    return preview.fromLocalKey ? base : t('settings.cloud.restoreWithNewKey', { base });
 }
 
 /** 恢复密钥 / 口令输入的归一化：去掉空格与分组连字符、恢复密钥转大写。 */

@@ -5,7 +5,11 @@ import { DEFAULT_SETTINGS_TAB, SETTINGS_TABS, SETTINGS_TAB_ORDER } from './setti
 describe('settingsTabs 注册表', () => {
     it('顺序为 功能 → 外观 → 关于，「功能」在「外观」之前', () => {
         expect(SETTINGS_TAB_ORDER).toEqual(['feature', 'appearance', 'about']);
-        expect(SETTINGS_TABS.map((tab) => tab.label)).toEqual(['功能', '外观', '关于']);
+        expect(SETTINGS_TABS.map((tab) => tab.labelKey)).toEqual([
+            'settings.tabFeature',
+            'settings.tabAppearance',
+            'settings.tabAbout',
+        ]);
     });
 
     it('默认打开第一个页签（功能）', () => {

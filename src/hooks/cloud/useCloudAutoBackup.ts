@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { logicalDayKey, msUntilNextHourBoundary } from '../../core/domain/date';
+import { t } from '../../core/i18n';
 import { cloudService } from '../../core/services/cloud.service';
 import { backupSummaryText, mergeSummaryText } from '../../modules/settings/feature/cloud.logic';
 import { ledgerKeys } from '../ledger/queryKeys';
@@ -70,7 +71,7 @@ export function useCloudAutoBackup(): void {
                     pushInfoBar({
                         key: 'cloud-auto-backup',
                         tone: 'success',
-                        title: '已自动备份到云端',
+                        title: t('settings.cloud.autoBackupDone'),
                         content: mergeSummaryText(summary.merged) ?? backupSummaryText(summary),
                     });
                 }
@@ -78,7 +79,7 @@ export function useCloudAutoBackup(): void {
                 pushInfoBar({
                     key: 'cloud-auto-backup-error',
                     tone: 'danger',
-                    title: '自动备份失败',
+                    title: t('settings.cloud.autoBackupFailed'),
                     content: error instanceof Error ? error.message : String(error),
                 });
             } finally {

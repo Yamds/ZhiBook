@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppIcon } from './AppIcon';
 import { UI_ICONS } from '../../core/design/icons';
 import { cn } from '../utils/cn';
@@ -12,6 +13,7 @@ interface CopyCodeBlockProps {
 
 /** 可复制的命令块，用于 SSH 指纹核对等运维提示。 */
 export function CopyCodeBlock({ command, className }: CopyCodeBlockProps) {
+    const { t } = useTranslation();
     const [copied, setCopied] = useState(false);
 
     const onCopy = useCallback(async () => {
@@ -40,7 +42,7 @@ export function CopyCodeBlock({ command, className }: CopyCodeBlockProps) {
                 variant="ghost"
                 className="shrink-0"
                 onClick={() => void onCopy()}
-                aria-label={copied ? '已复制' : '复制命令'}
+                aria-label={copied ? t('common.copied') : t('common.copyCommand')}
             >
                 {copied ? <AppIcon name={UI_ICONS.check} size={14} /> : <AppIcon name={UI_ICONS.copy} size={14} />}
             </Button>

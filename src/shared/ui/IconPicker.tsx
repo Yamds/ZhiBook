@@ -6,9 +6,18 @@
 // 使用场景：新增 / 编辑分类时挑图标（P4 的分类编辑器）。
 
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppIcon } from './AppIcon';
 import { ICON_CATALOG, ICON_GROUPS, type IconName } from '../../core/design/icons';
 import { cn } from '../utils/cn';
+
+/** 「全部」筛选值：不是真实分组 id，单独一个常量避免与分组 id 撞车。 */
+const ALL_GROUPS = '__all__';
+
+/** 图标分组 id → i18n key（分组 id 由 `scripts/icon-catalog.mjs` 提供）。 */
+function groupLabelKey(groupId: string): string {
+    return `iconGroup.${groupId}`;
+}
 
 export interface IconPickerProps {
     value: IconName;
@@ -24,26 +33,38 @@ function shortName(name: IconName): string {
     return index >= 0 ? name.slice(index + 1) : name;
 }
 
-function matches(name: IconName, group: string, aliases: readonly string[], query: string): boolean {
+function matches(
+    name: IconName,
+    groupLabel: string,
+    aliases: readonly string[],
+    query: string,
+): boolean {
     const q = query.trim().toLowerCase();
     if (!q) return true;
     if (shortName(name).toLowerCase().includes(q)) return true;
-    if (group.toLowerCase().includes(q)) return true;
+    if (groupLabel.toLowerCase().includes(q)) return true;
     return aliases.some((alias) => alias.toLowerCase().includes(q));
 }
 
 export function IconPicker({ value, onChange, columns = 6, className }: IconPickerProps) {
+    const { t } = useTranslation();
     const [query, setQuery] = useState('');
-    const [group, setGroup] = useState<string>('全部');
+    const [group, setGroup] = useState<string>(ALL_GROUPS);
 
     const results = useMemo(() => {
         return ICON_CATALOG.filter((entry) => {
-            if (group !== '全部' && entry.group !== group) return false;
-            return matches(entry.name, entry.group, entry.aliases, query);
+            if (group !== ALL_GROUPS && entry.group !== group) return false;
+            return matches(entry.name, t(groupLabelKey(entry.group)), entry.aliases, query);
         });
-    }, [group, query]);
+    }, [group, query, t]);
 
-    const groups = useMemo(() => ['全部', ...ICON_GROUPS], []);
+    const groups = useMemo(
+        () => [
+            { id: ALL_GROUPS, label: t('shared.iconSearchAll') },
+            ...ICON_GROUPS.map((id) => ({ id, label: t(groupLabelKey(id)) })),
+        ],
+        [t],
+    );
 
     return (
         <div className={cn('flex min-h-0 w-full flex-col gap-2.5', className)}>
@@ -51,8 +72,8 @@ export function IconPicker({ value, onChange, columns = 6, className }: IconPick
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="搜索图标（中文或英文，如 餐饮 / noodles）"
-                aria-label="搜索图标"
+                placeholder={t('shared.iconSearchPlaceholder')}
+                aria-label={t('shared.iconSearchAria')}
                 className={cn(
                     'h-8 w-full rounded-sm border border-border-subtle bg-field px-2.5 text-[12.5px] text-text',
                     'placeholder:text-text-disabled',
@@ -62,12 +83,12 @@ export function IconPicker({ value, onChange, columns = 6, className }: IconPick
 
             <div className="scrollbar-hide -mx-0.5 flex shrink-0 gap-1 overflow-x-auto px-0.5" data-no-swipe>
                 {groups.map((item) => {
-                    const selected = item === group;
+                    const selected = item.id === group;
                     return (
                         <button
-                            key={item}
+                            key={item.id}
                             type="button"
-                            onClick={() => setGroup(item)}
+                            onClick={() => setGroup(item.id)}
                             aria-pressed={selected}
                             className={cn(
                                 'h-[26px] shrink-0 rounded-pill px-2.5 text-[11.5px] font-medium transition-colors',
@@ -76,7 +97,7 @@ export function IconPicker({ value, onChange, columns = 6, className }: IconPick
                                     : 'bg-inset text-text-tertiary active:bg-muted',
                             )}
                         >
-                            {item}
+                            {item.label}
                         </button>
                     );
                 })}
@@ -87,7 +108,7 @@ export function IconPicker({ value, onChange, columns = 6, className }: IconPick
                 style={{ maxHeight: 220 }}
             >
                 {results.length === 0 ? (
-                    <p className="py-6 text-center text-[12px] text-text-tertiary">没有匹配的图标</p>
+                    <p className="py-6 text-center text-[12px] text-text-tertiary">{t('shared.iconNoMatch')}</p>
                 ) : (
                     <div
                         className="grid gap-1"

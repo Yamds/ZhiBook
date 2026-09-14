@@ -4,6 +4,7 @@
 // `occurredAtMs` = 当天 05:00 的本地时间戳；Rust 侧不做时区推断。
 
 import { logicalDayKey, shiftDayKey, todayKey } from '../../../core/domain/date';
+import { t } from '../../../core/i18n';
 import { centsToInputText, parseAmountInput } from '../../../core/domain/money';
 import type { RecurringOccurrence, RecurringRule } from '../../../core/ipc/types';
 
@@ -90,7 +91,9 @@ export function dueOccurrences(
 
 /** 列表里的排程文案。 */
 export function scheduleLabel(): string {
-    return `每天 ${String(RECURRING_HOUR).padStart(2, '0')}:00`;
+    return t('settings.recurring.scheduleDaily', {
+        time: `${String(RECURRING_HOUR).padStart(2, '0')}:00`,
+    });
 }
 
 /** 金额输入（元）→ 分；非法、非正数或超限返回 null。 */

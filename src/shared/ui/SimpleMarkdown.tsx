@@ -3,6 +3,7 @@
 // 给协议正文、Release notes 等「人写的短 Markdown」用，不引入 marked/rehype。
 
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     parseMarkdownBlocks,
     tokenizeInlineMarkdown,
@@ -25,13 +26,14 @@ export interface SimpleMarkdownProps {
 export function SimpleMarkdown({
     text,
     className,
-    emptyFallback = '暂无内容',
+    emptyFallback,
     onOpenLink,
 }: SimpleMarkdownProps) {
+    const { t } = useTranslation();
     const blocks = parseMarkdownBlocks(text);
     if (blocks.length === 0) {
         return (
-            <p className={cn('text-sm text-text-tertiary', className)}>{emptyFallback}</p>
+            <p className={cn('text-sm text-text-tertiary', className)}>{emptyFallback ?? t('common.empty')}</p>
         );
     }
 

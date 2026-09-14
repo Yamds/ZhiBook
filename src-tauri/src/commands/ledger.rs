@@ -17,9 +17,7 @@ use tk_domain::{
 use tk_ledger::{Ledger, LedgerError};
 
 use crate::AppState;
-
-/// 命令统一返回字符串错误（前端 InfoBar 直接展示）。
-type CommandResult<T> = Result<T, String>;
+use crate::commands::{CommandResult, join_error};
 
 /// 把阻塞的记账操作挪到后台线程执行。
 async fn run<T, F>(ledger: Arc<Ledger>, task: F) -> CommandResult<T>
@@ -27,14 +25,18 @@ where
     T: Send + 'static,
     F: FnOnce(&Ledger) -> Result<T, LedgerError> + Send + 'static,
 {
-    tauri::async_runtime::spawn_blocking(move || task(&ledger).map_err(|error| error.to_string()))
-        .await
-        .map_err(|error| format!("后台任务异常：{error}"))?
+    tauri::async_runtime::spawn_blocking(move || {
+        task(&ledger).map_err(|error| error.payload())
+    })
+    .await
+    .map_err(join_error)?
 }
 
 /// 记账库句柄（启动失败时给出可展示的错误）。
 fn handle(state: &State<'_, AppState>) -> CommandResult<Arc<Ledger>> {
-    state.ledger.clone().map_err(|error| error.to_owned())
+    state.ledger.clone().map_err(|error| {
+        tk_domain::error_payload!("ledger.db.unavailable", "记账库打不开：{detail}"; detail = error)
+    })
 }
 
 // ---------------------------------------------------------------------------

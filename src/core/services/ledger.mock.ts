@@ -6,12 +6,14 @@
 //
 // 命令名字符串只出现在 `src/core/services/**`，这里同样留在 services 目录内。
 
+import { t } from '../i18n';
 import type { AssetsOverview, Book, MonthStats, ShareBreakdown } from '../ipc/types';
 
 export const MOCK_CURRENT_BOOK_ID = 'book_default';
 
 const mockBook: Book = {
     id: MOCK_CURRENT_BOOK_ID,
+    // i18n-allow: 与 Rust `seed::DEFAULT_BOOK_NAME` 同源的落库数据（展示时由 i18n 接管）。
     name: '默认账本',
     createdAtMs: 0,
     updatedAtMs: 0,
@@ -44,7 +46,7 @@ const EMPTY_BREAKDOWN: ShareBreakdown = {
 };
 
 function writeBlocked(): never {
-    throw new Error('浏览器预览不写入记账数据，请在 Android 设备上验证');
+    throw new Error(t('error.previewUnsupportedWrite'));
 }
 
 /** 浏览器预览用的只读替身。 */

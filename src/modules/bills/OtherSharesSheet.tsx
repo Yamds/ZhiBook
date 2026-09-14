@@ -4,6 +4,8 @@
 // 所以与环形图、类目排行完全同源，不会出现「展开后数字对不上」。
 
 import { formatMoney } from '../../core/domain/money';
+import { useTranslation } from 'react-i18next';
+import { categoryDisplayNameStatic } from '../../core/domain/categoryName';
 import type { CategoryShareSet, StatsKind } from '../../core/ipc/types';
 import { BottomSheet } from '../../shared/ui/BottomSheet';
 import { EmptyState } from '../../shared/ui/EmptyState';
@@ -19,19 +21,24 @@ export interface OtherSharesSheetProps {
 }
 
 export function OtherSharesSheet({ open, onOpenChange, set, kind, colors }: OtherSharesSheetProps) {
+    const { t } = useTranslation();
     const items = set?.all ?? [];
-    const totalLabel = kind === 'balance' ? '合计（绝对值）' : '合计';
+    const totalLabel = kind === 'balance' ? t('bills.totalAbsolute') : t('bills.total');
 
     return (
         <BottomSheet
             open={open}
             onOpenChange={onOpenChange}
-            title={`${statsKindLabel(kind)}占比明细`}
-            description={`共 ${items.length} 个分类，${totalLabel} ${formatMoney(set?.totalCents ?? 0)}`}
+            title={t('bills.shareDetailTitle', { label: statsKindLabel(kind) })}
+            description={t('bills.shareDetailDesc', {
+                count: items.length,
+                total: totalLabel,
+                amount: formatMoney(set?.totalCents ?? 0),
+            })}
             maxHeightRatio={0.8}
         >
             {items.length === 0 ? (
-                <EmptyState size="compact" title="没有可展开的明细" />
+                <EmptyState size="compact" title={t('bills.noDetailToExpand')} />
             ) : (
                 <ul className="flex flex-col gap-1">
                     {items.map((item) => (
@@ -45,9 +52,9 @@ export function OtherSharesSheet({ open, onOpenChange, set, kind, colors }: Othe
                                 style={{ background: colors.get(item.categoryId) ?? 'var(--brand-500)' }}
                             />
                             <span className="min-w-0 flex-1 truncate text-[13px] text-text">
-                                {item.name}
+                                {categoryDisplayNameStatic({ id: item.categoryId, name: item.name }, item.name)}
                                 {item.hidden ? (
-                                    <span className="ml-1 text-[10.5px] text-text-disabled">已删除</span>
+                                    <span className="ml-1 text-[10.5px] text-text-disabled">{t('bills.deletedBadge')}</span>
                                 ) : null}
                             </span>
                             <span className="shrink-0 text-[12px] text-text-secondary tabular-nums">

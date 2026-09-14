@@ -9,6 +9,7 @@
 // 表单本身不关心路由，状态编排全在 `AddForm`（创建 / 编辑共用一份）。
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Spinner } from '../../shared/ui';
 import { useTransaction } from '../../hooks/ledger';
 import {
@@ -20,6 +21,7 @@ import {
 import { AddForm, type AddFormExit } from './AddForm';
 
 export function AddPage() {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [restoreAnchorDay, setRestoreAnchorDay] = useState<string | null>(null);
@@ -62,14 +64,14 @@ export function AddPage() {
         if (isLoading) {
             return (
                 <div className="flex h-full items-center justify-center">
-                    <Spinner size="lg" label="正在读取账单" />
+                    <Spinner size="lg" label={t('add.loadingEntry')} />
                 </div>
             );
         }
         if (!editing) {
             return (
                 <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                    <p className="text-[13px] text-text-secondary">这条账单已经不在了</p>
+                    <p className="text-[13px] text-text-secondary">{t('add.entryGone')}</p>
                     <button
                         type="button"
                         onClick={() => backToDetails()}

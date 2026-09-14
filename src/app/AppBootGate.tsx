@@ -1,6 +1,7 @@
 // 首屏闸门：磁盘 UI 偏好就绪 → StartupSplash → AppNext。
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import './index.css';
 import { StartupSplash } from './StartupSplash';
 import { AppNext } from './AppNext';
@@ -17,6 +18,7 @@ import { RouteErrorBoundary } from '../shared/ui/RouteErrorBoundary';
 import { perfMark, perfMeasure } from '../core/domain/performance/perfMarks';
 
 export const AppBootGate: React.FC = () => {
+    const { t } = useTranslation();
     const [prefsReady, setPrefsReady] = useState(false);
     const [pinReady, setPinReady] = useState(false);
     const [shellReady, setShellReady] = useState(false);
@@ -99,7 +101,7 @@ export const AppBootGate: React.FC = () => {
                 className="fixed inset-0 z-[200] bg-canvas"
                 role="status"
                 aria-busy="true"
-                aria-label="正在加载设置"
+                aria-label={t('app.bootLoading')}
             />
         );
     }
@@ -116,7 +118,7 @@ export const AppBootGate: React.FC = () => {
                 className="relative z-0 h-full min-h-0 w-full"
                 data-boot-reveal={revealed ? (irisReveal ? 'iris' : 'on') : 'off'}
             >
-                <RouteErrorBoundary title="主界面渲染失败">
+                <RouteErrorBoundary title={t('app.bootFailedTitle')}>
                     <AppNext />
                 </RouteErrorBoundary>
             </div>

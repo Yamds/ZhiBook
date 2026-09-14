@@ -6,9 +6,9 @@
 // 抽成独立模块是为了让页签顺序能被单测钉住（页面只管渲染，不再自己定义顺序）。
 
 export const SETTINGS_TABS = [
-    { value: 'feature', label: '功能' },
-    { value: 'appearance', label: '外观' },
-    { value: 'about', label: '关于' },
+    { value: 'feature', labelKey: 'settings.tabFeature' },
+    { value: 'appearance', labelKey: 'settings.tabAppearance' },
+    { value: 'about', labelKey: 'settings.tabAbout' },
 ] as const;
 
 export type SettingsTab = typeof SETTINGS_TABS[number]['value'];

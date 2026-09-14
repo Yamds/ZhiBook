@@ -8,6 +8,7 @@
 // 点保存才真正删文件，避免「删了图又取消编辑」导致图片已经没了。
 
 import type { Attachment } from '../../core/ipc/types';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import { useAttachmentData } from '../../hooks/ledger';
 import { AppIcon } from '../../shared/ui/AppIcon';
@@ -72,12 +73,13 @@ function Thumb({
     label: string;
     onRemove: () => void;
 }) {
+    const { t } = useTranslation();
     return (
         <div className="relative shrink-0">
             {dataUrl ? (
                 <img
                     src={dataUrl}
-                    alt="待保存的附件"
+                    alt={t('add.pendingAttachmentAlt')}
                     className="h-14 w-14 rounded-md border border-border-subtle object-cover"
                 />
             ) : (
@@ -85,7 +87,7 @@ function Thumb({
             )}
             <button
                 type="button"
-                aria-label="删除这张图"
+                aria-label={t('add.removeThisImage')}
                 onClick={onRemove}
                 className="absolute -top-1.5 -right-1.5 inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-danger text-white shadow-card"
             >

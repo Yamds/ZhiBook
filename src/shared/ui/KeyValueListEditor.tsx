@@ -1,6 +1,7 @@
 // 自定义键：主行 key / value / 删除，注释单独一行，避免四列挤爆。
 
 import { UI_ICONS } from '../../core/design/icons';
+import { useTranslation } from 'react-i18next';
 import { AppIcon } from './AppIcon';
 import type { ReactNode } from 'react';
 import { cn } from '../utils/cn';
@@ -29,9 +30,11 @@ export const KeyValueListEditor: React.FC<KeyValueListEditorProps> = ({
     keyErrors,
     disabled,
     emptyHint,
-    addLabel = '添加',
+    addLabel,
     className,
 }) => {
+    const { t } = useTranslation();
+    const resolvedAddLabel = addLabel ?? t('common.add');
     const update = (idx: number, patch: Partial<KeyValueEntry>) =>
         onChange(value.map((e, i) => (i === idx ? { ...e, ...patch } : e)));
 
@@ -45,7 +48,7 @@ export const KeyValueListEditor: React.FC<KeyValueListEditorProps> = ({
                     <div key={idx} className="flex flex-col gap-3 py-4 first:pt-1 last:pb-1">
                         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-start gap-3">
                             <TextField
-                                aria-label="键"
+                                aria-label={t('shared.fieldKey')}
                                 placeholder="KEY"
                                 value={entry.key}
                                 disabled={disabled}
@@ -54,7 +57,7 @@ export const KeyValueListEditor: React.FC<KeyValueListEditorProps> = ({
                                 onValueChange={(v) => update(idx, { key: v.toUpperCase() })}
                             />
                             <TextField
-                                aria-label="值"
+                                aria-label={t('shared.fieldValue')}
                                 placeholder="value"
                                 value={entry.value}
                                 disabled={disabled}
@@ -64,7 +67,7 @@ export const KeyValueListEditor: React.FC<KeyValueListEditorProps> = ({
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                aria-label="删除"
+                                aria-label={t('common.delete')}
                                 disabled={disabled}
                                 onClick={() => onChange(value.filter((_, i) => i !== idx))}
                             >
@@ -72,8 +75,8 @@ export const KeyValueListEditor: React.FC<KeyValueListEditorProps> = ({
                             </Button>
                         </div>
                         <TextField
-                            aria-label="注释"
-                            placeholder="# 注释（可选）"
+                            aria-label={t('shared.fieldComment')}
+                            placeholder={t('shared.fieldCommentPlaceholder')}
                             value={entry.comment}
                             disabled={disabled}
                             onValueChange={(v) => update(idx, { comment: v })}
@@ -88,7 +91,7 @@ export const KeyValueListEditor: React.FC<KeyValueListEditorProps> = ({
                     disabled={disabled}
                     onClick={() => onChange([...value, { key: '', value: '', comment: '' }])}
                 >
-                    <AppIcon name={UI_ICONS.plus} size={13} /> {addLabel}
+                    <AppIcon name={UI_ICONS.plus} size={13} /> {resolvedAddLabel}
                 </Button>
             </div>
         </div>

@@ -1,63 +1,30 @@
-// 「关于 → 帮助文档」的常见问题。
+// 「关于 → 帮助文档」的常见问题**目录**。
 //
+// 这里只有稳定 id；问答正文在语言文件里（`help.faq.<id>.question` / `.answer`）。
 // 口径与实现一致：本地优先、覆盖式恢复、PIN 无后门、固定收支 05:00 逻辑日等。
 
-export interface FaqItem {
-    readonly question: string;
-    readonly answer: string;
+export interface FaqEntry {
+    /** 稳定 id：语言文件 key 为 `help.faq.<id>.question` / `help.faq.<id>.answer`。 */
+    readonly id: string;
 }
 
-export const HELP_FAQ: readonly FaqItem[] = [
-    {
-        question: '我的数据存在哪里？会上传服务器吗？',
-        answer: '账单与附件全部保存在手机本机（应用私有目录），不注册账号、不经过任何服务器，离线也能正常使用。只有你主动开启「云端备份」时，才会把端到端加密后的数据推送到你自己配置的 Git 仓库。',
-    },
-    {
-        question: '换手机怎么迁移数据？',
-        answer: '两种方式：① 设置 →「功能」→「导入 / 导出」，导出 zip 备份包拷贝到新机后导入；② 在旧机开启「云端备份」，在新机填同一个仓库与本机恢复密钥（或保护口令）后从云端恢复。两种恢复都是覆盖式的，恢复前会自动在本机做一次快照。',
-    },
-    {
-        question: '忘记密码锁 PIN 了怎么办？',
-        answer: '密码锁只保存不可逆的哈希，没有找回后门；忘记后只能卸载重装，届时本机账本数据会一并清空。请务必先在设置里导出备份，或把 PIN 记录在安全的地方。',
-    },
-    {
-        question: '忘记云端备份的恢复密钥或保护口令？',
-        answer: '云端数据是端到端加密的，恢复密钥与保护口令两者都丢失后无法解密，也无法找回。生成密钥时请把恢复密钥抄写并妥善保存。',
-    },
-    {
-        question: '记账提醒收不到系统通知？',
-        answer: '依次检查：系统的「通知权限」是否允许；是否被「电池优化」限制（可在提醒设置页按提示跳转白名单）；再到系统「最近任务」里把制账卡片向下滑并点「锁定 / 加锁」，避免后台被清理。另外，在系统设置里「强行停止」应用会取消已排的提醒闹钟。',
-    },
-    {
-        question: '固定收支为什么没有自动记账？',
-        answer: '固定收支每天 05:00 之后、第一次打开 App 时自动补齐漏掉的天数（05:00 前算前一天）。规则从创建当天开始生效，暂停期间不会补记；请确认规则处于「启用」状态。',
-    },
-    {
-        question: '可以记未来日期的账吗？',
-        answer: '可以。日历上点按任意日期（包括未来日期）都能记；统计会按账单日期归入对应月份。',
-    },
-    {
-        question: '分类颜色为什么和主题有关？',
-        answer: '分类默认「跟随主题」，颜色会随主题变化（Catppuccin / Everforest / Nord 各有官方色板）；也可以从主题色板里挑一个固定色，固定色不会随主题改变。',
-    },
-    {
-        question: '怎么换主题、关掉启动动画？',
-        answer: '设置 →「外观」：可切换 12 套主题、关闭启动动画、调整动画档位与速度。',
-    },
-    {
-        question: '设置从哪里进？',
-        answer: '在「日历」页，底部「日历」页签上方会探出一个齿轮图标，点它进设置；设置页里同一个位置会探出日历图标，点它回日历（也可以再点一次底部「日历」页签）。',
-    },
-    {
-        question: '能把账单导出成 Excel / CSV 吗？',
-        answer: '目前备份包是 zip（manifest.json + data.json + 附件），没有直接导出 CSV/Excel 的入口；备份包里的 data.json 是标准 JSON，可以用脚本转换成表格。',
-    },
-    {
-        question: '删除账单会连图片一起删掉吗？',
-        answer: '会。删除账单时它的附件图片也会一并清理，且不可撤销；建议定期导出或开启云端备份。',
-    },
-    {
-        question: '支持多个账本和账户吗？',
-        answer: '支持。账本之间数据独立，可在顶部栏或资产页切换当前账本；账户（现金 / 银行卡 / 信用卡等）可以按资产与负债分组管理，资产负债表会自动折算余额。',
-    },
+export const HELP_FAQ: readonly FaqEntry[] = [
+    { id: 'dataLocation' },
+    { id: 'migrate' },
+    { id: 'forgotPin' },
+    { id: 'forgotCloudKey' },
+    { id: 'reminderNotWorking' },
+    { id: 'recurring' },
+    { id: 'futureDate' },
+    { id: 'categoryColor' },
+    { id: 'theme' },
+    { id: 'settingsEntry' },
+    { id: 'exportCsv' },
+    { id: 'deleteWithImages' },
+    { id: 'multiBook' },
 ];
+
+/** 某条问答的 key 前缀。 */
+export function faqKeyPrefix(id: string): string {
+    return `help.faq.${id}`;
+}

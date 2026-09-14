@@ -1,6 +1,7 @@
 // 账户选择弹层（BRD FR-AST-9）：可留空（未指定账户），其余按资产 / 负债分组列出。
 
 import type { Account } from '../../core/ipc/types';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS, toIconName } from '../../core/design/icons';
 import { formatMoney } from '../../core/domain/money';
 import { AppIcon } from '../../shared/ui/AppIcon';
@@ -17,6 +18,7 @@ export interface AccountSheetProps {
 }
 
 export function AccountSheet({ open, onOpenChange, accounts, value, onSelect }: AccountSheetProps) {
+    const { t } = useTranslation();
     const assets = accounts.filter((account) => account.kind === 'asset');
     const liabilities = accounts.filter((account) => account.kind === 'liability');
 
@@ -29,8 +31,8 @@ export function AccountSheet({ open, onOpenChange, accounts, value, onSelect }: 
         <BottomSheet
             open={open}
             onOpenChange={onOpenChange}
-            title="选择账户"
-            description="留空 = 未指定，不影响账户余额"
+            title={t('add.accountSheetTitle')}
+            description={t('add.accountSheetDesc')}
         >
             <div className="flex flex-col gap-3">
                 <button
@@ -43,24 +45,24 @@ export function AccountSheet({ open, onOpenChange, accounts, value, onSelect }: 
                     )}
                 >
                     <AppIcon name={UI_ICONS.dot} size={8} />
-                    未指定账户
+                    {t('add.accountUnspecified')}
                     {value === null ? <AppIcon name={UI_ICONS.check} size={15} className="ml-auto" /> : null}
                 </button>
 
                 {accounts.length === 0 ? (
                     <p className="px-1 text-[12px] leading-relaxed text-text-tertiary">
-                        当前账本还没有账户。到「资产」页新建账户后，记账时就能关联余额了。
+                        {t('add.accountSheetEmpty')}
                     </p>
                 ) : null}
 
                 <AccountGroup
-                    title="资产"
+                    title={t('assets.assetsSection')}
                     accounts={assets}
                     value={value}
                     onPick={pick}
                 />
                 <AccountGroup
-                    title="负债"
+                    title={t('assets.liabilitiesSection')}
                     accounts={liabilities}
                     value={value}
                     onPick={pick}

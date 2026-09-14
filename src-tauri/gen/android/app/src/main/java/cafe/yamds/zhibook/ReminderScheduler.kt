@@ -58,13 +58,16 @@ object ReminderScheduler {
     fun rescheduleIfEnabled(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!prefs.getBoolean(KEY_ENABLED, false)) return
+        // 缺省值走 strings.xml（多语言时加 values-<locale>/ 即可）。
+        val defaultTitle = context.getString(R.string.reminder_default_title)
+        val defaultBody = context.getString(R.string.reminder_default_body)
         schedule(
             context,
             true,
             prefs.getInt(KEY_HOUR, 20),
             prefs.getInt(KEY_MINUTE, 0),
-            prefs.getString(KEY_TITLE, "Hello~") ?: "Hello~",
-            prefs.getString(KEY_BODY, "今天要记得记账哦?~") ?: "今天要记得记账哦?~",
+            prefs.getString(KEY_TITLE, defaultTitle) ?: defaultTitle,
+            prefs.getString(KEY_BODY, defaultBody) ?: defaultBody,
         )
     }
 
@@ -131,10 +134,10 @@ object ReminderScheduler {
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "记账提醒",
+            context.getString(R.string.reminder_channel_name),
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "每天提醒记账"
+            description = context.getString(R.string.reminder_channel_description)
         }
         manager.createNotificationChannel(channel)
     }

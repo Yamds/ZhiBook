@@ -10,7 +10,8 @@ import { flushSync } from 'react-dom';
 import gsap from 'gsap';
 import { useMotion } from '../hooks/preferences/useMotion';
 import { playCircleReveal } from '../core/design/circleReveal';
-import { APP_PRODUCT_NAME, APP_VERSION_LABEL } from '../core/domain/app-meta';
+import { APP_PRODUCT_NAME_KEY, APP_VERSION_LABEL } from '../core/domain/app-meta';
+import { t as translate } from '../core/i18n';
 import mascotSplash from '../assets/mascot.png';
 import { bindVisibilityPause } from '../shared/ui/motion/visibilityPause';
 
@@ -19,10 +20,11 @@ import { bindVisibilityPause } from '../shared/ui/motion/visibilityPause';
 const MIN_VISIBLE_BASE_MS = 900;
 const MAX_WAIT_MS = 12_000;
 
-const SUB_TEXT = {
-    wake: '正在唤醒…',
-    prepare: '正在准备界面…',
-    ready: '启动就绪，欢迎！',
+/** 副标题三个阶段文案的 i18n key（启动层是一次性动画，直接读当下语言即可）。 */
+const SUB_TEXT_KEYS = {
+    wake: 'app.splashWake',
+    prepare: 'app.splashPrepare',
+    ready: 'app.splashReady',
 } as const;
 
 /// 进度条三段：进场到一半、待机推到八成并呼吸、出发瞬间冲满。
@@ -210,7 +212,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                 clearProps: 'filter',
             });
             if (titleChars.length > 0) gsap.set(titleChars, { x: 0, clearProps: 'transform' });
-            if (subText) subText.textContent = SUB_TEXT.prepare;
+            if (subText) subText.textContent = translate(SUB_TEXT_KEYS.prepare);
             if (glow) gsap.set(glow, { autoAlpha: 0.35 });
             if (aurora) gsap.set(aurora, { autoAlpha: 0.7 });
             if (brandPulse) gsap.set(brandPulse, { autoAlpha: 0.3, scale: 1 });
@@ -279,7 +281,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
             });
         }
         if (subText) {
-            subText.textContent = SUB_TEXT.wake;
+            subText.textContent = translate(SUB_TEXT_KEYS.wake);
             gsap.set(subText, { autoAlpha: 1, y: 0 });
         }
         gsap.set(sub, { autoAlpha: 0, y: 8 });
@@ -479,7 +481,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
         const loops: Array<gsap.core.Tween | gsap.core.Timeline> = [];
 
         if (subText) {
-            const swap = swapText(subText, SUB_TEXT.prepare, k);
+            const swap = swapText(subText, translate(SUB_TEXT_KEYS.prepare), k);
             if (swap) loops.push(swap);
         }
         if (bar) {
@@ -621,7 +623,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
 
         // 就绪：换词，进度条冲满并亮一下
         if (subText) {
-            const swap = swapText(subText, SUB_TEXT.ready, k);
+            const swap = swapText(subText, translate(SUB_TEXT_KEYS.ready), k);
             if (swap) exitTl.add(swap, 0);
         }
         if (bar) {
@@ -888,7 +890,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                         ref={titleRef}
                         className="relative text-xl font-semibold tracking-tight drop-shadow-sm"
                     >
-                        {Array.from(APP_PRODUCT_NAME).map((char, index) => (
+                        {Array.from(translate(APP_PRODUCT_NAME_KEY)).map((char, index) => (
                             <span
                                 key={`${char}-${index}`}
                                 ref={(element) => {
@@ -902,7 +904,7 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                     </h1>
                     <div ref={subRef} className="flex items-center gap-2 text-sm text-text-secondary">
                         <span className="ndf-splash-pulse-dot" aria-hidden />
-                        <span ref={subTextRef}>{SUB_TEXT.wake}</span>
+                        <span ref={subTextRef}>{translate(SUB_TEXT_KEYS.wake)}</span>
                     </div>
                 </div>
                 <div

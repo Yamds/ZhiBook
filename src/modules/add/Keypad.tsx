@@ -11,6 +11,7 @@
 
 import type { KeypadKey } from '../../core/domain/money';
 import { UI_ICONS } from '../../core/design/icons';
+import { useTranslation } from 'react-i18next';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { cn } from '../../shared/utils/cn';
 import { ResetAmountButton } from './ResetAmountButton';
@@ -46,9 +47,12 @@ export function Keypad({
     onKey,
     onReset,
     onSubmit,
-    submitLabel = '完成',
-    submittingLabel = '保存中',
+    submitLabel,
+    submittingLabel,
 }: KeypadProps) {
+    const { t } = useTranslation();
+    const resolvedSubmitLabel = submitLabel ?? t('common.done');
+    const resolvedSubmittingLabel = submittingLabel ?? t('common.saving');
     return (
         <div className="flex shrink-0 items-stretch gap-1 px-3 pt-1.5 pb-1">
             <div className="grid flex-1 grid-cols-3 gap-1">
@@ -59,7 +63,7 @@ export function Keypad({
                     type="button"
                     className={KEY_CLASS}
                     onClick={() => onKey('.')}
-                    aria-label="小数点"
+                    aria-label={t('add.decimalPoint')}
                 >
                     ·
                 </button>
@@ -70,7 +74,7 @@ export function Keypad({
                     type="button"
                     className={KEY_CLASS}
                     onClick={() => onKey('backspace')}
-                    aria-label="退格"
+                    aria-label={t('add.backspace')}
                 >
                     <AppIcon name={UI_ICONS.backspace} size={22} />
                 </button>
@@ -96,7 +100,7 @@ export function Keypad({
                         submitting && 'opacity-60',
                     )}
                 >
-                    {submitting ? submittingLabel : submitLabel}
+                    {submitting ? resolvedSubmittingLabel : resolvedSubmitLabel}
                 </button>
             </div>
         </div>

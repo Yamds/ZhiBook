@@ -1,7 +1,9 @@
 // 固定收支管理列表：当前账本的规则 + 启用开关 + 编辑入口。
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toIconName, UI_ICONS } from '../../../core/design/icons';
+import { categoryDisplayName } from '../../../core/domain/categoryName';
 import { formatSignedMoney } from '../../../core/domain/money';
 import type { RecurringRule } from '../../../core/ipc/types';
 import { AppIcon } from '../../../shared/ui/AppIcon';
@@ -25,6 +27,7 @@ export interface RecurringListSheetProps {
 }
 
 export function RecurringListSheet({ open, onOpenChange, bookId }: RecurringListSheetProps) {
+    const { t } = useTranslation();
     const { data: rules } = useRecurringRules();
     const updateRule = useUpdateRecurringRule();
     const { byId } = useCategoryLookup();
@@ -52,7 +55,7 @@ export function RecurringListSheet({ open, onOpenChange, bookId }: RecurringList
                     pushInfoBar({
                         key: 'recurring-toggle',
                         tone: 'danger',
-                        title: '操作失败',
+                        title: t('settings.recurring.actionFailed'),
                         content: error instanceof Error ? error.message : String(error),
                     }),
             },
@@ -64,14 +67,14 @@ export function RecurringListSheet({ open, onOpenChange, bookId }: RecurringList
             <BottomSheet
                 open={open}
                 onOpenChange={onOpenChange}
-                title="固定收支"
-                description={`${scheduleLabel()}自动记一笔，可随时暂停`}
+                title={t('settings.feature.recurring')}
+                description={t('settings.recurring.sheetDesc', { schedule: scheduleLabel() })}
             >
                 <div className="flex flex-col gap-2">
                     {bookRules.length === 0 ? (
                         <EmptyState
-                            title="还没有固定收支"
-                            description="添加后，每天 05:00 会自动记一笔；打开 App 时补齐漏掉的天数。"
+                            title={t('settings.recurring.emptyTitle')}
+                            description={t('settings.recurring.emptyDesc')}
                         />
                     ) : null}
 
@@ -99,7 +102,7 @@ export function RecurringListSheet({ open, onOpenChange, bookId }: RecurringList
                                     <span className="min-w-0 flex-1">
                                         <span className="flex items-center gap-2">
                                             <span className="truncate text-[13px] font-medium text-text">
-                                                {category?.name ?? '未知分类'}
+                                                {categoryDisplayName(category, t, t('settings.recurring.unknownCategory'))}
                                             </span>
                                             <span
                                                 className={
@@ -113,9 +116,9 @@ export function RecurringListSheet({ open, onOpenChange, bookId }: RecurringList
                                             </span>
                                         </span>
                                         <span className="mt-0.5 block truncate text-[11.5px] text-text-tertiary">
-                                            {[rule.note || '无备注', account?.name ?? '未指定账户']
+                                            {[rule.note || t('common.noNote'), account?.name ?? t('add.accountUnspecified')]
                                                 .filter(Boolean)
-                                                .join(' · ')}
+                                                .join(t('common.dotSeparator'))}
                                         </span>
                                     </span>
                                 </button>
@@ -130,7 +133,7 @@ export function RecurringListSheet({ open, onOpenChange, bookId }: RecurringList
                         className="mt-1 flex h-11 items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-[13px] font-medium text-text-secondary active:opacity-70"
                     >
                         <AppIcon name={UI_ICONS.plus} size={16} />
-                        新增固定收支
+                        {t('settings.recurring.addNew')}
                     </button>
                 </div>
             </BottomSheet>

@@ -10,6 +10,7 @@
 //   返回键 —— 首页弹退出确认；其它页面回首页
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MobileAppBar } from '../shared/components/shell/MobileAppBar';
 import { BottomNav } from '../shared/components/shell/BottomNav';
 import { GlobalTitleTooltip, InfoBarStack, RouteErrorBoundary, TooltipProvider } from '../shared/ui';
@@ -34,7 +35,7 @@ import {
     HOME_ROUTE,
     ROUTE_ORDER,
     routeContentClass,
-    routeTitle,
+    routeTitleKey,
     type AppRoute,
     type AppScreen,
 } from './navigation';
@@ -44,7 +45,7 @@ import { closeTopOverlay } from '../shared/ui/overlayStack';
 import { SwipeProvider, neighborOf, type NestedSwipeHandler, type SwipeDirection } from './swipeNavigation';
 
 /** 顶部栏右侧的账本入口：数据未就绪时先显示占位名（正常一帧内就被真实名替换）。 */
-const ACTIVE_BOOK_PLACEHOLDER = '默认账本';
+const ACTIVE_BOOK_PLACEHOLDER_KEY = 'assets.defaultBookName';
 
 /**
  * 过渡方向用的页序号。
@@ -74,6 +75,7 @@ function renderScreen(screen: AppScreen) {
 }
 
 export function AppNext() {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const screen = navigation.screen;
     const [displayedScreen, setDisplayedScreen] = useState<AppScreen>(screen);
@@ -185,8 +187,8 @@ export function AppNext() {
                     <div className={'ndf-canvas-glow' + (motion.enabled && motion.preset.feel.overshoot && screen === HOME_ROUTE ? ' is-breathing' : '')} />
                     <div className={motion.enabled ? 'ndf-shell-enter-titlebar' : ''}>
                         <MobileAppBar
-                            title={routeTitle(screen)}
-                            bookName={currentBook?.name ?? ACTIVE_BOOK_PLACEHOLDER}
+                            title={t(routeTitleKey(screen))}
+                            bookName={currentBook?.name ?? t(ACTIVE_BOOK_PLACEHOLDER_KEY)}
                             onOpenBook={() => navigateTo('assets')}
                         />
                     </div>
@@ -197,7 +199,7 @@ export function AppNext() {
                                 ref={scrollRef}
                                 className={routeContentClass(displayedScreen)}
                             >
-                                <RouteErrorBoundary title="页面渲染失败">{renderScreen(displayedScreen)}</RouteErrorBoundary>
+                                <RouteErrorBoundary title={t('app.renderFailedTitle')}>{renderScreen(displayedScreen)}</RouteErrorBoundary>
                             </div>
                         </PageTransition>
                     </main>

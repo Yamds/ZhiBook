@@ -6,8 +6,10 @@
 // 失效矩阵保证记账 / 改账户 / 换账本后这里立刻跟着变。
 
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Account, AccountKind, Book } from '../../core/ipc/types';
 import { describeError } from '../../core/domain/errors';
+import { bookDisplayName } from '../../core/domain/categoryName';
 import { UI_ICONS } from '../../core/design/icons';
 import {
     useAccountGroups,
@@ -33,6 +35,7 @@ import { NetWorthCard } from './NetWorthCard';
 import { isBookDeletable, shouldSwitchBook } from './assetsPage.logic';
 
 export function AssetsPage() {
+    const { t } = useTranslation();
     const { books, currentBook, isLoading: booksLoading, error: booksError } = useCurrentBook();
     const bookId = currentBook?.id;
 
@@ -67,18 +70,18 @@ export function AssetsPage() {
             try {
                 if (editing) {
                     await updateAccount.mutateAsync({ id: editing.id, ...draft });
-                    pushInfoBar({ key: 'account-save', tone: 'success', title: '账户已保存' });
+                    pushInfoBar({ key: 'account-save', tone: 'success', title: t('assets.accountSaved') });
                 } else {
                     if (!bookId) return;
                     await createAccount.mutateAsync({ bookId, ...draft });
-                    pushInfoBar({ key: 'account-save', tone: 'success', title: '账户已创建' });
+                    pushInfoBar({ key: 'account-save', tone: 'success', title: t('assets.accountCreated') });
                 }
                 setAccountSheet(null);
             } catch (error) {
                 setAccountError(describeError(error));
             }
         },
-        [accountSheet, bookId, createAccount, updateAccount],
+        [accountSheet, bookId, createAccount, updateAccount, t],
     );
 
     const confirmAccountDelete = useCallback(async () => {
@@ -88,15 +91,15 @@ export function AssetsPage() {
             pushInfoBar({
                 key: 'account-delete',
                 tone: 'success',
-                title: '账户已删除',
-                content: '相关账单保留，显示为「未指定账户」',
+                title: t('assets.accountDeleted'),
+                content: t('assets.accountDeletedBody'),
             });
             setPendingAccountDelete(null);
             setAccountSheet(null);
         } catch (error) {
-            pushInfoBar({ key: 'account-delete-error', tone: 'danger', title: '删除失败', content: describeError(error) });
+            pushInfoBar({ key: 'account-delete-error', tone: 'danger', title: t('common.deleteFailed'), content: describeError(error) });
         }
-    }, [deleteAccount, pendingAccountDelete]);
+    }, [deleteAccount, pendingAccountDelete, t]);
 
     const submitBook = useCallback(
         async (name: string) => {
@@ -105,30 +108,30 @@ export function AssetsPage() {
             try {
                 if (editing) {
                     await updateBook.mutateAsync({ id: editing.id, name });
-                    pushInfoBar({ key: 'book-save', tone: 'success', title: '账本已重命名' });
+                    pushInfoBar({ key: 'book-save', tone: 'success', title: t('assets.bookRenamed') });
                 } else {
                     await createBook.mutateAsync({ name });
-                    pushInfoBar({ key: 'book-save', tone: 'success', title: '账本已创建' });
+                    pushInfoBar({ key: 'book-save', tone: 'success', title: t('assets.bookCreated') });
                 }
                 setBookSheet(null);
             } catch (error) {
                 setBookError(describeError(error));
             }
         },
-        [bookSheet, createBook, updateBook],
+        [bookSheet, createBook, updateBook, t],
     );
 
     const confirmBookDelete = useCallback(async () => {
         if (!pendingBookDelete) return;
         try {
             await deleteBook.mutateAsync(pendingBookDelete.id);
-            pushInfoBar({ key: 'book-delete', tone: 'success', title: '账本已删除', content: '该账本的账单与附件已一并清理' });
+            pushInfoBar({ key: 'book-delete', tone: 'success', title: t('assets.bookDeleted'), content: t('assets.bookDeletedBody') });
             setPendingBookDelete(null);
             setBookSheet(null);
         } catch (error) {
-            pushInfoBar({ key: 'book-delete-error', tone: 'danger', title: '删除失败', content: describeError(error) });
+            pushInfoBar({ key: 'book-delete-error', tone: 'danger', title: t('common.deleteFailed'), content: describeError(error) });
         }
-    }, [deleteBook, pendingBookDelete]);
+    }, [deleteBook, pendingBookDelete, t]);
 
     const handleSwitch = useCallback(
         async (book: Book) => {
@@ -136,20 +139,20 @@ export function AssetsPage() {
             setSwitchingBookId(book.id);
             try {
                 await setCurrentBook.mutateAsync(book.id);
-                pushInfoBar({ key: 'book-switch', tone: 'success', title: `已切换到「${book.name}」` });
+                pushInfoBar({ key: 'book-switch', tone: 'success', title: t('assets.switchedBook', { name: bookDisplayName(book, t, book.name) }) });
             } catch (error) {
-                pushInfoBar({ key: 'book-switch-error', tone: 'danger', title: '切换失败', content: describeError(error) });
+                pushInfoBar({ key: 'book-switch-error', tone: 'danger', title: t('assets.switchFailed'), content: describeError(error) });
             } finally {
                 setSwitchingBookId(null);
             }
         },
-        [bookId, setCurrentBook],
+        [bookId, setCurrentBook, t],
     );
 
     if (!booksLoading && booksError) {
         return (
             <section className="flex min-h-full flex-col gap-3 pt-5">
-                <EmptyState icon={UI_ICONS.danger} title="账本加载失败" description={describeError(booksError)} />
+                <EmptyState icon={UI_ICONS.danger} title={t('assets.booksLoadFailed')} description={describeError(booksError)} />
             </section>
         );
     }
@@ -163,7 +166,7 @@ export function AssetsPage() {
             />
 
             {accountsError ? (
-                <EmptyState icon={UI_ICONS.danger} title="账户加载失败" description={describeError(accountsError)} />
+                <EmptyState icon={UI_ICONS.danger} title={t('assets.accountsLoadFailed')} description={describeError(accountsError)} />
             ) : (
                 <AccountSection
                     assets={assets}
@@ -230,8 +233,8 @@ export function AssetsPage() {
                 onOpenChange={(open) => {
                     if (!open) setPendingAccountDelete(null);
                 }}
-                title={`删除账户「${pendingAccountDelete?.name ?? ''}」？`}
-                description="该账户下的历史账单会保留，只是不再关联账户（显示为「未指定账户」）；资产统计与走势会同步更新。"
+                title={t('assets.confirmDeleteAccountTitle', { name: pendingAccountDelete?.name ?? '' })}
+                description={t('assets.confirmDeleteAccountBody')}
                 busy={deleteAccount.isPending}
                 onConfirm={() => void confirmAccountDelete()}
             />
@@ -241,8 +244,8 @@ export function AssetsPage() {
                 onOpenChange={(open) => {
                     if (!open) setPendingBookDelete(null);
                 }}
-                title={`删除账本「${pendingBookDelete?.name ?? ''}」？`}
-                description="将同时删除该账本的全部账单与图片附件，且不可恢复；其它账本不受影响。"
+                title={t('assets.confirmDeleteBookTitle', { name: pendingBookDelete?.name ?? '' })}
+                description={t('assets.confirmDeleteBookBody')}
                 busy={deleteBook.isPending}
                 onConfirm={() => void confirmBookDelete()}
             />

@@ -11,6 +11,7 @@ import type { AppPreferences } from '../../hooks/preferences/preferencesStore';
 import { MOTION_SPEED_DEFAULT, MOTION_SPEED_MAX, MOTION_SPEED_MIN, type MotionLevel } from '../design/motion';
 import { normalizeRadiusStyle } from '../design/radius';
 import { normalizeThemeValue } from '../design/themes';
+import { DEFAULT_LANGUAGE, normalizeLanguage } from '../i18n/languages';
 import { DEFAULT_STARTUP_TAB, normalizeStartupTab } from '../domain/ui/startupTab';
 
 export const DEFAULT_UI_PREFERENCES: AppUiPreferences = {
@@ -21,19 +22,41 @@ export const DEFAULT_UI_PREFERENCES: AppUiPreferences = {
     motionSpeed: MOTION_SPEED_DEFAULT,
     radiusStyle: 'standard',
     splashEnabled: true,
+    language: DEFAULT_LANGUAGE,
     infoBarDismissInfoMs: 5000,
     infoBarDismissSuccessMs: 4000,
     infoBarDismissWarningMs: 6000,
 };
 
-/** 记账提醒默认值（与 Rust `ReminderPreferences::default` 一致）。 */
+/** 记账提醒默认值（与 Rust `ReminderPreferences::default` 一致）。
+ *
+ * `title` / `body` 是**落库数据**（用户可改），Rust 侧的种子值是中文；
+ * 前端只在“用户从未改过”时用当前语言的默认文案顶替（见 `reminderTextOrDefault`）。
+ */
+const BUILTIN_REMINDER_TITLE = 'Hello~';
+// i18n-allow: 下一行是与 Rust 种子值对齐的**数据**，不是界面文案。
+const BUILTIN_REMINDER_BODY = '今天要记得记账哦?~';
+
 export const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
     enabled: false,
     hour: 20,
     minute: 0,
-    title: 'Hello~',
-    body: '今天要记得记账哦?~',
+    title: BUILTIN_REMINDER_TITLE,
+    body: BUILTIN_REMINDER_BODY,
 };
+
+/** 提醒标题 / 内容的默认文案 key（新增语言时只改语言文件）。 */
+export const REMINDER_TITLE_KEY = 'settings.reminder.defaultTitle';
+export const REMINDER_BODY_KEY = 'settings.reminder.defaultBody';
+
+/** 该字段是否还是内置默认值（不是用户自己写的）。 */
+export function isBuiltinReminderTitle(value: string): boolean {
+    return value.trim() === BUILTIN_REMINDER_TITLE;
+}
+
+export function isBuiltinReminderBody(value: string): boolean {
+    return value.trim() === BUILTIN_REMINDER_BODY;
+}
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
     uiPreferences: DEFAULT_UI_PREFERENCES,
@@ -59,6 +82,7 @@ export function clientPrefsFromBackend(settings: AppSettings): AppPreferences {
         motionSpeed: normalizeMotionSpeed(ui.motionSpeed),
         radiusStyle: normalizeRadiusStyle(ui.radiusStyle),
         splashEnabled: ui.splashEnabled !== false,
+        language: normalizeLanguage(ui.language),
     };
 }
 
@@ -86,6 +110,7 @@ export function settingsWithPreferences(settings: AppSettings, prefs: AppPrefere
             motionSpeed: prefs.motionSpeed,
             radiusStyle: prefs.radiusStyle,
             splashEnabled: prefs.splashEnabled,
+            language: prefs.language,
         },
     };
 }

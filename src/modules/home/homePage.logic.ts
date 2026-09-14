@@ -9,18 +9,21 @@
 //     松手落点用 `monthDeltaForScroll()` 换算成月份增量（一次只翻一个月）。
 
 import {
-    WEEKDAY_LABELS,
     parseDayKey,
     shiftDayKey,
     toDayKey,
     weekdayIndex,
     weekdayLabel,
+    weekdayNarrowLabels,
 } from '../../core/domain/date';
 import { formatCompactAmount, formatSignedMoney } from '../../core/domain/money';
+import { t } from '../../core/i18n';
 import type { DaySummary } from '../../core/ipc/types';
 
-/** 周标题（日 → 六）。 */
-export const CALENDAR_WEEKDAYS = WEEKDAY_LABELS;
+/** 周标题（日 → 六），按当前语言取。 */
+export function calendarWeekdays(): string[] {
+    return weekdayNarrowLabels();
+}
 
 /** 固定 6 行：日历高度恒定，切月不跳动。 */
 export const CALENDAR_ROWS = 6;
@@ -55,7 +58,7 @@ export interface CalendarCellAmounts {
 
 /** 日历标题：`2025年9月`（点它展开年 / 月选择器）。 */
 export function monthTitle(year: number, month: number): string {
-    return `${year}年${month}月`;
+    return t('date.yearMonth', { year, month });
 }
 
 /** 把某月每天的汇总按 `day` 建索引（日历只拉当月数据，最多 31 条）。 */
@@ -131,9 +134,13 @@ export function calendarCellAmounts(cell: CalendarCell): CalendarCellAmounts {
 export function calendarCellLabel(cell: CalendarCell): string {
     const parts = parseDayKey(cell.dayKey);
     if (!parts) return cell.dayKey;
-    const bits = [`${parts.month}月${parts.day}日 ${weekdayLabel(parts)}`];
-    if (cell.incomeCents > 0) bits.push(`收入 ${formatSignedMoney(cell.incomeCents, 'income')}`);
-    if (cell.expenseCents > 0) bits.push(`支出 ${formatSignedMoney(cell.expenseCents, 'expense')}`);
-    bits.push('点击记账，长按看明细');
-    return bits.join('，');
+    const bits = [t('date.monthDayWeekday', {
+        month: parts.month,
+        day: parts.day,
+        weekday: weekdayLabel(parts),
+    })];
+    if (cell.incomeCents > 0) bits.push(t('home.cellLabelIncome', { amount: formatSignedMoney(cell.incomeCents, 'income') }));
+    if (cell.expenseCents > 0) bits.push(t('home.cellLabelExpense', { amount: formatSignedMoney(cell.expenseCents, 'expense') }));
+    bits.push(t('home.cellLabelHint'));
+    return bits.join(t('common.listSeparator'));
 }

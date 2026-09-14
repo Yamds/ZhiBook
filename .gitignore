@@ -28,9 +28,16 @@ src-tauri/gen/android/captures/
 src-tauri/gen/android/local.properties
 src-tauri/gen/android/app/src/main/assets/
 src-tauri/gen/android/app/src/main/jniLibs/
+# ===== 签名密钥与凭据：一律不入库 =====
+# 丢了私钥 = 已发布版本永久无法覆盖升级，必须离线备份（仓库外）。
+# 需要新的敏感文件类型时，先加到这里的白名单外再创建。
 src-tauri/gen/android/keystore.properties
+keystore.properties
 *.jks
 *.keystore
+*.p12
+*.pfx
+*.pepk
 
 # ===== 日志 =====
 *.log

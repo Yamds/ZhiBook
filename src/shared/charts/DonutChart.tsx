@@ -4,6 +4,7 @@
 // 交互：点扇区可选（回调 key），选中项高亮、其余降透明。
 
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { computeDonutArcs } from './geometry';
 import { cn } from '../utils/cn';
 import { useMotion } from '../../hooks/preferences/useMotion';
@@ -36,9 +37,10 @@ export function DonutChart({
     onSelect,
     centerLabel,
     centerValue,
-    emptyText = '暂无数据',
+    emptyText,
     className,
 }: DonutChartProps) {
+    const { t } = useTranslation();
     const motion = useMotion();
     const arcs = computeDonutArcs(
         slices.map((slice) => ({ key: slice.key, value: slice.value })),
@@ -53,7 +55,7 @@ export function DonutChart({
                 className={cn('flex items-center justify-center rounded-full bg-inset/60 text-[12px] text-text-tertiary', className)}
                 style={{ width: size, height: size }}
             >
-                {emptyText}
+                {emptyText ?? t('common.empty')}
             </div>
         );
     }
@@ -63,7 +65,7 @@ export function DonutChart({
             className={cn('relative inline-flex shrink-0 items-center justify-center', className)}
             style={{ width: size, height: size }}
         >
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="占比环形图">
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t('shared.chartDonutAria')}>
                 {arcs.map((arc) => {
                     const dimmed = activeKey != null && activeKey !== arc.key;
                     return (

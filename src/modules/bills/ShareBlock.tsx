@@ -6,6 +6,7 @@
 //     打开弹层看完整百分比明细（FR-BILL-9）。
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import { formatMoney } from '../../core/domain/money';
 import type { CategoryShareSet, StatsKind } from '../../core/ipc/types';
@@ -26,6 +27,7 @@ export interface ShareBlockProps {
 }
 
 export function ShareBlock({ set, kind, colors, isLoading, onExpand, className }: ShareBlockProps) {
+    const { t } = useTranslation();
     const [activeKey, setActiveKey] = useState<string | null>(null);
     const items = set?.items ?? [];
     const total = set?.totalCents ?? 0;
@@ -48,8 +50,8 @@ export function ShareBlock({ set, kind, colors, isLoading, onExpand, className }
             <EmptyState
                 size="compact"
                 icon={UI_ICONS.bills}
-                title={`还没有${statsKindLabel(kind)}数据`}
-                description="记几笔之后这里会显示分类构成"
+                title={t('bills.noKindDataYet', { label: statsKindLabel(kind) })}
+                description={t('bills.shareEmptyDesc')}
                 className={className}
             />
         );
@@ -71,8 +73,8 @@ export function ShareBlock({ set, kind, colors, isLoading, onExpand, className }
                         activeSlice
                             ? activeSlice.label
                             : isBalance
-                              ? '结余构成'
-                              : `${statsKindLabel(kind)}总额`
+                              ? t('bills.balanceComposition')
+                              : t('bills.kindTotal', { label: statsKindLabel(kind) })
                     }
                     centerValue={
                         activeSlice

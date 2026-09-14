@@ -5,8 +5,10 @@
 //       已在日历页再点「日历」页签 → 设置页（壳层处理，见 FR-HOME-7）。
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import mascot from '../../assets/mascot.png';
 import { shiftMonth, toMonthKey, todayDate, todayKey } from '../../core/domain/date';
+import { currentLocale } from '../../core/i18n';
 import { useDaySummaries } from '../../hooks/ledger';
 import { useCurrentBook } from '../../hooks/ledger/useLedgerBooks';
 import { navigateTo } from '../../app/navigationStore';
@@ -16,6 +18,7 @@ import { CalendarPanel, type CalendarPeriod } from './CalendarPanel';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
+    const { t } = useTranslation();
     const [now, setNow] = useState(() => new Date());
     const today = useMemo(() => todayDate(), []);
     const todayKeyValue = useMemo(() => todayKey(), []);
@@ -45,13 +48,14 @@ export function HomePage() {
         return () => window.clearInterval(timer);
     }, []);
 
-    const time = new Intl.DateTimeFormat('zh-CN', {
+    const locale = currentLocale();
+    const time = new Intl.DateTimeFormat(locale, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
         hour12: false,
     }).format(now);
-    const date = new Intl.DateTimeFormat('zh-CN', {
+    const date = new Intl.DateTimeFormat(locale, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -64,11 +68,11 @@ export function HomePage() {
         <section className={styles.page}>
             <div className={styles.clockPanel}>
                 <div className={styles.clockCopy}>
-                    <span className={styles.eyebrow}><AppIcon name={UI_ICONS.calendarToday} size={15} />当前时间</span>
+                    <span className={styles.eyebrow}><AppIcon name={UI_ICONS.calendarToday} size={15} />{t('home.currentTime')}</span>
                     <strong>{time}</strong>
                     <span className={styles.date}>{date}</span>
                 </div>
-                <img src={mascot} alt="制账形象" draggable={false} />
+                <img src={mascot} alt={t('app.mascotAlt')} draggable={false} />
             </div>
 
             <CalendarPanel

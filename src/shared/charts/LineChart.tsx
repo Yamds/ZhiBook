@@ -6,6 +6,7 @@
 //   - 点选：按下 / 拖动 / 悬停都会选最近的点，回调交给页面显示数值
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { buildAreaPath, buildLinePoints, buildPolylinePath, niceCeil, valueToY } from './geometry';
 import { cn } from '../utils/cn';
 
@@ -46,10 +47,11 @@ export function LineChart({
     formatValue = (value) => String(value),
     activeIndex = null,
     onActiveIndexChange,
-    emptyText = '暂无数据',
+    emptyText,
     tone = 'brand',
     className,
 }: LineChartProps) {
+    const { t } = useTranslation();
     const wrapRef = useRef<HTMLDivElement | null>(null);
     const [width, setWidth] = useState(320);
 
@@ -115,7 +117,7 @@ export function LineChart({
     if (points.length === 0) {
         return (
             <div className={cn('flex h-[150px] items-center justify-center text-[12px] text-text-tertiary', className)}>
-                {emptyText}
+                {emptyText ?? t('common.empty')}
             </div>
         );
     }
@@ -127,7 +129,7 @@ export function LineChart({
                 height={height}
                 viewBox={`0 0 ${width} ${height}`}
                 role="img"
-                aria-label="趋势折线图"
+                aria-label={t('shared.chartTrendAria')}
                 // 手机端：横向拖动选点、纵向拖动仍交给页面滚动
                 className="touch-pan-y"
                 onPointerDown={handlePointer}

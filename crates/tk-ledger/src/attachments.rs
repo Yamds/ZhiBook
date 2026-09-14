@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use rusqlite::Connection;
-use tk_domain::{Attachment, AttachmentData, MAX_ATTACHMENTS_PER_TRANSACTION};
+use tk_domain::{Attachment, AttachmentData, MAX_ATTACHMENTS_PER_TRANSACTION, error_payload};
 
 use crate::error::{LedgerError, LedgerResult};
 use crate::id::{new_id, now_ms};
@@ -68,25 +68,36 @@ impl AttachmentStore {
     ) -> LedgerResult<Attachment> {
         let mime = validate::attachment_mime(mime)?;
         if !is_safe_id(transaction_id) {
-            return Err(LedgerError::validation("账单 id 不合法"));
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.attachment.bad_transaction_id", "账单 id 不合法"
+            )));
         }
-        let bytes = BASE64
-            .decode(base64.trim())
-            .map_err(|error| LedgerError::validation(format!("附件数据不是合法的 base64：{error}")))?;
+        let bytes = BASE64.decode(base64.trim()).map_err(|error| {
+            LedgerError::reported(error_payload!(
+                "ledger.attachment.bad_base64",
+                "附件数据不是合法的 base64：{error}";
+                error = error
+            ))
+        })?;
         if bytes.is_empty() {
-            return Err(LedgerError::validation("附件内容为空"));
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.attachment.empty", "附件内容为空"
+            )));
         }
         if bytes.len() > MAX_ATTACHMENT_BYTES {
-            return Err(LedgerError::validation(format!(
-                "单张附件不能超过 {} MB",
-                MAX_ATTACHMENT_BYTES / 1024 / 1024
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.attachment.too_large",
+                "单张附件不能超过 {mb} MB";
+                mb = MAX_ATTACHMENT_BYTES / 1024 / 1024
             )));
         }
 
         let existing = repo::count_attachments(conn, transaction_id)?;
         if existing >= MAX_ATTACHMENTS_PER_TRANSACTION {
-            return Err(LedgerError::validation(format!(
-                "单笔账单最多 {MAX_ATTACHMENTS_PER_TRANSACTION} 张附件"
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.attachment.too_many",
+                "单笔账单最多 {max} 张附件";
+                max = MAX_ATTACHMENTS_PER_TRANSACTION
             )));
         }
 
@@ -118,8 +129,11 @@ impl AttachmentStore {
 
     /// 读取附件内容（base64），供详情页展示。
     pub fn read(&self, conn: &Connection, attachment_id: &str) -> LedgerResult<AttachmentData> {
-        let attachment = repo::get_attachment(conn, attachment_id)?
-            .ok_or_else(|| LedgerError::not_found(format!("附件不存在：{attachment_id}")))?;
+        let attachment = repo::get_attachment(conn, attachment_id)?.ok_or_else(|| {
+            LedgerError::reported(error_payload!(
+                "ledger.attachment.not_found", "附件不存在：{id}"; id = attachment_id
+            ))
+        })?;
         let absolute = self.resolve_checked(&attachment.path)?;
         let bytes = match fs::read(&absolute) {
             Ok(bytes) => bytes,
@@ -238,7 +252,7 @@ mod tests {
             save(&ledger, &transaction_id, "image/png", &payload).expect("前 9 张应成功");
         }
         let error = save(&ledger, &transaction_id, "image/png", &payload).expect_err("第 10 张应被拒");
-        assert!(matches!(error, LedgerError::Validation(_)), "{error:?}");
+        assert!(matches!(error, LedgerError::Reported(_)), "{error:?}");
     }
 
     #[test]
@@ -267,7 +281,7 @@ mod tests {
             .expect("insert poisoned row");
 
         let error = ledger.read_attachment("att_evil").expect_err("必须拒绝越界路径");
-        assert!(matches!(error, LedgerError::Validation(_)), "{error:?}");
+        assert!(matches!(error, LedgerError::Reported(_)), "{error:?}");
         // 文件本身没有被读走，也没有被删掉
         assert!(secret.exists());
     }
@@ -279,7 +293,7 @@ mod tests {
             .attachments
             .remove_files(&["ledger/attachments/../../ledger.db".to_string()])
             .expect_err("必须拒绝越界路径");
-        assert!(matches!(error, LedgerError::Validation(_)), "{error:?}");
+        assert!(matches!(error, LedgerError::Reported(_)), "{error:?}");
     }
 
     #[test]

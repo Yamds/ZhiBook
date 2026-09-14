@@ -2,11 +2,12 @@
 // 不依赖原生 date 控件。
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
+import { currentLocale } from '../../core/i18n';
+import { weekdayNarrowLabels } from '../../core/domain/date';
 import { AppIcon } from './AppIcon';
 import { cn } from '../utils/cn';
-
-const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'] as const;
 
 export interface MonthCalendarProps {
     month: Date;
@@ -51,6 +52,7 @@ export function MonthCalendar({
     maxDayMs,
     className,
 }: MonthCalendarProps) {
+    const { t } = useTranslation();
     const year = month.getFullYear();
     const mon = month.getMonth();
     const days = useMemo(
@@ -65,7 +67,7 @@ export function MonthCalendar({
         selectedDayMs != null ? startOfLocalDay(selectedDayMs) : null;
     const today = startOfLocalDay(Date.now());
 
-    const title = new Intl.DateTimeFormat('zh-CN', {
+    const title = new Intl.DateTimeFormat(currentLocale(), {
         year: 'numeric',
         month: 'long',
     }).format(new Date(year, mon, 1));
@@ -89,7 +91,7 @@ export function MonthCalendar({
                     disabled={!canPrev}
                     onClick={() => onMonthChange(new Date(year, mon - 1, 1))}
                     className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:bg-elevated hover:text-text disabled:pointer-events-none disabled:opacity-35"
-                    aria-label="上个月"
+                    aria-label={t('date.prevMonth')}
                 >
                     <AppIcon name={UI_ICONS.chevronLeft} size={14} />
                 </button>
@@ -105,7 +107,7 @@ export function MonthCalendar({
                             ),
                         )
                     }
-                    title="回到本月"
+                    title={t('date.backToThisMonth')}
                 >
                     {title}
                 </button>
@@ -114,14 +116,14 @@ export function MonthCalendar({
                     disabled={!canNext}
                     onClick={() => onMonthChange(new Date(year, mon + 1, 1))}
                     className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:bg-elevated hover:text-text disabled:pointer-events-none disabled:opacity-35"
-                    aria-label="下个月"
+                    aria-label={t('date.nextMonth')}
                 >
                     <AppIcon name={UI_ICONS.chevronRight} size={14} />
                 </button>
             </div>
 
             <div className="mb-0.5 grid shrink-0 grid-cols-7 text-center text-[10px] font-medium text-text-tertiary">
-                {WEEKDAY_LABELS.map((w) => (
+                {weekdayNarrowLabels().map((w) => (
                     <div key={w} className="py-0.5">
                         {w}
                     </div>

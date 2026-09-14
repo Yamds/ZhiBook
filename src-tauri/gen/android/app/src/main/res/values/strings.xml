@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">"制账"</string>
     <string name="main_activity_title">"制账"</string>
+
+    <!-- 记账提醒（原生侧文案；界面内文案走前端 src/core/i18n/locales/zh-CN.json） -->
+    <string name="reminder_default_title">"Hello~"</string>
+    <string name="reminder_default_body">"今天要记得记账哦?~"</string>
+    <string name="reminder_channel_name">"记账提醒"</string>
+    <string name="reminder_channel_description">"每天提醒记账"</string>
 </resources>

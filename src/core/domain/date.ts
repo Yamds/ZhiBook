@@ -4,6 +4,12 @@
 // 便于按月/按日聚合与字符串比较；月份用 `YYYY-MM`。
 //
 // 这里只做纯计算，不碰时区转换：账单的 day 是用户选中的「日历上的那一天」。
+//
+// 展示层的格式（星期的说法、年月日的语序）**一律交给 `Intl`**：
+// 中文写「2025年9月8日 星期一」、英文写「September 8, 2025 Monday」，
+// 靠 locale 数据决定，代码里不拼中文字面量。
+
+import { currentLocale } from '../i18n';
 
 export interface CalendarDate {
     /** 4 位年份 */
@@ -14,10 +20,7 @@ export interface CalendarDate {
     readonly day: number;
 }
 
-export const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'] as const;
-
-/** 年月选择器的年候选数量（含今年在内往前共 10 年）。 */
-export const YEAR_SELECTOR_SPAN = 10;
+/** 年月选择器的年候选数量（含今年在内往前共 10 年）。 */export const YEAR_SELECTOR_SPAN = 10;
 /** 年份选择器向**未来**留的余量（BRD 3.3：允许记录未来日期，所以年份不能封在今年）。 */
 export const FUTURE_YEAR_SPAN = 2;
 
@@ -133,9 +136,53 @@ export function weekdayIndex({ year, month, day }: CalendarDate): number {
     return new Date(year, month - 1, day).getDay();
 }
 
-/** 星期文案：星期一 / 星期日。 */
+/**
+ * 星期的展示名一律走 `Intl`，**不要拼中文字面量**：
+ * 中文写「星期三」、英文写「Wednesday」，靠 locale 数据决定。
+ *
+ * 构造 Intl 实例不便宜，按 locale + 档位缓存；一天只变 7 个值，基准日
+ * 取 2024-01-07（星期日），下标即 `weekdayIndex`。
+ */
+const WEEKDAY_FORMATTERS = new Map<string, Intl.DateTimeFormat>();
+
+/** 通用日期格式化缓存（多语言下构造 Intl 实例有真实开销）。 */
+const DATE_FORMATTERS = new Map<string, Intl.DateTimeFormat>();
+
+function dateFormatter(locale: string, options: Intl.DateTimeFormatOptions) {
+    const key = `${locale}|${JSON.stringify(options)}`;
+    let formatter = DATE_FORMATTERS.get(key);
+    if (!formatter) {
+        formatter = new Intl.DateTimeFormat(locale, options);
+        DATE_FORMATTERS.set(key, formatter);
+    }
+    return formatter;
+}
+
+function weekdayFormatter(locale: string, width: 'long' | 'short' | 'narrow') {
+    const key = `${locale}|${width}`;
+    let formatter = WEEKDAY_FORMATTERS.get(key);
+    if (!formatter) {
+        formatter = new Intl.DateTimeFormat(locale, { weekday: width });
+        WEEKDAY_FORMATTERS.set(key, formatter);
+    }
+    return formatter;
+}
+
+/** 某星期几的展示名（long：星期三 / Wednesday）。 */
 export function weekdayLabel(date: CalendarDate): string {
-    return `星期${WEEKDAY_LABELS[weekdayIndex(date)] ?? ''}`;
+    const day = new Date(2024, 0, 7 + weekdayIndex(date));
+    return weekdayFormatter(currentLocale(), 'long').format(day);
+}
+
+/**
+ * 日历表头的星期缩写（周日 ~ 周六，共 7 项）。
+ * 中文窄档为「日一二三四五六」，与旧的字面量一致。
+ */
+export function weekdayNarrowLabels(locale = currentLocale()): string[] {
+    const formatter = weekdayFormatter(locale, 'narrow');
+    return Array.from({ length: 7 }, (_, index) =>
+        formatter.format(new Date(2024, 0, 7 + index)),
+    );
 }
 
 /** 该月的完整日期列表（1..n）。 */
@@ -194,7 +241,13 @@ export function formatClockTime(ms: number): string {
 /** 时间戳 → `2025年9月8日 星期一`（BRD 3.3：账单详情用完整日期）。 */
 export function formatDateLabel(ms: number): string {
     const date = dateFromTimestamp(ms);
-    return `${date.year}年${date.month}月${date.day}日 ${weekdayLabel(date)}`;
+    const day = new Date(date.year, date.month - 1, date.day);
+    const formatted = dateFormatter(currentLocale(), {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    }).format(day);
+    return `${formatted} ${weekdayLabel(date)}`;
 }
 
 /** 日期键 → `09.08`（分组头 / 紧凑展示用）。 */

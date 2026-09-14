@@ -8,6 +8,7 @@
 
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import { useLongPress } from '../../hooks/ui/useLongPress';
 import { AppIcon } from '../../shared/ui/AppIcon';
@@ -24,6 +25,7 @@ export interface ResetAmountButtonProps {
 }
 
 export function ResetAmountButton({ onReset }: ResetAmountButtonProps) {
+    const { t } = useTranslation();
     const [pressing, setPressing] = useState(false);
 
     const longPress = useLongPress({
@@ -41,7 +43,7 @@ export function ResetAmountButton({ onReset }: ResetAmountButtonProps) {
     return (
         <button
             type="button"
-            aria-label="长按重置金额"
+            aria-label={t('add.longPressToReset')}
             className="relative flex h-[58px] items-center justify-center rounded-md text-text-secondary"
             {...longPress}
             onPointerDown={(event) => {

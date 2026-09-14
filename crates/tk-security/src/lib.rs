@@ -47,6 +47,23 @@ impl SecurityError {
 
 pub type SecurityResult<T> = Result<T, SecurityError>;
 
+impl tk_domain::IntoErrorPayload for SecurityError {
+    fn into_error_payload(self) -> tk_domain::ErrorPayload {
+        use tk_domain::error_payload;
+        match self {
+            Self::Validation(detail) => {
+                error_payload!("security.validation", "校验失败：{detail}"; detail = detail)
+            }
+            Self::Storage(detail) => error_payload!(
+                "security.storage", "安全配置读写失败：{detail}"; detail = detail
+            ),
+            Self::Corrupt(detail) => {
+                error_payload!("security.corrupt", "安全配置损坏：{detail}"; detail = detail)
+            }
+        }
+    }
+}
+
 /// 落盘的 PIN 配置（不含任何明文）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

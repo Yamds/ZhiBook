@@ -5,6 +5,7 @@
 // 改动即时保存（与外观一致），但**启动页签要下次启动才生效**。
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../../core/design/icons';
 import { useCloudBackupState } from '../../../hooks/cloud/useCloudBackup';
 import { useCurrentBook } from '../../../hooks/ledger';
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function FeatureTab({ draft, patchDraft }: Props) {
+    const { t } = useTranslation();
     const { currentBook } = useCurrentBook();
     const { data: rules } = useRecurringRules();
     const { settings } = useBackendSettings();
@@ -45,21 +47,28 @@ export function FeatureTab({ draft, patchDraft }: Props) {
     const bookRules = (rules ?? []).filter((rule) => rule.bookId === currentBook?.id);
     const enabledCount = bookRules.filter((rule) => rule.enabled).length;
     const recurringValue =
-        bookRules.length === 0 ? '未设置' : `${enabledCount}/${bookRules.length} 启用`;
+        bookRules.length === 0
+            ? t('settings.feature.notSet')
+            : t('settings.feature.recurringValue', {
+                  enabled: enabledCount,
+                  total: bookRules.length,
+              });
     const reminder = settings?.reminder;
     const reminderValue = reminder?.enabled
-        ? `每天 ${String(reminder.hour).padStart(2, '0')}:${String(reminder.minute).padStart(2, '0')}`
-        : '未开启';
+        ? t('settings.feature.reminderDailyAt', {
+              time: `${String(reminder.hour).padStart(2, '0')}:${String(reminder.minute).padStart(2, '0')}`,
+          })
+        : t('settings.feature.off');
 
-    if (!draft) return <p className="text-[13px] text-text-tertiary">正在加载设置…</p>;
+    if (!draft) return <p className="text-[13px] text-text-tertiary">{t('settings.loading')}</p>;
 
     return (
         <>
             <SettingsTabSections>
-                <SettingsSection title="启动" description="改动会立即保存，下次启动生效">
+                <SettingsSection title={t('settings.feature.startupSection')} description={t('settings.feature.startupSectionDesc')}>
                     <FieldRow
-                        label="启动页签"
-                        description="打开 App 后先进哪个页签；日历是默认首页"
+                        label={t('settings.feature.startupTab')}
+                        description={t('settings.feature.startupTabDesc')}
                         layout="stacked"
                         isLast
                     >
@@ -70,53 +79,53 @@ export function FeatureTab({ draft, patchDraft }: Props) {
                     </FieldRow>
                 </SettingsSection>
 
-                <SettingsSection title="记账" description="自动化记账与提醒">
+                <SettingsSection title={t('settings.feature.ledgerSection')} description={t('settings.feature.ledgerSectionDesc')}>
                     <SettingsEntryRow
                         icon={UI_ICONS.repeat}
-                        label="固定收支"
-                        description="每天 05:00 自动记一笔固定支出 / 收入；打开 App 时补齐漏掉的天数"
+                        label={t('settings.feature.recurring')}
+                        description={t('settings.feature.recurringDesc')}
                         value={recurringValue}
                         onClick={() => setRecurringOpen(true)}
                     />
                     <SettingsEntryRow
                         icon={UI_ICONS.bell}
-                        label="记账提醒"
-                        description="到点用系统通知提醒你记账（App 不在前台也能收到）"
+                        label={t('settings.feature.reminder')}
+                        description={t('settings.feature.reminderDesc')}
                         value={reminderValue}
                         onClick={() => setReminderOpen(true)}
                     />
                 </SettingsSection>
 
-                <SettingsSection title="安全" description="本地隐私保护">
+                <SettingsSection title={t('settings.feature.securitySection')} description={t('settings.feature.securitySectionDesc')}>
                     <SettingsEntryRow
                         icon={UI_ICONS.lock}
-                        label="密码锁"
-                        description="打开 App / 离开后台超过 30 秒时需要输入密码"
-                        value={configured ? '已开启' : '未开启'}
+                        label={t('settings.feature.pinLock')}
+                        description={t('settings.feature.pinLockDesc')}
+                        value={configured ? t('settings.feature.on') : t('settings.feature.off')}
                         onClick={() => setPinOpen(true)}
                     />
                 </SettingsSection>
 
-                <SettingsSection title="数据" description="备份与迁移">
+                <SettingsSection title={t('settings.feature.dataSection')} description={t('settings.feature.dataSectionDesc')}>
                     <SettingsEntryRow
                         icon={UI_ICONS.cloudUpload}
-                        label="云端备份"
-                        description="加密后推送到自己的 Git 仓库；多设备共用同一分支自动合并"
+                        label={t('settings.feature.cloudBackup')}
+                        description={t('settings.feature.cloudBackupDesc')}
                         value={
                             !cloudState?.configured
-                                ? '未配置'
+                                ? t('settings.feature.notConfigured')
                                 : cloudState.autoBackupEnabled
-                                  ? '自动备份'
+                                  ? t('settings.feature.cloudAutoBackup')
                                   : cloudState.lastBackupAtMs
-                                    ? '已备份'
-                                    : '待首次备份'
+                                    ? t('settings.feature.cloudBackedUp')
+                                    : t('settings.feature.cloudPendingFirstBackup')
                         }
                         onClick={() => setCloudOpen(true)}
                     />
                     <SettingsEntryRow
                         icon={UI_ICONS.databaseExport}
-                        label="导入 / 导出"
-                        description="导出 zip 备份包（含附件）；导入为覆盖式恢复"
+                        label={t('settings.feature.dataTransfer')}
+                        description={t('settings.feature.dataTransferDesc')}
                         value="JSON + ZIP"
                         onClick={() => setDataOpen(true)}
                     />

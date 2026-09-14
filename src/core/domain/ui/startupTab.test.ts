@@ -12,7 +12,7 @@ import {
 describe('启动页签契约', () => {
     it('与底部 5 个页签的 id / 顺序 / 文案完全一致', () => {
         expect(STARTUP_TABS.map((tab) => tab.value)).toEqual(APP_ROUTES.map((route) => route.id));
-        expect(STARTUP_TABS.map((tab) => tab.label)).toEqual(APP_ROUTES.map((route) => route.label));
+        expect(STARTUP_TABS.map((tab) => tab.labelKey)).toEqual(APP_ROUTES.map((route) => route.labelKey));
     });
 
     it('默认页签就是首页（日历）', () => {

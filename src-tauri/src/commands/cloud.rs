@@ -9,20 +9,21 @@ use tauri::State;
 use tk_cloud::service::CloudService;
 use tk_domain::{
     CloudBackupState, CloudBackupSummary, CloudConnectionInfo, CloudCreatedKey, CloudKeyInfo,
-    CloudKeyInput, CloudRestorePreview, CloudRestoreSummary,
+    CloudKeyInput, CloudRestorePreview, CloudRestoreSummary, IntoErrorPayload,
 };
 use tk_ledger::Ledger;
 
 use crate::AppState;
-
-type CommandResult<T> = Result<T, String>;
+use crate::commands::{CommandResult, join_error};
 
 fn service(state: &State<'_, AppState>) -> Arc<CloudService> {
     state.cloud.clone()
 }
 
 fn ledger(state: &State<'_, AppState>) -> CommandResult<Arc<Ledger>> {
-    state.ledger.clone().map_err(|error| error.to_owned())
+    state.ledger.clone().map_err(|error| {
+        tk_domain::error_payload!("ledger.db.unavailable", "记账库打不开：{detail}"; detail = error)
+    })
 }
 
 async fn run<T, F>(task: F) -> CommandResult<T>
@@ -32,8 +33,8 @@ where
 {
     tauri::async_runtime::spawn_blocking(task)
         .await
-        .map_err(|error| format!("后台任务异常：{error}"))?
-        .map_err(|error| error.to_string())
+        .map_err(join_error)?
+        .map_err(IntoErrorPayload::into_error_payload)
 }
 
 /// 云端备份状态（是否配置 / 密钥 / 上次备份）。

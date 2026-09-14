@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { msUntilNextHourBoundary } from '../../core/domain/date';
+import { t } from '../../core/i18n';
 import {
     dueOccurrences,
     RECURRING_HOUR,
@@ -50,7 +51,7 @@ export function useRecurringCatchUp() {
                     pushInfoBar({
                         key: 'recurring-catch-up',
                         tone: 'success',
-                        title: `已自动记入 ${result.createdCount} 笔固定收支`,
+                        title: t('settings.recurring.autoRecorded', { count: result.createdCount }),
                     });
                 }
             },

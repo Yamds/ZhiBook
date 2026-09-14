@@ -2,6 +2,7 @@
 // 不是日历：没有年月、没有星期，纯粹选一个日期数字。
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import { AppIcon } from './AppIcon';
 import { cn } from '../utils/cn';
@@ -28,8 +29,10 @@ export function DayOfMonthPicker({
     onChange,
     disabled,
     className,
-    'aria-label': ariaLabel = '选择日期',
+    'aria-label': ariaLabel,
 }: DayOfMonthPickerProps) {
+    const { t } = useTranslation();
+    const resolvedAriaLabel = ariaLabel ?? t('date.selectDay');
     const [open, setOpen] = useState(false);
     const current = clampDay(day);
 
@@ -39,7 +42,7 @@ export function DayOfMonthPicker({
                 <button
                     type="button"
                     disabled={disabled}
-                    aria-label={ariaLabel}
+                    aria-label={resolvedAriaLabel}
                     className={cn(
                         'inline-flex h-8 items-center gap-1.5 rounded-sm border border-border-subtle bg-field px-2 text-[12px] tabular-nums text-text transition-colors',
                         'hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
@@ -60,7 +63,7 @@ export function DayOfMonthPicker({
                 onOpenAutoFocus={(e) => e.preventDefault()}
                 onCloseAutoFocus={(e) => e.preventDefault()}
             >
-                <div role="listbox" aria-label={ariaLabel} className="grid grid-cols-7 gap-px">
+                <div role="listbox" aria-label={resolvedAriaLabel} className="grid grid-cols-7 gap-px">
                     {DAYS.map((d) => {
                         const selected = d === current;
                         return (

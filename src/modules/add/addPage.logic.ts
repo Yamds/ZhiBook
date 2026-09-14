@@ -8,6 +8,7 @@
 import type { Category, EntryKind, Transaction } from '../../core/ipc/types';
 import { parseDayKey, todayDate, type CalendarDate } from '../../core/domain/date';
 import { centsToInputText } from '../../core/domain/money';
+import { t } from '../../core/i18n';
 
 /** 宫格列数（每排 4 个）。 */
 export const GRID_COLUMNS = 4;
@@ -291,9 +292,9 @@ export function dayDiff(from: CalendarDate, to: CalendarDate): number {
 /** 键盘日期键上的短文案：今天 / 明天 / 昨天 / MM-DD。 */
 export function shortDateLabel(date: CalendarDate, today: CalendarDate = todayDate()): string {
     const diff = dayDiff(today, date);
-    if (diff === 0) return '今天';
-    if (diff === 1) return '明天';
-    if (diff === -1) return '昨天';
+    if (diff === 0) return t('date.today');
+    if (diff === 1) return t('date.tomorrow');
+    if (diff === -1) return t('date.yesterday');
     const month = String(date.month).padStart(2, '0');
     const day = String(date.day).padStart(2, '0');
     return date.year === today.year ? `${month}-${day}` : `${date.year}-${month}-${day}`;

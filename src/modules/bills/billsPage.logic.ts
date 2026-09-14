@@ -12,7 +12,9 @@ import {
     parseHexColor,
 } from '../../core/design/categoryColor';
 import { parseMonthKey } from '../../core/domain/date';
+import { categoryDisplayNameStatic } from '../../core/domain/categoryName';
 import { formatMoney, formatSignedBalance, formatSignedMoney } from '../../core/domain/money';
+import { t } from '../../core/i18n';
 import type {
     CategoryShare,
     CategoryShareSet,
@@ -38,11 +40,11 @@ export type BillsMode = 'year' | 'month';
 /** 统计粒度：日（月视图）/ 月（年视图）。 */
 export type BillsPeriod = 'day' | 'month';
 
-/** 三种口径的展示顺序。 */
-export const STATS_KINDS: ReadonlyArray<{ value: StatsKind; label: string }> = [
-    { value: 'balance', label: '结余' },
-    { value: 'expense', label: '支出' },
-    { value: 'income', label: '收入' },
+/** 三种口径的展示顺序（文案 key 见 `stats.kind.*`）。 */
+export const STATS_KINDS: ReadonlyArray<{ value: StatsKind; labelKey: string }> = [
+    { value: 'balance', labelKey: 'stats.kind.balance' },
+    { value: 'expense', labelKey: 'stats.kind.expense' },
+    { value: 'income', labelKey: 'stats.kind.income' },
 ];
 
 /** 新进入页面时的默认口径（FR-BILL-6：默认「支出」）。 */
@@ -52,7 +54,8 @@ export const DEFAULT_BILLS_KIND: StatsKind = 'expense';
 export const DEFAULT_BILLS_MODE: BillsMode = 'month';
 
 export function statsKindLabel(kind: StatsKind): string {
-    return STATS_KINDS.find((item) => item.value === kind)?.label ?? '支出';
+    const found = STATS_KINDS.find((item) => item.value === kind);
+    return t(found?.labelKey ?? 'stats.kind.expense');
 }
 
 /**
@@ -65,9 +68,9 @@ export function showsBreakdownCards(kind: StatsKind): boolean {
     return kind !== 'balance';
 }
 
-/** 粒度的中文说法：日 / 月。 */
+/** 粒度的说法：日 / 月。 */
 export function periodUnitLabel(period: BillsPeriod): string {
-    return period === 'day' ? '日' : '月';
+    return period === 'day' ? t('stats.period.day') : t('stats.period.month');
 }
 
 // ---------------------------------------------------------------------------
@@ -176,25 +179,49 @@ export interface KindCopy {
 
 export function kindCopy(kind: StatsKind, period: BillsPeriod): KindCopy {
     const label = statsKindLabel(kind);
-    const scope = period === 'day' ? '本月' : '本年';
+    // 结余口径不拼口径名（「本月单日最高」而不是「本月单日最高结余」），所以传空串。
+    const nameSuffix = kind === 'balance' ? '' : label;
+    const scope = period === 'day' ? t('stats.scope.month') : t('stats.scope.year');
     const unit = periodUnitLabel(period);
     const verb =
-        kind === 'income' ? '进账' : kind === 'expense' ? '消费' : '共';
+        kind === 'income'
+            ? t('stats.verb.income')
+            : kind === 'expense'
+              ? t('stats.verb.expense')
+              : t('stats.verb.balance');
+    const pick = (dayKey: string, monthKey: string) => (period === 'day' ? dayKey : monthKey);
     return {
         label,
-        balanceTitle: `${scope}结余`,
-        totalLabel: `${scope}${label}`,
-        trendTitle: period === 'day' ? `${label}趋势概况` : `${label}月度趋势`,
-        maxLabel: `${scope}单${unit}最高${kind === 'balance' ? '' : label}`,
-        averageLabel: `${scope}平均每${unit}${kind === 'balance' ? '' : label}`,
-        countLabel: `${scope}累计${kind === 'balance' ? '' : label}笔数`,
-        shareTitle: period === 'day' ? `${label}占比概况` : `${scope}${label}占比`,
-        categoryRankTitle: period === 'day' ? `${label}类目排行` : `${scope}${label}类目排行`,
-        transactionRankTitle: period === 'day' ? `${label}明细排行` : `${scope}${label}明细排行`,
+        balanceTitle: t('stats.copy.balanceTitle', { scope }),
+        totalLabel: t('stats.copy.totalLabel', { scope, label }),
+        trendTitle: t(pick('stats.copy.trendTitleDay', 'stats.copy.trendTitleMonth'), { label }),
+        maxLabel: t('stats.copy.maxLabel', { scope, unit, label: nameSuffix }),
+        averageLabel: t('stats.copy.averageLabel', { scope, unit, label: nameSuffix }),
+        countLabel: t('stats.copy.countLabel', { scope, label: nameSuffix }),
+        shareTitle: t(pick('stats.copy.shareTitleDay', 'stats.copy.shareTitleMonth'), { scope, label }),
+        categoryRankTitle: t(
+            pick('stats.copy.categoryRankTitleDay', 'stats.copy.categoryRankTitleMonth'),
+            { scope, label },
+        ),
+        transactionRankTitle: t(
+            pick('stats.copy.transactionRankTitleDay', 'stats.copy.transactionRankTitleMonth'),
+            { scope, label },
+        ),
         categorySubtitle: (amountCents, count) =>
             kind === 'balance'
-                ? `${scope}结余 ${formatSignedBalance(amountCents)}，${verb} ${count} 笔`
-                : `${scope}共${label} ${formatMoney(Math.abs(amountCents))}，${verb} ${count} 笔`,
+                ? t('stats.copy.subtitleBalance', {
+                      scope,
+                      amount: formatSignedBalance(amountCents),
+                      verb,
+                      count,
+                  })
+                : t('stats.copy.subtitle', {
+                      scope,
+                      label,
+                      amount: formatMoney(Math.abs(amountCents)),
+                      verb,
+                      count,
+                  }),
     };
 }
 
@@ -230,7 +257,7 @@ export function overviewCells(stats: MonthStats, kind: StatsKind): OverviewCell[
             label: copy.averageLabel,
             value: hasData ? formatKindTotal(data.dailyAverageCents, kind) : '—',
         },
-        { label: copy.countLabel, value: `${data.count} 笔` },
+        { label: copy.countLabel, value: t('stats.countValue', { count: data.count }) },
     ];
 }
 
@@ -250,7 +277,7 @@ export function yearOverviewCells(summary: YearSummary | undefined, kind: StatsK
             label: copy.averageLabel,
             value: hasData ? formatKindTotal(yearMonthlyAverageCents(summary, kind), kind) : '—',
         },
-        { label: copy.countLabel, value: `${count} 笔` },
+        { label: copy.countLabel, value: t('stats.countValue', { count }) },
     ];
 }
 
@@ -308,7 +335,7 @@ export function shareSlices(
 ): DonutChartSlice[] {
     return items.map((item) => ({
         key: item.categoryId,
-        label: item.name,
+        label: categoryDisplayNameStatic({ id: item.categoryId, name: item.name }, item.name),
         value: item.absAmountCents,
         color: colors.get(item.categoryId) ?? 'var(--brand-500)',
     }));
@@ -367,13 +394,13 @@ export function formatDayHint(day: string): string {
 /** `2025-03` → `3月`。 */
 export function formatMonthHint(month: string): string {
     const parsed = parseMonthKey(month);
-    return parsed ? `${parsed.month}月` : month;
+    return parsed ? t('date.monthOnly', { month: parsed.month }) : month;
 }
 
 /** `2025-09` → `2025年9月`（非法输入原样返回）。 */
 export function monthLabel(month: string): string {
     const parsed = parseMonthKey(month);
-    return parsed ? `${parsed.year}年${parsed.month}月` : month;
+    return parsed ? t('date.yearMonth', { year: parsed.year, month: parsed.month }) : month;
 }
 
 // ---------------------------------------------------------------------------

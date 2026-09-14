@@ -15,6 +15,7 @@
 // 视觉与设计系统同源：brand 激活指示条 + MotionIcon 语义 + 触摸按压反馈。
 
 import React, { useLayoutEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import gsap from 'gsap';
 import { cn } from '../../utils/cn';
 import { MotionIcon, NAV_ROUTE_MOTION } from '../../ui/motion';
@@ -27,6 +28,7 @@ export const BottomNav: React.FC<{
     active: AppScreen;
     onSelect: (id: AppRoute | 'settings') => void;
 }> = ({ active, onSelect }) => {
+    const { t } = useTranslation();
     const motion = useMotion();
     const tabs = bottomNavTabs(active);
     const peekTarget = navPeekTarget(active);
@@ -98,7 +100,7 @@ export const BottomNav: React.FC<{
                                 className={cn('shrink-0', isActive && 'text-brand')}
                             />
                             <span className={cn('truncate text-[10.5px] font-medium leading-none', isActive && 'text-brand')}>
-                                {item.label}
+                                {t(item.labelKey)}
                             </span>
                         </button>
                     );

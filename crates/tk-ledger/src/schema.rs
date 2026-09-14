@@ -27,6 +27,7 @@
 //!   而列表里又看不到它）。只动索引、不动数据，旧库升级是一次 DROP/CREATE INDEX。
 
 use rusqlite::{Connection, Transaction};
+use tk_domain::error_payload;
 
 use crate::error::{LedgerError, LedgerResult};
 
@@ -174,8 +175,11 @@ CREATE UNIQUE INDEX idx_categories_kind_name
 pub fn migrate(conn: &mut Connection) -> LedgerResult<()> {
     let current: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
     if current > SCHEMA_VERSION {
-        return Err(LedgerError::corrupt(format!(
-            "数据库版本 {current} 高于当前程序支持的 {SCHEMA_VERSION}，请升级应用"
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.schema.too_new",
+            "数据库版本 {current} 高于当前程序支持的 {supported}，请升级应用";
+            current = current,
+            supported = SCHEMA_VERSION
         )));
     }
     if current < 1 {
@@ -248,7 +252,7 @@ mod tests {
             .expect("bump version");
         assert!(matches!(
             migrate(&mut conn),
-            Err(LedgerError::Corrupt(_))
+            Err(LedgerError::Reported(_))
         ));
     }
 

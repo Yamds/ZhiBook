@@ -153,12 +153,14 @@ export const DEFAULT_CATEGORIES = {
 /**
  * 图标选择器目录。
  *
- * - label：中文分组名（选择器里的分组标签）
+ * - id：稳定分组 id（**进 i18n**：界面文案走 `iconGroup.<id>`，别把 label 当 key）
+ * - label：中文分组名（作为 i18n 中文取值来源 + 搜索别名，不进代码逻辑）
  * - icons：候选图标名
  * - aliases：图标 → 中文别名（搜索用，可选）
  */
 export const PICKER_GROUPS = [
     {
+        id: 'payment',
         label: '支付与账户',
         icons: [
             // 银行 / 卡
@@ -210,6 +212,7 @@ export const PICKER_GROUPS = [
         },
     },
     {
+        id: 'paymentBrand',
         label: '支付品牌',
         collection: 'simple-icons',
         icons: [
@@ -228,6 +231,7 @@ export const PICKER_GROUPS = [
         },
     },
     {
+        id: 'food',
         label: '餐饮',
         icons: [
             'noodles', 'rice', 'food-apple', 'food-croissant', 'pizza', 'hamburger',
@@ -240,6 +244,7 @@ export const PICKER_GROUPS = [
         aliases: { noodles: ['面', '饭'], coffee: ['咖啡'], 'glass-wine': ['酒'], beer: ['啤酒'] },
     },
     {
+        id: 'shopping',
         label: '购物',
         icons: [
             'cart-outline', 'cart-variant', 'basket-outline', 'shopping-outline',
@@ -251,6 +256,7 @@ export const PICKER_GROUPS = [
         aliases: { 'cart-outline': ['购物车', '买东西'], 'gift-outline': ['礼物'] },
     },
     {
+        id: 'daily',
         label: '日用',
         icons: [
             'paper-roll-outline', 'toothbrush', 'hand-wash-outline', 'spray-bottle', 'broom',
@@ -262,6 +268,7 @@ export const PICKER_GROUPS = [
         aliases: { 'paper-roll-outline': ['纸巾', '卫生纸'], 'hand-wash-outline': ['香皂', '沐浴露', '洗手液'] },
     },
     {
+        id: 'transport',
         label: '交通',
         icons: [
             'bus', 'car', 'taxi', 'train', 'subway-variant', 'tram', 'airplane',
@@ -272,6 +279,7 @@ export const PICKER_GROUPS = [
         aliases: { bus: ['公交车'], car: ['汽车', '打车'], train: ['火车', '高铁'], airplane: ['飞机'] },
     },
     {
+        id: 'entertainment',
         label: '娱乐',
         icons: [
             'gamepad-variant-outline', 'controller-classic-outline', 'movie-open-outline',
@@ -283,6 +291,7 @@ export const PICKER_GROUPS = [
         aliases: { 'gamepad-variant-outline': ['游戏', '打游戏'], 'movie-open-outline': ['电影'], 'music-note': ['音乐'] },
     },
     {
+        id: 'sport',
         label: '运动',
         icons: [
             'run', 'run-fast', 'basketball', 'soccer', 'tennis', 'badminton',
@@ -292,6 +301,7 @@ export const PICKER_GROUPS = [
         aliases: { run: ['跑步', '运动'], swim: ['游泳'], yoga: ['瑜伽'] },
     },
     {
+        id: 'medical',
         label: '医疗',
         icons: [
             'medical-bag', 'hospital-box-outline', 'pill', 'thermometer', 'stethoscope',
@@ -301,6 +311,7 @@ export const PICKER_GROUPS = [
         aliases: { 'medical-bag': ['看病', '医院'], pill: ['买药', '药'] },
     },
     {
+        id: 'study',
         label: '学习',
         icons: [
             'book-open-page-variant-outline', 'book-open-variant', 'book-outline',
@@ -311,6 +322,7 @@ export const PICKER_GROUPS = [
         aliases: { 'book-open-page-variant-outline': ['书', '看书'], 'school-outline': ['上学', '学费'] },
     },
     {
+        id: 'office',
         label: '办公',
         icons: [
             'briefcase-outline', 'desk', 'printer-outline', 'file-document-outline',
@@ -321,6 +333,7 @@ export const PICKER_GROUPS = [
         aliases: { 'briefcase-outline': ['办公', '工作'], printer: ['打印'] },
     },
     {
+        id: 'digital',
         label: '数码',
         icons: [
             'laptop', 'cellphone', 'tablet', 'watch-variant', 'camera-outline', 'headset',
@@ -330,6 +343,7 @@ export const PICKER_GROUPS = [
         aliases: { laptop: ['电脑'], cellphone: ['手机'], headset: ['耳机'] },
     },
     {
+        id: 'social',
         label: '人情',
         icons: [
             'account-group-outline', 'account-multiple-outline', 'hand-heart-outline',
@@ -340,6 +354,7 @@ export const PICKER_GROUPS = [
         aliases: { 'account-group-outline': ['聚会', '社交'], 'cake-variant-outline': ['生日', '蛋糕'], 'hand-heart': ['捐赠', '爱心'] },
     },
     {
+        id: 'finance',
         label: '金融',
         icons: [
             'finance', 'chart-line', 'chart-donut', 'chart-pie', 'trending-up',
@@ -351,11 +366,13 @@ export const PICKER_GROUPS = [
         aliases: { finance: ['理财', '基金'], 'bank-outline': ['银行'], 'currency-cny': ['人民币', '钱'] },
     },
     {
+        id: 'pet',
         label: '宠物',
         icons: ['paw', 'paw-outline', 'dog', 'dog-side', 'cat', 'bird', 'fish', 'rabbit', 'bone'],
         aliases: { paw: ['宠物', '猫狗'], dog: ['狗'], cat: ['猫'] },
     },
     {
+        id: 'travel',
         label: '旅行',
         icons: [
             'bag-suitcase-outline', 'bag-suitcase', 'airplane', 'earth', 'map-outline',
@@ -365,6 +382,7 @@ export const PICKER_GROUPS = [
         aliases: { 'bag-suitcase-outline': ['旅行', '行李'], earth: ['地球', '出国'], tent: ['露营'] },
     },
     {
+        id: 'clothing',
         label: '穿戴',
         icons: [
             'tshirt-crew-outline', 'tshirt-v-outline', 'shoe-sneaker', 'shoe-heel',
@@ -374,6 +392,7 @@ export const PICKER_GROUPS = [
         aliases: { 'tshirt-crew-outline': ['衣服', '服装'], 'shoe-sneaker': ['鞋'], lipstick: ['化妆品', '口红'] },
     },
     {
+        id: 'housing',
         label: '住房',
         icons: [
             'home-outline', 'home-city-outline', 'home-group', 'home-modern',
@@ -384,6 +403,7 @@ export const PICKER_GROUPS = [
         aliases: { 'home-outline': ['房子', '家'], 'bed-outline': ['床', '住宿'], 'key-outline': ['钥匙', '房租'] },
     },
     {
+        id: 'other',
         label: '其它',
         icons: [
             'star-outline', 'star-four-points-outline', 'heart-outline',

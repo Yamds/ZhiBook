@@ -3,6 +3,7 @@
 // 1-9 / ⌫ / 0 / ✓；点按直接改 value，校验交给调用方。
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import { useMotion } from '../../hooks/preferences/useMotion';
 import { AppIcon } from '../../shared/ui/AppIcon';
@@ -34,6 +35,7 @@ export function PinPad({
     error,
     hint,
 }: PinPadProps) {
+    const { t } = useTranslation();
     const motion = useMotion();
     const dotsRef = useRef<HTMLDivElement | null>(null);
     const prevErrorRef = useRef<string | null | undefined>(undefined);
@@ -56,7 +58,7 @@ export function PinPad({
             <div ref={dotsRef} className="flex h-9 items-center justify-center gap-3">
                 {value.length === 0 ? (
                     <span className="text-[13px] text-text-tertiary">
-                        {hint ?? `请输入 ${minLength}~${maxLength} 位数字`}
+                        {hint ?? t('security.pinLengthHint', { min: minLength, max: maxLength })}
                     </span>
                 ) : (
                     Array.from(value).map((_, index) => (
@@ -76,7 +78,7 @@ export function PinPad({
                 <PinKey
                     onClick={() => onChange(value.slice(0, -1))}
                     disabled={disabled || value.length === 0}
-                    label="删除"
+                    label={t('common.delete')}
                 >
                     <AppIcon name={UI_ICONS.backspace} size={20} />
                 </PinKey>
@@ -86,7 +88,7 @@ export function PinPad({
                 <PinKey
                     onClick={onSubmit}
                     disabled={disabled || value.length < minLength}
-                    label="确认"
+                    label={t('common.confirm')}
                 >
                     <AppIcon name={UI_ICONS.check} size={22} />
                 </PinKey>

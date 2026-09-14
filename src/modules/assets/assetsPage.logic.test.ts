@@ -71,7 +71,11 @@ describe('口径与折线点', () => {
 
     it('默认口径是净资产；三项都有标签与色调', () => {
         expect(DEFAULT_TREND_KIND).toBe('net');
-        expect(TREND_KINDS.map((item) => item.label)).toEqual(['净资产', '总资产', '负债']);
+        expect(TREND_KINDS.map((item) => item.labelKey)).toEqual([
+            'assets.trendKind.net',
+            'assets.trendKind.asset',
+            'assets.trendKind.liability',
+        ]);
         expect(TREND_TONES.liability).toBe('danger');
         expect(TREND_TONES.net).toBe('brand');
     });

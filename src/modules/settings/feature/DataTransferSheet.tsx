@@ -1,8 +1,10 @@
 // 数据导入 / 导出：导出全量 zip（含附件）；导入为**覆盖式恢复**（导入前自动快照）。
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateLabel } from '../../../core/domain/date';
+import { t as translate } from '../../../core/i18n';
 import type { BackupCounts, BackupPreview } from '../../../core/ipc/types';
 import { fileBridge, registerImportFileHandler } from '../../../core/platform/fileBridge';
 import { backupService } from '../../../core/services/backup.service';
@@ -21,16 +23,22 @@ function showError(error: unknown) {
     pushInfoBar({
         key: 'backup-error',
         tone: 'danger',
-        title: '操作失败',
+        title: translate('settings.transfer.failedTitle'),
         content: error instanceof Error ? error.message : String(error),
     });
 }
 
 function countsText(counts: BackupCounts): string {
-    return `${counts.books} 个账本 · ${counts.transactions} 笔账单 · ${counts.attachments} 张附件 · ${counts.recurringRules} 条固定收支`;
+    return [
+        translate('unit.book', { count: counts.books }),
+        translate('unit.transaction', { count: counts.transactions }),
+        translate('unit.attachment', { count: counts.attachments }),
+        translate('unit.recurringRule', { count: counts.recurringRules }),
+    ].join(translate('common.dotSeparator'));
 }
 
 export function DataTransferSheet({ open, onOpenChange }: DataTransferSheetProps) {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const [exporting, setExporting] = useState(false);
     const [importing, setImporting] = useState(false);
@@ -52,12 +60,12 @@ export function DataTransferSheet({ open, onOpenChange }: DataTransferSheetProps
         try {
             const summary = await backupService.exportData();
             const stamp = new Date().toISOString().slice(0, 10);
-            fileBridge.saveFile(summary.path, `制账备份-${stamp}.zip`);
+            fileBridge.saveFile(summary.path, t('settings.transfer.exportFileName', { stamp }));
             pushInfoBar({
                 key: 'backup-export',
                 tone: 'success',
-                title: '备份已生成',
-                content: '请在系统弹窗里选择保存位置',
+                title: t('settings.transfer.exportDone'),
+                content: t('settings.transfer.exportDoneBody'),
             });
         } catch (error) {
             showError(error);
@@ -75,8 +83,8 @@ export function DataTransferSheet({ open, onOpenChange }: DataTransferSheetProps
             pushInfoBar({
                 key: 'backup-import',
                 tone: 'success',
-                title: `已恢复 ${result.counts.transactions} 笔账单`,
-                content: result.preImportBackupPath ? '导入前的数据已自动备份到本机' : undefined,
+                title: t('settings.transfer.restoredCount', { count: result.counts.transactions }),
+                content: result.preImportBackupPath ? t('settings.transfer.preImportSnapshot') : undefined,
             });
             setPreview(null);
             onOpenChange(false);
@@ -94,8 +102,8 @@ export function DataTransferSheet({ open, onOpenChange }: DataTransferSheetProps
             <BottomSheet
                 open={open}
                 onOpenChange={onOpenChange}
-                title="导入 / 导出"
-                description="备份包为 zip（manifest.json + data.json + 附件）"
+                title={t('settings.feature.dataTransfer')}
+                description={t('settings.transfer.sheetDesc')}
             >
                 <div className="flex flex-col gap-3">
                     <button
@@ -108,10 +116,10 @@ export function DataTransferSheet({ open, onOpenChange }: DataTransferSheetProps
                         )}
                     >
                         <span className="text-[14px] font-medium text-text">
-                            {exporting ? '正在导出…' : '导出全部数据'}
+                            {exporting ? t('settings.transfer.exporting') : t('settings.transfer.exportAll')}
                         </span>
                         <span className="text-[11.5px] leading-relaxed text-text-tertiary">
-                            生成 zip 备份包（含账单、账户、分类、固定收支与图片附件）
+                            {t('settings.transfer.exportAllDesc')}
                         </span>
                     </button>
 
@@ -124,16 +132,16 @@ export function DataTransferSheet({ open, onOpenChange }: DataTransferSheetProps
                             (importing || !available) && 'opacity-50',
                         )}
                     >
-                        <span className="text-[14px] font-medium text-text">导入备份</span>
+                        <span className="text-[14px] font-medium text-text">{t('settings.transfer.importBackup')}</span>
                         <span className="text-[11.5px] leading-relaxed text-text-tertiary">
-                            <span className="font-medium text-danger">覆盖当前全部数据</span>
-                            ；导入前会自动在本机存一份快照
+                            <span className="font-medium text-danger">{t('settings.transfer.importOverwriteWarn')}</span>
+                            {t('settings.transfer.importBackupDesc')}
                         </span>
                     </button>
 
                     {!available ? (
                         <p className="text-[11.5px] text-text-tertiary">
-                            当前环境不支持文件选择（仅在 Android App 内生效）。
+                            {t('settings.transfer.filePickerUnsupported')}
                         </p>
                     ) : null}
                 </div>
@@ -144,21 +152,24 @@ export function DataTransferSheet({ open, onOpenChange }: DataTransferSheetProps
                 onOpenChange={(next) => {
                     if (!next) setPreview(null);
                 }}
-                title="确认覆盖导入？"
+                title={t('settings.transfer.confirmImportTitle')}
                 description={
                     preview ? (
                         <div className="flex flex-col gap-2">
                             <p>{countsText(preview.info.counts)}</p>
                             <p className="text-text-tertiary">
-                                导出时间：{formatDateLabel(preview.info.exportedAtMs)} · App {preview.info.appVersion}
+                                {t('settings.transfer.exportedAt', {
+                                    time: formatDateLabel(preview.info.exportedAtMs),
+                                    version: preview.info.appVersion,
+                                })}
                             </p>
                             <p className="text-danger">
-                                导入会清空并替换当前全部账本数据；导入前的数据会先自动备份到本机。
+                                {t('settings.transfer.importWarning')}
                             </p>
                         </div>
                     ) : null
                 }
-                confirmLabel="覆盖导入"
+                confirmLabel={t('settings.transfer.confirmImportLabel')}
                 busy={importing}
                 onConfirm={() => void handleImport()}
             />

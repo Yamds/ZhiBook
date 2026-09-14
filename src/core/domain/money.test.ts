@@ -36,9 +36,11 @@ describe('紧凑金额（formatCompactAmount）', () => {
         expect(formatCompactAmount(12345678)).toBe('12.3万');
         expect(formatCompactAmount(10_000_000)).toBe('10万');
         expect(formatCompactAmount(1_000_000_000)).toBe('1,000万');
-        // 9999.5 万 = 99,995,000 元：再进位就会变成 `10,000万`，所以从里改走亿
-        expect(formatCompactAmount(99_994_000_00)).toBe('9,999万');
-        expect(formatCompactAmount(99_995_000_00)).toBe('1亿');
+        // 缩写单位与进位门槛都由 Intl 的 compact 记法给出（见 money.ts）：
+        // 1e8 元才进位到「亿」，所以 9999.5 万仍是「万」档。
+        expect(formatCompactAmount(99_994_000_00)).toBe('9,999.4万');
+        expect(formatCompactAmount(99_995_000_00)).toBe('9,999.5万');
+        expect(formatCompactAmount(10_000_000_000)).toBe('1亿');
         expect(formatCompactAmount(MAX_AMOUNT_CENTS)).toBe('10亿');
     });
 

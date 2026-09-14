@@ -5,6 +5,7 @@
 // 色板本身跟随当前主题（9 色相 + 4 级中性灰阶，见 `useThemePalette`）。
 
 import { THEME_COLOR_TOKEN, isFixedColor } from '../../core/design/categoryColor';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import { useThemePalette } from '../../hooks/theme/useThemePalette';
 import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
@@ -19,6 +20,7 @@ export interface ColorSwatchRowProps {
 }
 
 export function ColorSwatchRow({ value, onChange, className }: ColorSwatchRowProps) {
+    const { t } = useTranslation();
     const { brand } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
     const { palette } = useThemePalette();
     const invalid = !isFixedColor(value) && value !== THEME_COLOR_TOKEN;
@@ -44,7 +46,7 @@ export function ColorSwatchRow({ value, onChange, className }: ColorSwatchRowPro
                     <button
                         key={swatch}
                         type="button"
-                        aria-label={`使用颜色 ${swatch}`}
+                        aria-label={t('shared.useColorAria', { color: swatch })}
                         onClick={() => onChange(swatch)}
                         className={cn(
                             'inline-flex h-8 w-8 items-center justify-center rounded-full active:opacity-80',
@@ -58,7 +60,7 @@ export function ColorSwatchRow({ value, onChange, className }: ColorSwatchRowPro
                     </button>
                 ))}
             </div>
-            {invalid ? <p className="text-[11px] text-danger">颜色值不合法，已回退为跟随主题</p> : null}
+            {invalid ? <p className="text-[11px] text-danger">{t('shared.colorInvalid')}</p> : null}
         </div>
     );
 }

@@ -33,10 +33,10 @@ export interface ThemePreview {
 
 export interface ThemeDefinition {
     readonly value: ThemeMode;
-    /** 设置页显示名。 */
-    readonly label: string;
-    /** 设置页分组标题。 */
-    readonly group: string;
+    /** 设置页显示名的 i18n key。 */
+    readonly labelKey: string;
+    /** 设置页分组标题的 i18n key。 */
+    readonly groupKey: string;
     /** 暗色画布：供启动底色 / 明暗判定使用（`auto` 由系统决定，标记为 false）。 */
     readonly dark: boolean;
     /** 纯色平面画布（禁用角落柔光与启动页极光）。 */
@@ -51,8 +51,8 @@ export interface ThemeDefinition {
 export const THEMES: readonly ThemeDefinition[] = [
     {
         value: 'auto',
-        label: '系统',
-        group: '基础',
+        labelKey: 'theme.label.auto',
+        groupKey: 'theme.group.basic',
         dark: false,
         flat: false,
         preview: {
@@ -66,8 +66,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     },
     {
         value: 'light',
-        label: '浅色',
-        group: '基础',
+        labelKey: 'theme.label.light',
+        groupKey: 'theme.group.basic',
         dark: false,
         flat: false,
         preview: {
@@ -81,8 +81,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     },
     {
         value: 'dark',
-        label: '暗色',
-        group: '基础',
+        labelKey: 'theme.label.dark',
+        groupKey: 'theme.group.basic',
         dark: true,
         flat: false,
         preview: {
@@ -96,8 +96,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     },
     {
         value: 'latte',
-        label: 'Latte',
-        group: 'Catppuccin',
+        labelKey: 'theme.label.latte',
+        groupKey: 'theme.group.catppuccin',
         dark: false,
         flat: true,
         preview: {
@@ -111,8 +111,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     },
     {
         value: 'frappe',
-        label: 'Frappé',
-        group: 'Catppuccin',
+        labelKey: 'theme.label.frappe',
+        groupKey: 'theme.group.catppuccin',
         dark: true,
         flat: true,
         preview: {
@@ -126,8 +126,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     },
     {
         value: 'macchiato',
-        label: 'Macchiato',
-        group: 'Catppuccin',
+        labelKey: 'theme.label.macchiato',
+        groupKey: 'theme.group.catppuccin',
         dark: true,
         flat: true,
         preview: {
@@ -141,8 +141,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     },
     {
         value: 'mocha',
-        label: 'Mocha',
-        group: 'Catppuccin',
+        labelKey: 'theme.label.mocha',
+        groupKey: 'theme.group.catppuccin',
         dark: true,
         flat: true,
         preview: {
@@ -157,8 +157,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     // Everforest（sainnhe/everforest 官方调色板）：亮 / 暗 × hard / soft 四种（Light 在前）
     {
         value: 'everforest-light-hard',
-        label: 'Light · Hard',
-        group: 'Everforest',
+        labelKey: 'theme.label.everforestLightHard',
+        groupKey: 'theme.group.everforest',
         dark: false,
         flat: true,
         preview: {
@@ -172,8 +172,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     },
     {
         value: 'everforest-light-soft',
-        label: 'Light · Soft',
-        group: 'Everforest',
+        labelKey: 'theme.label.everforestLightSoft',
+        groupKey: 'theme.group.everforest',
         dark: false,
         flat: true,
         preview: {
@@ -187,8 +187,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     },
     {
         value: 'everforest-dark-hard',
-        label: 'Dark · Hard',
-        group: 'Everforest',
+        labelKey: 'theme.label.everforestDarkHard',
+        groupKey: 'theme.group.everforest',
         dark: true,
         flat: true,
         preview: {
@@ -202,8 +202,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     },
     {
         value: 'everforest-dark-soft',
-        label: 'Dark · Soft',
-        group: 'Everforest',
+        labelKey: 'theme.label.everforestDarkSoft',
+        groupKey: 'theme.group.everforest',
         dark: true,
         flat: true,
         preview: {
@@ -218,8 +218,8 @@ export const THEMES: readonly ThemeDefinition[] = [
     // Nord（nordtheme.com）
     {
         value: 'nord',
-        label: 'Nord',
-        group: 'Nord',
+        labelKey: 'theme.label.nord',
+        groupKey: 'theme.group.nord',
         dark: true,
         flat: true,
         preview: {
@@ -255,17 +255,17 @@ export function normalizeThemeValue(value: unknown): ThemeMode {
 }
 
 export interface ThemeGroup {
-    readonly label: string;
+    readonly labelKey: string;
     readonly items: readonly ThemeDefinition[];
 }
 
 /** 设置页分组视图（顺序即展示顺序）。 */
 export const THEME_GROUPS: readonly ThemeGroup[] = THEMES.reduce<ThemeGroup[]>((groups, theme) => {
     const last = groups.at(-1);
-    if (last && last.label === theme.group) {
-        groups[groups.length - 1] = { label: last.label, items: [...last.items, theme] };
+    if (last && last.labelKey === theme.groupKey) {
+        groups[groups.length - 1] = { labelKey: last.labelKey, items: [...last.items, theme] };
         return groups;
     }
-    groups.push({ label: theme.group, items: [theme] });
+    groups.push({ labelKey: theme.groupKey, items: [theme] });
     return groups;
 }, []);

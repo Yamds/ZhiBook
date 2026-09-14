@@ -6,15 +6,16 @@ use std::path::Path;
 use std::sync::Arc;
 
 use tauri::State;
-use tk_domain::{BackupPreview, BackupSummary, ImportSummary};
+use tk_domain::{BackupPreview, BackupSummary, ImportSummary, IntoErrorPayload};
 use tk_ledger::Ledger;
 
 use crate::AppState;
-
-type CommandResult<T> = Result<T, String>;
+use crate::commands::{CommandResult, join_error};
 
 fn handle(state: &State<'_, AppState>) -> CommandResult<Arc<Ledger>> {
-    state.ledger.clone().map_err(|error| error.to_owned())
+    state.ledger.clone().map_err(|error| {
+        tk_domain::error_payload!("ledger.db.unavailable", "记账库打不开：{detail}"; detail = error)
+    })
 }
 
 /// 导出全量数据到 `tmp/exports/zz-backup-<时间戳>.zip`。
@@ -23,20 +24,20 @@ pub async fn export_data(state: State<'_, AppState>) -> CommandResult<BackupSumm
     let ledger = handle(&state)?;
     let data_root = state.data_root.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        tk_backup::export_to_zip(&ledger, &data_root).map_err(|error| error.to_string())
+        tk_backup::export_to_zip(&ledger, &data_root).map_err(IntoErrorPayload::into_error_payload)
     })
     .await
-    .map_err(|error| format!("后台任务异常：{error}"))?
+    .map_err(join_error)?
 }
 
 /// 只读预览备份包内容（不落库）。
 #[tauri::command]
 pub async fn preview_backup(path: String) -> CommandResult<BackupPreview> {
     tauri::async_runtime::spawn_blocking(move || {
-        tk_backup::preview_zip(Path::new(&path)).map_err(|error| error.to_string())
+        tk_backup::preview_zip(Path::new(&path)).map_err(IntoErrorPayload::into_error_payload)
     })
     .await
-    .map_err(|error| format!("后台任务异常：{error}"))?
+    .map_err(join_error)?
 }
 
 /// 覆盖式恢复（导入前自动快照）。
@@ -46,8 +47,8 @@ pub async fn import_data(state: State<'_, AppState>, path: String) -> CommandRes
     let data_root = state.data_root.clone();
     tauri::async_runtime::spawn_blocking(move || {
         tk_backup::import_from_zip(&ledger, &data_root, Path::new(&path))
-            .map_err(|error| error.to_string())
+            .map_err(IntoErrorPayload::into_error_payload)
     })
     .await
-    .map_err(|error| format!("后台任务异常：{error}"))?
+    .map_err(join_error)?
 }

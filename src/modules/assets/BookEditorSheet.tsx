@@ -4,6 +4,7 @@
 // 这里只发请求，不直接删。
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Book } from '../../core/ipc/types';
 import { BottomSheet } from '../../shared/ui/BottomSheet';
 import { cn } from '../../shared/utils/cn';
@@ -32,6 +33,7 @@ export function BookEditorSheet({
     onSubmit,
     onRequestDelete,
 }: BookEditorSheetProps) {
+    const { t } = useTranslation();
     const [name, setName] = useState('');
 
     useEffect(() => {
@@ -48,8 +50,8 @@ export function BookEditorSheet({
         <BottomSheet
             open={open}
             onOpenChange={onOpenChange}
-            title={book ? '重命名账本' : '新建账本'}
-            description="账本是数据分区：账单 / 账户 / 统计都按账本隔离"
+            title={book ? t('assets.renameBook') : t('assets.newBook')}
+            description={t('assets.bookSheetDesc')}
             maxHeightRatio={0.6}
         >
             <div className="flex flex-col gap-3">
@@ -58,8 +60,8 @@ export function BookEditorSheet({
                         value={name}
                         onChange={(event) => setName(event.target.value)}
                         maxLength={BOOK_NAME_MAX}
-                        placeholder="账本名称（如 日常账 / 装修账）"
-                        aria-label="账本名称"
+                        placeholder={t('assets.bookNamePlaceholder')}
+                        aria-label={t('assets.bookName')}
                         className={cn(
                             'h-10 w-full rounded-md border bg-field px-2.5 text-[14px] text-text',
                             'placeholder:text-text-disabled focus-visible:outline-none',
@@ -69,7 +71,7 @@ export function BookEditorSheet({
                         )}
                     />
                     <p className="mt-1 text-[11px] text-text-tertiary">
-                        {trimmed === '' ? '必填' : `${nameLength} / ${BOOK_NAME_MAX} 字`}
+                        {trimmed === '' ? t('common.required') : t('add.nameLengthCounter', { current: nameLength, max: BOOK_NAME_MAX })}
                     </p>
                 </div>
 
@@ -90,7 +92,7 @@ export function BookEditorSheet({
                                 deletable ? 'bg-inset text-danger active:bg-muted' : 'bg-inset text-text-disabled',
                             )}
                         >
-                            删除
+                            {t('common.delete')}
                         </button>
                     ) : null}
                     <button
@@ -102,12 +104,12 @@ export function BookEditorSheet({
                             canSubmit ? 'bg-brand text-white shadow-card active:opacity-90' : 'bg-inset text-text-disabled',
                         )}
                     >
-                        {busy ? '保存中' : book ? '保存修改' : '创建账本'}
+                        {busy ? t('common.saving') : book ? t('add.saveChanges') : t('assets.createBook')}
                     </button>
                 </div>
 
                 {book && !deletable ? (
-                    <p className="text-[11px] text-text-tertiary">至少保留一个账本，当前账本不能删除。</p>
+                    <p className="text-[11px] text-text-tertiary">{t('assets.lastBookHint')}</p>
                 ) : null}
             </div>
         </BottomSheet>

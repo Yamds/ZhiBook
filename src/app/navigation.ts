@@ -30,37 +30,39 @@ export type AppScreen = AppRoute | 'settings';
 /** 底部导航的一个槽位（可能是普通页签，也可能是设置替身）。 */
 export interface TabDef {
     readonly id: AppRoute | 'settings';
-    readonly label: string;
+    /** 文案的 i18n key（这里只放 key，不放成品文案）。 */
+    readonly labelKey: string;
     readonly icon: IconName;
 }
 
 export interface AppRouteDef extends TabDef {
     readonly id: AppRoute;
-    /** 顶部栏 / 无障碍用的页面标题（默认与 label 相同）。 */
-    readonly title?: string;
+    /** 顶部栏 / 无障碍用的页面标题 key（默认与 labelKey 相同）。 */
+    readonly titleKey?: string;
 }
 
 /** 首页 = 日历页。App 启动、返回键兜底都回到这里。 */
 export const HOME_ROUTE: AppRoute = 'home';
 
 /** 日历页签定义。单独提出来是因为「露头」替身按钮（`navPeekTarget`）要复用它。 */
-export const HOME_TAB: AppRouteDef = { id: HOME_ROUTE, label: '日历', icon: UI_ICONS.calendar };
+export const HOME_TAB: AppRouteDef = { id: HOME_ROUTE, labelKey: 'nav.home', icon: UI_ICONS.calendar };
 
 export const APP_ROUTES: ReadonlyArray<AppRouteDef> = [
-    { id: 'bills', label: '账单', icon: UI_ICONS.bills },
-    { id: 'details', label: '明细', icon: UI_ICONS.details },
+    { id: 'bills', labelKey: 'nav.bills', icon: UI_ICONS.bills },
+    { id: 'details', labelKey: 'nav.details', icon: UI_ICONS.details },
     HOME_TAB,
-    { id: 'add', label: '添加', icon: UI_ICONS.add },
-    { id: 'assets', label: '资产', icon: UI_ICONS.assets },
+    { id: 'add', labelKey: 'nav.add', icon: UI_ICONS.add },
+    { id: 'assets', labelKey: 'nav.assets', icon: UI_ICONS.assets },
 ];
 
 /** 页签顺序，决定过渡方向与横滑邻居。 */
 export const ROUTE_ORDER: ReadonlyArray<AppRoute> = APP_ROUTES.map((route) => route.id);
 
-export const SETTINGS_LABEL = '设置';
+/** 设置页文字 key（顶部栏标题、页签、露头按钮 aria-label 共用）。 */
+export const SETTINGS_LABEL_KEY = 'nav.settings';
 
 /** 设置替身页签：占用「日历」槽位，图标 / 文案与普通页签同源。 */
-export const SETTINGS_TAB: TabDef = { id: 'settings', label: SETTINGS_LABEL, icon: UI_ICONS.settings };
+export const SETTINGS_TAB: TabDef = { id: 'settings', labelKey: SETTINGS_LABEL_KEY, icon: UI_ICONS.settings };
 
 export function findRoute(id: AppRoute): AppRouteDef | undefined {
     return APP_ROUTES.find((route) => route.id === id);
@@ -78,10 +80,10 @@ export function bottomNavTabs(screen: AppScreen): ReadonlyArray<TabDef> {
     return APP_ROUTES.map((route) => (route.id === HOME_ROUTE ? SETTINGS_TAB : route));
 }
 
-export function routeTitle(screen: AppScreen): string {
-    if (screen === 'settings') return SETTINGS_LABEL;
+export function routeTitleKey(screen: AppScreen): string {
+    if (screen === 'settings') return SETTINGS_LABEL_KEY;
     const def = findRoute(screen);
-    return def?.title ?? def?.label ?? '';
+    return def?.titleKey ?? def?.labelKey ?? '';
 }
 
 /**

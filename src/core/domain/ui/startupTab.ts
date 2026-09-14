@@ -5,11 +5,11 @@
 // 一致性由 `startupTab.test.ts` 钉住（两边任一改动而另一边没跟上就会红）。
 
 export const STARTUP_TABS = [
-    { value: 'bills', label: '账单' },
-    { value: 'details', label: '明细' },
-    { value: 'home', label: '日历' },
-    { value: 'add', label: '添加' },
-    { value: 'assets', label: '资产' },
+    { value: 'bills', labelKey: 'nav.bills' },
+    { value: 'details', labelKey: 'nav.details' },
+    { value: 'home', labelKey: 'nav.home' },
+    { value: 'add', labelKey: 'nav.add' },
+    { value: 'assets', labelKey: 'nav.assets' },
 ] as const;
 
 export type StartupTab = (typeof STARTUP_TABS)[number]['value'];

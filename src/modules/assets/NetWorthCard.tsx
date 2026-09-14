@@ -5,6 +5,7 @@
 // 点标题行来回切；展开后标题行仍是唯一的开关，卡内控件不会被误当成「翻卡」。
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { AssetsOverview } from '../../core/ipc/types';
 import { formatMoney } from '../../core/domain/money';
 import { UI_ICONS } from '../../core/design/icons';
@@ -30,6 +31,7 @@ export interface NetWorthCardProps {
 }
 
 export function NetWorthCard({ overview, isLoading, hasAccounts }: NetWorthCardProps) {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [kind, setKind] = useState<TrendKind>(DEFAULT_TREND_KIND);
 
@@ -48,9 +50,9 @@ export function NetWorthCard({ overview, isLoading, hasAccounts }: NetWorthCardP
                 className="flex flex-col gap-1 rounded-md text-left active:opacity-80"
             >
                 <span className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-semibold text-text">净资产</span>
+                    <span className="text-[13px] font-semibold text-text">{t('assets.trendKind.net')}</span>
                     <span className="flex items-center gap-1 text-[11.5px] text-text-tertiary">
-                        {open ? '收起走势' : '查看走势'}
+                        {open ? t('assets.collapseTrend') : t('assets.viewTrend')}
                         <AppIcon name={open ? UI_ICONS.chevronUp : UI_ICONS.chevronDown} size={14} />
                     </span>
                 </span>
@@ -73,17 +75,17 @@ export function NetWorthCard({ overview, isLoading, hasAccounts }: NetWorthCardP
             {open ? (
                 <div className="flex flex-col gap-2 border-t border-border-subtle pt-2.5">
                     <SegmentedControl
-                        items={TREND_KINDS}
+                        items={TREND_KINDS.map((item) => ({ value: item.value, label: t(item.labelKey) }))}
                         value={kind}
                         onChange={(next) => setKind(next as TrendKind)}
-                        ariaLabel="走势口径"
+                        ariaLabel={t('assets.trendScope')}
                     />
                     {points.length === 0 ? (
                         <EmptyState
                             size="compact"
                             icon={UI_ICONS.assets}
-                            title="还没有走势数据"
-                            description="记几笔账后这里会按月显示"
+                            title={t('assets.noTrendData')}
+                            description={t('assets.noTrendDataDesc')}
                         />
                     ) : (
                         <LineChart
@@ -91,20 +93,20 @@ export function NetWorthCard({ overview, isLoading, hasAccounts }: NetWorthCardP
                             height={160}
                             tone={TREND_TONES[kind]}
                             formatValue={(value) => formatMoney(value)}
-                            emptyText="还没有走势数据"
+                            emptyText={t('assets.noTrendData')}
                         />
                     )}
                     <p className="text-[11px] leading-relaxed text-text-tertiary">
-                        资产走势按月计算月末资产，当月计算今日资产；负债按欠款量级计。
+                        {t('assets.trendFootnote')}
                     </p>
                 </div>
             ) : (
                 <div className="flex flex-col gap-2">
-                    <DisparityBar label="总资产" valueCents={assetCents} maxCents={scale} tone="asset" />
-                    <DisparityBar label="负债" valueCents={liabilityCents} maxCents={scale} tone="liability" />
+                    <DisparityBar label={t('assets.totalAssets')} valueCents={assetCents} maxCents={scale} tone="asset" />
+                    <DisparityBar label={t('assets.trendKind.liability')} valueCents={liabilityCents} maxCents={scale} tone="liability" />
                     {!hasAccounts && !isLoading ? (
                         <p className="text-[11.5px] leading-relaxed text-text-tertiary">
-                            还没有账户：先在上面加一个现金 / 银行卡账户，净资产就会跟着账单变化。
+                            {t('assets.noAccountsHint')}
                         </p>
                     ) : null}
                 </div>
@@ -113,8 +115,8 @@ export function NetWorthCard({ overview, isLoading, hasAccounts }: NetWorthCardP
             {/* 展开态也给一眼总览（免得收起才看得到） */}
             {open ? (
                 <div className="flex items-center justify-between gap-2 text-[12px] text-text-secondary">
-                    <span>总资产 {formatMoney(assetCents)}</span>
-                    <span>负债 {formatMoney(liabilityCents)}</span>
+                    <span>{t('assets.totalAssetsWithAmount', { amount: formatMoney(assetCents) })}</span>
+                    <span>{t('assets.liabilityWithAmount', { amount: formatMoney(liabilityCents) })}</span>
                 </div>
             ) : null}
         </Card>

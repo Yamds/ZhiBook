@@ -4,6 +4,7 @@
 // 负余额给危险色提示但不报错；点行打开编辑器（改名 / 改类型 / 图标 / 颜色 / 初始余额 / 删除）。
 
 import type { Account } from '../../core/ipc/types';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS, toIconName } from '../../core/design/icons';
 import { formatMoney } from '../../core/domain/money';
 import { categoryColors } from '../../core/design/categoryColor';
@@ -29,6 +30,7 @@ export function AccountSection({
     onCreate,
     onEdit,
 }: AccountSectionProps) {
+    const { t } = useTranslation();
     const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
     const totalAssets = sumBalances(assets);
     const totalLiabilities = sumBalances(liabilities);
@@ -37,31 +39,31 @@ export function AccountSection({
     return (
         <Card className="flex flex-col gap-2 rounded-lg p-3.5">
             <header className="flex items-center justify-between gap-2">
-                <h2 className="text-[13px] font-semibold text-text">账户</h2>
+                <h2 className="text-[13px] font-semibold text-text">{t('assets.accountsSection')}</h2>
                 <button
                     type="button"
                     onClick={() => onCreate('asset')}
                     className="inline-flex h-7 items-center gap-1 rounded-pill bg-brand-soft px-2.5 text-[11.5px] font-medium text-brand active:opacity-80"
                 >
                     <AppIcon name={UI_ICONS.plus} size={13} />
-                    新增账户
+                    {t('assets.newAccount')}
                 </button>
             </header>
 
             {isLoading ? (
-                <p className="py-6 text-center text-[12px] text-text-tertiary">正在加载账户…</p>
+                <p className="py-6 text-center text-[12px] text-text-tertiary">{t('assets.loadingAccounts')}</p>
             ) : empty ? (
                 <EmptyState
                     size="compact"
                     icon={UI_ICONS.assets}
-                    title="还没有账户"
-                    description="加一个现金或银行卡账户，净资产与走势就会跟着账单变化"
+                    title={t('assets.noAccounts')}
+                    description={t('assets.noAccountsDesc')}
                 />
             ) : (
                 <div className="flex flex-col gap-3">
                     <AccountGroup
-                        title="资产账户"
-                        hint="钱在手里 / 卡里"
+                        title={t('assets.assetAccounts')}
+                        hint={t('assets.assetAccountsHint')}
                         accounts={assets}
                         totalCents={totalAssets}
                         brand={brand}
@@ -70,8 +72,8 @@ export function AccountSection({
                         onEdit={onEdit}
                     />
                     <AccountGroup
-                        title="负债账户"
-                        hint="欠款（信用卡 / 花呗 / 借入）"
+                        title={t('assets.liabilityAccounts')}
+                        hint={t('assets.liabilityAccountsHint')}
                         accounts={liabilities}
                         totalCents={totalLiabilities}
                         brand={brand}
@@ -107,6 +109,7 @@ function AccountGroup({
     onEdit: (account: Account) => void;
     tone?: 'asset' | 'liability';
 }) {
+    const { t } = useTranslation();
     return (
         <section className="flex flex-col gap-1">
             <div className="flex items-baseline justify-between gap-2">
@@ -131,7 +134,7 @@ function AccountGroup({
                     onClick={onCreate}
                     className="flex h-10 items-center justify-center rounded-md border border-dashed border-border-subtle text-[12px] text-text-tertiary active:bg-inset"
                 >
-                    {tone === 'liability' ? '加一个负债账户' : '加一个资产账户'}
+                    {tone === 'liability' ? t('assets.addLiabilityAccount') : t('assets.addAssetAccount')}
                 </button>
             ) : (
                 <div className="flex flex-col divide-y divide-border-subtle/70">

@@ -6,6 +6,7 @@
 // 日期按钮与时间按钮同尺寸（FR-ADD-10b 修订）：日期在时间左侧，点击开月历。
 
 import { UI_ICONS } from '../../core/design/icons';
+import { useTranslation } from 'react-i18next';
 import { formatMoney } from '../../core/domain/money';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { TimePicker, type TimeValue } from '../../shared/ui/TimePicker';
@@ -46,6 +47,7 @@ export function AmountPanel({
     dateLabel,
     onPickDate,
 }: AmountPanelProps) {
+    const { t } = useTranslation();
     return (
         <div className="flex flex-col gap-2 px-3 pt-2 pb-1.5">
             {/* 第一行：附件 / 日期 / 时间 / 备注（日期在时间左侧；备注一直延伸到屏幕右侧） */}
@@ -53,7 +55,7 @@ export function AmountPanel({
                 <button
                     type="button"
                     onClick={onPickAttachments}
-                    aria-label="添加图片附件"
+                    aria-label={t('add.addAttachment')}
                     className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-inset text-text-secondary active:bg-muted"
                 >
                     <AppIcon name={UI_ICONS.camera} size={17} />
@@ -67,7 +69,7 @@ export function AmountPanel({
                 <button
                     type="button"
                     onClick={onPickDate}
-                    aria-label="选择账单日期"
+                    aria-label={t('add.pickDate')}
                     className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border-0 bg-inset px-1.5 text-[11.5px] text-text-secondary active:bg-muted"
                 >
                     <AppIcon name={UI_ICONS.calendarToday} size={13} />
@@ -81,7 +83,7 @@ export function AmountPanel({
                     variant="field"
                     side="top"
                     align="start"
-                    aria-label="选择账单时间"
+                    aria-label={t('add.pickTime')}
                     className="h-8 shrink-0 gap-1 rounded-md border-0 bg-inset px-1.5 text-[11.5px] text-text-secondary"
                 />
 
@@ -90,8 +92,8 @@ export function AmountPanel({
                         value={note}
                         onChange={(event) => onNoteChange(event.target.value)}
                         maxLength={64}
-                        placeholder="备注（可选）"
-                        aria-label="备注"
+                        placeholder={t('add.noteOptional')}
+                        aria-label={t('add.note')}
                         className={cn(
                             'h-8 w-full rounded-md border border-border-subtle bg-field pr-7 pl-2 text-[13px] text-text',
                             'placeholder:text-text-disabled',
@@ -102,7 +104,7 @@ export function AmountPanel({
                         <button
                             type="button"
                             onClick={() => onNoteChange('')}
-                            aria-label="清空备注"
+                            aria-label={t('add.clearNote')}
                             className="absolute top-1/2 right-1.5 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-text-tertiary active:bg-muted"
                         >
                             <AppIcon name={UI_ICONS.close} size={13} />

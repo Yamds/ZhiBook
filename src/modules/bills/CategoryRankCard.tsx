@@ -1,6 +1,8 @@
 // 账单页 · 类目排行卡片（FR-BILL-10）：图标 + 「本期共支出 ¥ x，消费 n 笔」+ 占比进度条。
 
 import type { CategoryShareSet, StatsKind } from '../../core/ipc/types';
+import { categoryDisplayName } from '../../core/domain/categoryName';
+import { useTranslation } from 'react-i18next';
 import { RankRow } from '../../shared/charts';
 import { EmptyState, Spinner } from '../../shared/ui';
 import { BillsCard, CategoryBadge } from './BillsCardParts';
@@ -33,6 +35,7 @@ export function CategoryRankCard({
     surface,
     isLoading,
 }: CategoryRankCardProps) {
+    const { t } = useTranslation();
     const items = set?.all ?? [];
     const colorOf = colorResolver(colors, brand, surface);
 
@@ -43,7 +46,7 @@ export function CategoryRankCard({
                     <Spinner size="sm" />
                 </div>
             ) : items.length === 0 ? (
-                <EmptyState size="compact" title="本期还没有可排行的分类" />
+                <EmptyState size="compact" title={t('bills.noCategoryToRank')} />
             ) : (
                 <div className="flex flex-col">
                     {items.map((item) => (
@@ -59,10 +62,10 @@ export function CategoryRankCard({
                             }
                             title={
                                 <>
-                                    {item.name}
+                                    {categoryDisplayName({ id: item.categoryId, name: item.name }, t, item.name)}
                                     {item.hidden ? (
                                         <span className="ml-1 text-[10.5px] text-text-disabled">
-                                            已删除
+                                            {t('bills.deletedBadge')}
                                         </span>
                                     ) : null}
                                 </>

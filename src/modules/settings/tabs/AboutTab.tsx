@@ -4,9 +4,10 @@
 // 退回内置版本标签。仓库与协议链接走 `openExternalUrl`（Tauri opener）。
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import logo from '../../../assets/logo-72.png';
 import { UI_ICONS } from '../../../core/design/icons';
-import { APP_PRODUCT_NAME, APP_VERSION_LABEL } from '../../../core/domain/app-meta';
+import { APP_PRODUCT_NAME_KEY, APP_VERSION_LABEL } from '../../../core/domain/app-meta';
 import { openExternalUrl } from '../../../core/ipc/transport';
 import { useAppInfo } from '../../../hooks/app/useAppInfo';
 import { AppIcon } from '../../../shared/ui/AppIcon';
@@ -22,11 +23,12 @@ const REPO_URL = 'https://github.com/Yamds/ZhiBook';
 const REPO_LABEL = 'github.com/Yamds/ZhiBook';
 
 export function AboutTab() {
+    const { t } = useTranslation();
     const { data, isLoading } = useAppInfo();
     const [helpOpen, setHelpOpen] = useState(false);
     const [licensesOpen, setLicensesOpen] = useState(false);
 
-    const appName = data?.name ?? APP_PRODUCT_NAME;
+    const appName = data?.name ?? t(APP_PRODUCT_NAME_KEY);
     const version = isLoading
         ? '—'
         : data?.version
@@ -37,14 +39,14 @@ export function AboutTab() {
         <>
             <SettingsTabSections>
                 <SettingsSection
-                    title="关于制账"
-                    description="本地优先、离线可用的 Android 记账应用"
+                    title={t('settings.about.aboutTitle')}
+                    description={t('settings.about.aboutDesc')}
                     layout="panel"
                 >
                     <div className="flex items-center gap-3">
                         <img
                             src={logo}
-                            alt={`${appName} 图标`}
+                            alt={t('settings.about.iconAlt', { name: appName })}
                             className="h-14 w-14 shrink-0 rounded-md"
                             draggable={false}
                         />
@@ -60,13 +62,11 @@ export function AboutTab() {
                     </div>
 
                     <p className="mt-4 text-[12.5px] leading-relaxed text-text-secondary">
-                        制账把数据留在你自己手里：账单与附件全部保存在本机，不注册、不联网也能用；
-                        需要跨设备时，可选把数据端到端加密后推送到你自己的 Git 仓库。支持日历记账、
-                        固定收支、记账提醒、密码锁、多账本与主题换肤。
+                        {t('settings.about.intro')}
                     </p>
 
                     <div className="mt-4">
-                        <p className="text-[12px] font-medium text-text">Git 仓库</p>
+                        <p className="text-[12px] font-medium text-text">{t('settings.about.repo')}</p>
                         <button
                             type="button"
                             onClick={() => void openExternalUrl(REPO_URL)}
@@ -79,29 +79,30 @@ export function AboutTab() {
                     </div>
                 </SettingsSection>
 
-                <SettingsSection title="帮助" description="使用指引与常见问题">
+                <SettingsSection title={t('settings.about.helpSection')} description={t('settings.about.helpSectionDesc')}>
                     <SettingsEntryRow
                         icon={UI_ICONS.help}
-                        label="帮助文档"
-                        description="数据在哪、换机迁移、提醒 / 密码锁 / 云端备份等常见问题"
+                        label={t('settings.about.helpDoc')}
+                        description={t('settings.about.helpDocDesc')}
                         onClick={() => setHelpOpen(true)}
                     />
                 </SettingsSection>
 
-                <SettingsSection title="开源" description="本项目的许可与主要开源组件">
+                <SettingsSection title={t('settings.about.ossSection')} description={t('settings.about.ossSectionDesc')}>
                     <SettingsEntryRow
                         icon={UI_ICONS.license}
-                        label="开源许可"
-                        description="制账以 GNU GPL v3.0 发布；另附主要依赖的许可清单"
+                        label={t('settings.about.licenses')}
+                        description={t('settings.about.licensesDesc')}
                         value="GPL-3.0"
                         onClick={() => setLicensesOpen(true)}
                     />
                 </SettingsSection>
 
-                <SettingsSection title="鸣谢" layout="panel">
+                <SettingsSection title={t('settings.about.creditsSection')} layout="panel">
                     <p className="text-[12.5px] leading-relaxed text-text-secondary">
-                        感谢 <span className="font-medium text-text">NapCatQQ-Desktop</span> 项目——
-                        制账的框架与界面基于它搭建（同样以 GPL-3.0 发布）。
+                        {t('settings.about.creditsBefore')}
+                        <span className="font-medium text-text">NapCatQQ-Desktop</span>
+                        {t('settings.about.creditsAfter')}
                     </p>
                 </SettingsSection>
             </SettingsTabSections>

@@ -13,12 +13,13 @@ import type {
     CloudRestorePreview,
     CloudRestoreSummary,
 } from '../ipc/types';
+import { t } from '../i18n';
 import { invoke, isTauri } from '../ipc/transport';
 
 export const cloudService = {
     /** 当前状态：是否配置 / 密钥 / 上次备份。 */
     async getState(): Promise<CloudBackupState> {
-        if (!isTauri) throw new Error('浏览器预览不支持云端备份');
+        if (!isTauri) throw new Error(t('error.previewUnsupportedCloud'));
         return invoke<CloudBackupState>('get_cloud_backup_state');
     },
 

@@ -4,12 +4,13 @@
 // 导入由原生桥把用户选的文件复制到缓存后回调路径，这里只负责预览与落库。
 
 import type { BackupPreview, BackupSummary, ImportSummary } from '../ipc/types';
+import { t } from '../i18n';
 import { invoke, isTauri } from '../ipc/transport';
 
 export const backupService = {
     /** 导出全量数据到沙箱，返回 zip 路径与内容计数。 */
     async exportData(): Promise<BackupSummary> {
-        if (!isTauri) throw new Error('浏览器预览不支持导出数据');
+        if (!isTauri) throw new Error(t('error.previewUnsupportedExport'));
         return invoke<BackupSummary>('export_data');
     },
 

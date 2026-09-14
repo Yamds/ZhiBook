@@ -3,6 +3,7 @@
 // 年 / 月两种视图共用：标题与周期文案由页面按当前视图传入（FR-BILL-4）。
 
 import { formatMoney, formatSignedBalance, formatSignedMoney } from '../../core/domain/money';
+import { useTranslation } from 'react-i18next';
 import { Card, Spinner } from '../../shared/ui';
 import { cn } from '../../shared/utils/cn';
 
@@ -25,6 +26,7 @@ export function BalanceCard({
     incomeCents,
     isLoading,
 }: BalanceCardProps) {
+    const { t } = useTranslation();
     return (
         <Card className="flex flex-col rounded-lg p-3.5">
             <header className="flex items-baseline justify-between">
@@ -49,11 +51,11 @@ export function BalanceCard({
 
             <div className="mt-3 grid grid-cols-2 gap-2">
                 <Metric
-                    label="支出"
+                    label={t('stats.kind.expense')}
                     value={expenseCents > 0 ? formatSignedMoney(expenseCents, 'expense') : formatMoney(0)}
                 />
                 <Metric
-                    label="收入"
+                    label={t('stats.kind.income')}
                     value={incomeCents > 0 ? formatSignedMoney(incomeCents, 'income') : formatMoney(0)}
                 />
             </div>

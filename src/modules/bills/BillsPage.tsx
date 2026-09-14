@@ -12,6 +12,7 @@
 // 数据：年视图走 year/年汇总 + 年度占比 + 年度单笔排行；月视图走月统计 + 月度占比 + 月度排行。
 
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     MONTH_SELECTOR_VALUES,
     YEAR_SELECTOR_SPAN,
@@ -63,6 +64,7 @@ import {
 
 
 export function BillsPage() {
+    const { t } = useTranslation();
     const { currentBook } = useCurrentBook();
     const bookId = currentBook?.id;
     const today = useMemo(() => todayDate(), []);
@@ -140,7 +142,7 @@ export function BillsPage() {
         : monthStats.data
           ? trendPoints(monthStats.data, kind)
           : [];
-    const periodLabel = isYear ? `${year} 年` : monthLabel(monthKey);
+    const periodLabel = isYear ? t('date.yearOnly', { year }) : monthLabel(monthKey);
 
     return (
         <section className="flex min-h-full flex-col gap-3 pt-5">
@@ -151,8 +153,8 @@ export function BillsPage() {
                     onChange={setYear}
                     onInteract={() => setMode('year')}
                     visible={3}
-                    unit="年"
-                    ariaLabel="选择年份"
+                    unit={t('date.yearUnit')}
+                    ariaLabel={t('date.selectYear')}
                 />
                 {/* 年视图下月份条变暗：说明当前卡片是按年聚合的；但仍然可点可滑 */}
                 <div className={cn('flex flex-col', isYear && 'opacity-40')}>
@@ -161,8 +163,8 @@ export function BillsPage() {
                         value={month}
                         onChange={setMonth}
                         onInteract={() => setMode('month')}
-                        unit="月"
-                        ariaLabel="选择月份"
+                        unit={t('date.monthUnit')}
+                        ariaLabel={t('date.selectMonth')}
                     />
                 </div>
             </div>
@@ -179,15 +181,15 @@ export function BillsPage() {
             {/* 口径切换：位于结余卡片下方，作用于之后的所有统计卡片 */}
             <div className="px-1">
                 <SegmentedControl
-                    items={STATS_KINDS}
+                    items={STATS_KINDS.map((item) => ({ value: item.value, label: t(item.labelKey) }))}
                     value={kind}
                     onChange={setKind}
-                    ariaLabel="统计口径"
+                    ariaLabel={t('stats.scopeAria')}
                 />
             </div>
 
             <OverviewCard
-                title={`${copy.label}概览`}
+                title={t('bills.overviewTitle', { label: copy.label })}
                 caption={`${copy.totalLabel} · ${periodLabel}`}
                 totalCents={totalCents}
                 kind={kind}
@@ -200,7 +202,7 @@ export function BillsPage() {
                 points={points}
                 kind={kind}
                 isLoading={isYear ? yearSummary.isLoading : monthStats.isLoading}
-                emptyText={`${copy.totalLabel}还没有数据`}
+                emptyText={t('stats.noDataYet', { label: copy.totalLabel })}
             />
 
             {/* 结余口径只保留概览 + 趋势：分类占比 / 排行对结余没有分析意义 */}

@@ -4,6 +4,7 @@
 // 右侧显示当前账本名，点击进入资产页（账本数据 P3 落地，切换交互 P8 完成）。
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppIcon } from '../../ui/AppIcon';
 import { UI_ICONS } from '../../../core/design/icons';
 import { cn } from '../../utils/cn';
@@ -12,7 +13,9 @@ export const MobileAppBar: React.FC<{
     title: string;
     bookName: string;
     onOpenBook: () => void;
-}> = ({ title, bookName, onOpenBook }) => (
+}> = ({ title, bookName, onOpenBook }) => {
+    const { t } = useTranslation();
+    return (
     <header className="relative z-30 shrink-0 border-b border-border-subtle bg-canvas/95 pt-[var(--safe-top)] backdrop-blur-sm">
         <div className="flex h-12 items-center gap-2 px-3">
             <h1 className="min-w-0 flex-1 truncate font-display text-[15px] font-semibold leading-none tracking-tight text-text">
@@ -21,7 +24,7 @@ export const MobileAppBar: React.FC<{
             <button
                 type="button"
                 onClick={onOpenBook}
-                aria-label={`当前账本：${bookName}，点击进入资产页`}
+                aria-label={t('app.currentBookAria', { name: bookName })}
                 className={cn(
                     'flex h-8 max-w-[46vw] shrink-0 items-center gap-1 rounded-pill bg-inset px-2.5 text-[12px] font-medium text-text-secondary',
                     'transition-colors active:bg-brand/15 active:text-brand',
@@ -34,6 +37,7 @@ export const MobileAppBar: React.FC<{
             </button>
         </div>
     </header>
-);
+    );
+};
 
 export default MobileAppBar;

@@ -3,6 +3,7 @@
 // 受控：value 是 string[]，去重与 trim 由本组件负责。
 
 import { useId, useRef, useState, type KeyboardEvent, type ClipboardEvent, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import { AppIcon } from './AppIcon';
 import { cn } from '../utils/cn';
@@ -40,11 +41,13 @@ export const StringListField: React.FC<StringListFieldProps> = ({
     error,
     value,
     onChange,
-    placeholder = '输入后回车添加',
+    placeholder,
     disabled,
     className,
     mono = true,
 }) => {
+    const { t } = useTranslation();
+    const resolvedPlaceholder = placeholder ?? t('shared.listAddPlaceholder');
     const [draft, setDraft] = useState('');
     const inputRef = useRef<HTMLInputElement | null>(null);
     const id = useId();
@@ -109,7 +112,7 @@ export const StringListField: React.FC<StringListFieldProps> = ({
                         {!disabled && (
                             <button
                                 type="button"
-                                aria-label={`移除 ${item}`}
+                                aria-label={t('shared.removeItemAria', { item })}
                                 className="rounded-full p-0.5 text-text-tertiary hover:bg-border-subtle hover:text-text"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -126,7 +129,7 @@ export const StringListField: React.FC<StringListFieldProps> = ({
                     id={id}
                     value={draft}
                     disabled={disabled}
-                    placeholder={value.length ? '' : placeholder}
+                    placeholder={value.length ? '' : resolvedPlaceholder}
                     aria-invalid={invalid || undefined}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={onKeyDown}

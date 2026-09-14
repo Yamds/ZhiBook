@@ -8,6 +8,7 @@
 // 只有失败才弹 InfoBar；成功不再打扰（改一下弹一次提示会很吵）。
 
 import { useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '../../core/services/settings.service';
 import type { AppSettings } from '../../core/ipc/types';
@@ -25,6 +26,7 @@ export const APP_SETTINGS_QUERY_KEY = ['appSettings'] as const;
 const PERSIST_DEBOUNCE_MS = 250;
 
 export function useBackendSettings() {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const query = useQuery({ queryKey: APP_SETTINGS_QUERY_KEY, queryFn: settingsService.get });
 
@@ -34,7 +36,7 @@ export function useBackendSettings() {
             pushInfoBar({
                 key: 'app-settings-save',
                 tone: 'danger',
-                title: '设置保存失败',
+                title: t('settings.saveFailed'),
                 content: error.message || String(error),
             });
         },

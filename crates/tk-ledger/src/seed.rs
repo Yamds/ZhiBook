@@ -5,6 +5,9 @@
 //! `scripts/icon-catalog.mjs`），见 `seed_categories.generated.rs`。
 
 use rusqlite::{Connection, params};
+// 只有测试期的种子数据自检用得到（`validate_seed` 标了 #[cfg(test)]）。
+#[cfg(test)]
+use tk_domain::error_payload;
 
 use crate::error::LedgerResult;
 use crate::id::now_ms;
@@ -159,27 +162,32 @@ pub fn seed_catalog_is_valid() -> LedgerResult<()> {
     let mut names = HashSet::new();
     for category in SEED_CATEGORIES {
         if !ids.insert(category.id) {
-            return Err(crate::error::LedgerError::validation(format!(
-                "种子分类 id 重复：{}",
-                category.id
+            return Err(crate::error::LedgerError::reported(error_payload!(
+                "ledger.seed.duplicate_id",
+                "种子分类 id 重复：{id}";
+                id = category.id
             )));
         }
         if EntryKind::from_db(category.kind).is_none() {
-            return Err(crate::error::LedgerError::validation(format!(
-                "种子分类 kind 非法：{}",
-                category.kind
+            return Err(crate::error::LedgerError::reported(error_payload!(
+                "ledger.seed.bad_kind",
+                "种子分类 kind 非法：{kind}";
+                kind = category.kind
             )));
         }
         if !names.insert((category.kind, category.name)) {
-            return Err(crate::error::LedgerError::validation(format!(
-                "种子分类名称重复：{} {}",
-                category.kind, category.name
+            return Err(crate::error::LedgerError::reported(error_payload!(
+                "ledger.seed.duplicate_name",
+                "种子分类名称重复：{kind} {name}";
+                kind = category.kind,
+                name = category.name
             )));
         }
         if !category.icon_name.starts_with("mdi:") {
-            return Err(crate::error::LedgerError::validation(format!(
-                "种子分类图标名非法：{}",
-                category.icon_name
+            return Err(crate::error::LedgerError::reported(error_payload!(
+                "ledger.seed.bad_icon",
+                "种子分类图标名非法：{icon}";
+                icon = category.icon_name
             )));
         }
     }

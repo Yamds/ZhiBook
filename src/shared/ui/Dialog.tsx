@@ -15,6 +15,7 @@
 //   - 多步骤内容可用 DialogStepTransition 做步骤淡入。
 
 import * as RadixDialog from '@radix-ui/react-dialog';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import gsap from 'gsap';
 import {
@@ -454,6 +455,7 @@ const ContentBody = forwardRef<
     HTMLDivElement,
     { className?: string; size?: DialogSize; hideClose?: boolean; children?: ReactNode }
 >(({ className, size = 'md', hideClose, children }, ref) => {
+    const { t } = useTranslation();
     const open = useContext(DialogOpenContext);
     // GsapPresence 用 useState 控制渲染,内容可能在二次渲染后才出现。
     // contentReady 在 mount 后设为 true,触发 useDialogContentHeight 重新测量。
@@ -504,7 +506,7 @@ const ContentBody = forwardRef<
             </div>
             {!hideClose && (
                 <RadixDialog.Close
-                    aria-label="关闭"
+                    aria-label={t('common.close')}
                     className="absolute right-3 top-3 z-10 rounded-xs p-1 text-text-tertiary transition-colors hover:bg-inset hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                     <MotionIcon

@@ -9,6 +9,8 @@
 //   12 + 3.5  → 1550 分
 //   顺序求值（等同计算器），不区分优先级：10 - 3 + 2 = 9
 
+import { currentLocale } from '../i18n';
+
 export const MAX_AMOUNT_CENTS = 99_999_999_999; // ¥ 999,999,999.99
 /** 整数部分最多 9 位（与 MAX_AMOUNT_CENTS 对齐）。 */
 export const MAX_INTEGER_DIGITS = 9;
@@ -73,30 +75,57 @@ export function formatSignedBalance(cents: number): string {
  *   ¥ 12,000 → `1.2万`
  *   ¥ 100,000,000 → `1亿`
  *
+ * 缩写单位由 `Intl.NumberFormat` 的 compact 记法给出（中文「万 / 亿」、英文「K / M / B」），
+ * 代码里不写单位字。进位门槛也因此跟 locale 数据走（中文在 1 万 / 1 亿，英文在 1 千 / 1 百万）。
+ *
  * 注意：元位取整只发生在缩写档，避免 `¥ 0.40` 被显示成 `0`。
  */
 export function formatCompactAmount(cents: number): string {
     const value = Number.isFinite(cents) ? Math.abs(Math.trunc(cents)) : 0;
     if (value === 0) return '0';
     const yuan = value / 100;
-    if (yuan >= YI_FROM_YUAN) return `${compactScaled(yuan, 1e8)}亿`;
-    if (yuan >= WAN_FROM_YUAN) return `${compactScaled(yuan, 1e4)}万`;
+    // 万 / 亿 由 Intl 的 compact 记法给出：中文得到「1.2万 / 1亿」，
+    // 英文得到「12K / 10M」，不需要在代码里硬编码单位字。
+    if (yuan >= WAN_FROM_YUAN) return groupCompactNumber(currentLocale(), yuan);
     if (yuan < 100) return formatCents(value).replace(/\.?0+$/, '');
     return groupThousands(String(Math.round(yuan)));
 }
 
-/** 缩写档的整数部分：≥ 100 个单位时收敛成整数并加千分位，否则保留一位小数。 */
-function compactScaled(yuan: number, unit: number): string {
-    const scaled = yuan / unit;
-    return scaled >= 100
-        ? groupThousands(String(Math.round(scaled)))
-        : scaled.toFixed(1).replace(/\.0$/, '');
+/** Intl compact 格式化器缓存（构造开销不便宜）。 */
+const COMPACT_FORMATTERS = new Map<string, Intl.NumberFormat>();
+const PLAIN_FORMATTERS = new Map<string, Intl.NumberFormat>();
+
+function compactFormatter(locale: string): Intl.NumberFormat {
+    let formatter = COMPACT_FORMATTERS.get(locale);
+    if (!formatter) {
+        formatter = new Intl.NumberFormat(locale, {
+            notation: 'compact',
+            maximumFractionDigits: 1,
+        });
+        COMPACT_FORMATTERS.set(locale, formatter);
+    }
+    return formatter;
+}
+
+/**
+ * compact 记法不会给「万 / 亿」前的数字加千分位（1000万 而不是 1,000万），
+ * 日历格子虽然窄，但四位数以上没分隔符仍然难读，所以把数字部分拆出来重新分组。
+ */
+function groupCompactNumber(locale: string, value: number): string {
+    const formatted = compactFormatter(locale).format(value);
+    const match = /^(\d+(?:\.\d+)?)(.*)$/.exec(formatted);
+    if (!match) return formatted;
+    const [, numeric, unit] = match;
+    let plain = PLAIN_FORMATTERS.get(locale);
+    if (!plain) {
+        plain = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+        PLAIN_FORMATTERS.set(locale, plain);
+    }
+    return `${plain.format(Number(numeric))}${unit}`;
 }
 
 /** 进入「万」档次的门槛（元）：再小一位小数也不会进位成 10000 万。 */
 const WAN_FROM_YUAN = 9_999.5;
-/** 进入「亿」档次的门槛（元）= 9999.5 万，避免出现 `10,000万`。 */
-const YI_FROM_YUAN = WAN_FROM_YUAN * 10_000;
 
 /** 金额是否可提交：正数且不超过上限。 */
 export function isSubmittableAmount(cents: number): boolean {

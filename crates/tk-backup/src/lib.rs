@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use tk_config::DataPaths;
 use tk_domain::{
     Account, Attachment, BackupCounts, BackupPreview, BackupSummary, Book, Category, ImportSummary,
-    RecurringRule, RecurringRun, Tombstone, Transaction,
+    RecurringRule, RecurringRun, Tombstone, Transaction, error_payload,
 };
 use tk_ledger::{repo, seed, Ledger};
 use zip::write::SimpleFileOptions;
@@ -39,6 +39,7 @@ const ATTACHMENT_DB_PREFIX: &str = "ledger/";
 
 #[derive(Debug, thiserror::Error)]
 pub enum BackupError {
+    /// 备份包本身形态不对（缺条目 / 版本不兼容 / 记录不合法…）。
     #[error("备份包格式不正确：{0}")]
     Invalid(String),
     #[error("文件读写失败：{0}")]
@@ -47,13 +48,45 @@ pub enum BackupError {
     Json(#[from] serde_json::Error),
     #[error("压缩包处理失败：{0}")]
     Zip(#[from] zip::result::ZipError),
-    #[error("数据写入失败：{0}")]
-    Ledger(String),
+    /// 带具体错误码的结构化错误（名字与 `tk-ledger` / `tk-cloud` 一致）。
+    ///
+    /// 账本层的错误（名称 / 日期 / 图标 / 附件路径…）原样透出：以前是
+    /// `Ledger(error.to_string())`，前端只能看到 `backup.ledger` + 一句拼好的中文。
+    #[error("{0}")]
+    Reported(Box<tk_domain::ErrorPayload>),
+}
+
+impl BackupError {
+    /// 带错误码 + 具名参数的结构化错误。
+    pub fn reported(payload: tk_domain::ErrorPayload) -> Self {
+        Self::Reported(Box::new(payload))
+    }
 }
 
 impl From<tk_ledger::LedgerError> for BackupError {
     fn from(error: tk_ledger::LedgerError) -> Self {
-        Self::Ledger(error.to_string())
+        Self::reported(tk_domain::IntoErrorPayload::into_error_payload(error))
+    }
+}
+
+impl tk_domain::IntoErrorPayload for BackupError {
+    fn into_error_payload(self) -> tk_domain::ErrorPayload {
+        use tk_domain::error_payload;
+        match self {
+            Self::Invalid(detail) => error_payload!(
+                "backup.invalid", "备份包格式不正确：{detail}"; detail = detail
+            ),
+            Self::Io(error) => {
+                error_payload!("backup.io", "文件读写失败：{detail}"; detail = error)
+            }
+            Self::Json(error) => {
+                error_payload!("backup.json", "JSON 解析失败：{detail}"; detail = error)
+            }
+            Self::Zip(error) => error_payload!(
+                "backup.zip", "压缩包处理失败：{detail}"; detail = error
+            ),
+            Self::Reported(payload) => *payload,
+        }
     }
 }
 
@@ -183,28 +216,28 @@ pub fn export_to_zip(ledger: &Ledger, data_root: &Path) -> BackupResult<BackupSu
 pub fn validate_snapshot(data: &BackupData) -> BackupResult<()> {
     use tk_ledger::validate;
 
-    fn bad(context: &str, error: tk_ledger::LedgerError) -> BackupError {
-        BackupError::Invalid(format!("{context}：{error}"))
-    }
-
+    // 账本层校验失败时原样透出它的码与参数（`BackupError::from`）：
+    // 以前这里还套一层 `bad("账本名不合法", error)`，中文前缀既不可翻译、
+    // 又与内层文案重复（内层本来就会说「账本名不能为空」）。
     for book in &data.books {
-        validate::book_name(&book.name).map_err(|error| bad("账本名不合法", error))?;
+        validate::book_name(&book.name).map_err(BackupError::from)?;
     }
     for account in &data.accounts {
-        validate::account_name(&account.name).map_err(|error| bad("账户名不合法", error))?;
-        validate::icon_name(&account.icon_name).map_err(|error| bad("账户图标名不合法", error))?;
-        validate::color(&account.color).map_err(|error| bad("账户颜色不合法", error))?;
+        validate::account_name(&account.name).map_err(BackupError::from)?;
+        validate::icon_name(&account.icon_name).map_err(BackupError::from)?;
+        validate::color(&account.color).map_err(BackupError::from)?;
         if account.initial_balance_cents.abs() > tk_domain::MAX_AMOUNT_CENTS {
-            return Err(BackupError::Invalid(format!(
-                "账户初始余额超出上限：{}",
-                account.name
+            return Err(BackupError::reported(error_payload!(
+                "backup.snapshot.balance_over_cap",
+                "账户初始余额超出上限：{name}";
+                name = account.name
             )));
         }
     }
     for category in &data.categories {
-        validate::category_name(&category.name).map_err(|error| bad("分类名不合法", error))?;
-        validate::icon_name(&category.icon_name).map_err(|error| bad("分类图标名不合法", error))?;
-        validate::color(&category.color).map_err(|error| bad("分类颜色不合法", error))?;
+        validate::category_name(&category.name).map_err(BackupError::from)?;
+        validate::icon_name(&category.icon_name).map_err(BackupError::from)?;
+        validate::color(&category.color).map_err(BackupError::from)?;
     }
     // 可见分类名必须唯一（v4 的部分唯一索引）：提前给中文提示，不要等 SQL 报错。
     let mut visible_names: HashSet<(String, String)> = HashSet::new();
@@ -214,52 +247,57 @@ pub fn validate_snapshot(data: &BackupData) -> BackupResult<()> {
         }
         let key = (category.kind.as_str().to_string(), category.name.clone());
         if !visible_names.insert(key) {
-            return Err(BackupError::Invalid(format!(
-                "备份包里存在同名分类：{}",
-                category.name
+            return Err(BackupError::reported(error_payload!(
+                "backup.snapshot.duplicate_category",
+                "备份包里存在同名分类：{name}";
+                name = category.name
             )));
         }
     }
     for transaction in &data.transactions {
-        validate::amount_cents(transaction.amount_cents)
-            .map_err(|error| bad("账单金额不合法", error))?;
-        validate::note(&transaction.note).map_err(|error| bad("账单备注不合法", error))?;
+        validate::amount_cents(transaction.amount_cents).map_err(BackupError::from)?;
+        validate::note(&transaction.note).map_err(BackupError::from)?;
         validate::day_and_month(&transaction.day, &transaction.month)
-            .map_err(|error| bad("账单日期不合法", error))?;
+            .map_err(BackupError::from)?;
     }
     for rule in &data.recurring_rules {
-        validate::amount_cents(rule.amount_cents)
-            .map_err(|error| bad("固定收支金额不合法", error))?;
-        validate::note(&rule.note).map_err(|error| bad("固定收支备注不合法", error))?;
+        validate::amount_cents(rule.amount_cents).map_err(BackupError::from)?;
+        validate::note(&rule.note).map_err(BackupError::from)?;
         if !tk_ledger::dates::is_valid_day_key(&rule.start_day) {
-            return Err(BackupError::Invalid(format!(
-                "固定收支生效日不合法：{}",
-                rule.start_day
+            return Err(BackupError::reported(error_payload!(
+                "backup.snapshot.rule_start_day_invalid",
+                "固定收支生效日不合法：{day}";
+                day = rule.start_day
             )));
         }
         if let Some(last_run_day) = rule.last_run_day.as_deref()
             && !tk_ledger::dates::is_valid_day_key(last_run_day)
         {
-            return Err(BackupError::Invalid(format!(
-                "固定收支上次执行日不合法：{last_run_day}"
+            return Err(BackupError::reported(error_payload!(
+                "backup.snapshot.rule_last_run_invalid",
+                "固定收支上次执行日不合法：{day}";
+                day = last_run_day
             )));
         }
     }
     for attachment in &data.attachments {
-        validate::attachment_relative_path(&attachment.path)
-            .map_err(|error| bad("附件路径不合法", error))?;
+        validate::attachment_relative_path(&attachment.path).map_err(BackupError::from)?;
     }
     for run in &data.recurring_runs {
         if !tk_ledger::dates::is_valid_day_key(&run.day) {
-            return Err(BackupError::Invalid(format!(
-                "固定收支台账日期不合法：{}",
-                run.day
+            return Err(BackupError::reported(error_payload!(
+                "backup.snapshot.run_day_invalid",
+                "固定收支台账日期不合法：{day}";
+                day = run.day
             )));
         }
     }
     for tombstone in &data.tombstones {
         if tombstone.entity.trim().is_empty() || tombstone.entity_id.trim().is_empty() {
-            return Err(BackupError::Invalid("墓碑记录缺少实体或 id".to_string()));
+            return Err(BackupError::reported(error_payload!(
+                "backup.snapshot.tombstone_incomplete",
+                "墓碑记录缺少实体或 id"
+            )));
         }
     }
     Ok(())
@@ -284,7 +322,10 @@ pub fn import_from_zip(
 ) -> BackupResult<ImportSummary> {
     let (_manifest, data) = read_zip(zip_path)?;
     if data.books.is_empty() {
-        return Err(BackupError::Invalid("备份包里没有任何账本".to_string()));
+        return Err(BackupError::reported(error_payload!(
+            "backup.package.no_books",
+            "备份包里没有任何账本"
+        )));
     }
     validate_snapshot(&data)?;
     let counts = counts_of(&data);
@@ -318,9 +359,11 @@ pub fn import_from_zip(
             stage = %stage.display(),
             "附件落位失败；已保留暂存目录，请重试导入"
         );
-        return Err(BackupError::Invalid(format!(
-            "附件未能全部落位（原始文件保留在 {}）：{error}",
-            stage.display()
+        return Err(BackupError::reported(error_payload!(
+            "backup.package.attachment_commit_failed",
+            "附件未能全部落位（原始文件保留在 {stage}）：{detail}";
+            stage = stage.display(),
+            detail = error
         )));
     }
     cleanup_stage(&stage);
@@ -392,21 +435,24 @@ fn read_zip(zip_path: &Path) -> BackupResult<(BackupManifest, BackupData)> {
     let mut archive = ZipArchive::new(file)?;
     let manifest: BackupManifest = read_json_entry(&mut archive, "manifest.json")?;
     if manifest.format != FORMAT {
-        return Err(BackupError::Invalid(
-            "不是制账的备份包（manifest 标识不匹配）".to_string(),
-        ));
+        return Err(BackupError::reported(error_payload!(
+            "backup.package.foreign",
+            "不是制账的备份包（manifest 标识不匹配）"
+        )));
     }
     if manifest.format_version > FORMAT_VERSION {
-        return Err(BackupError::Invalid(
-            "备份包版本比当前 App 新，请先升级 App".to_string(),
-        ));
+        return Err(BackupError::reported(error_payload!(
+            "backup.package.too_new",
+            "备份包版本比当前 App 新，请先升级 App"
+        )));
     }
     // 记账库结构更容易踩坑：新库多出来的字段在老代码里会被静默丢掉，所以直接拒。
     if manifest.ledger_schema_version > tk_ledger::SCHEMA_VERSION {
-        return Err(BackupError::Invalid(format!(
-            "备份包的记账库版本（{}）比当前 App 支持的（{}）新，请先升级 App",
-            manifest.ledger_schema_version,
-            tk_ledger::SCHEMA_VERSION
+        return Err(BackupError::reported(error_payload!(
+            "backup.package.schema_too_new",
+            "备份包的记账库版本（{remote}）比当前 App 支持的（{local}）新，请先升级 App";
+            remote = manifest.ledger_schema_version,
+            local = tk_ledger::SCHEMA_VERSION
         )));
     }
     let data: BackupData = read_json_entry(&mut archive, "data.json")?;
@@ -417,9 +463,13 @@ fn read_json_entry<T: serde::de::DeserializeOwned>(
     archive: &mut ZipArchive<fs::File>,
     name: &str,
 ) -> BackupResult<T> {
-    let mut entry = archive
-        .by_name(name)
-        .map_err(|_| BackupError::Invalid(format!("备份包缺少 {name}")))?;
+    let mut entry = archive.by_name(name).map_err(|_| {
+        BackupError::reported(error_payload!(
+            "backup.package.missing_file",
+            "备份包缺少 {name}";
+            name = name
+        ))
+    })?;
     let mut bytes = Vec::new();
     entry.read_to_end(&mut bytes)?;
     Ok(serde_json::from_slice(&bytes)?)
@@ -434,9 +484,10 @@ fn stage_attachments(zip_path: &Path, data: &BackupData, stage: &Path) -> Backup
     let mut staged: Vec<PathBuf> = Vec::with_capacity(data.attachments.len());
     for attachment in &data.attachments {
         if !tk_ledger::validate::is_valid_attachment_path(&attachment.path) {
-            return Err(BackupError::Invalid(format!(
-                "备份包里的附件路径不合法：{}",
-                attachment.path
+            return Err(BackupError::reported(error_payload!(
+                "backup.package.attachment_path_invalid",
+                "备份包里的附件路径不合法：{path}";
+                path = attachment.path
             )));
         }
         let Some(entry_name) = zip_entry_for(&attachment.path) else {
@@ -566,7 +617,12 @@ fn now_ms() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tk_domain::{EntryKind, NewRecurringRule, NewTransaction};
+    use tk_domain::{EntryKind, IntoErrorPayload, NewRecurringRule, NewTransaction};
+
+    /// 错误码（i18n 查表用的就是它）。
+    fn code_of(error: BackupError) -> String {
+        error.into_error_payload().code
+    }
 
     #[test]
     fn export_then_import_round_trips() {
@@ -690,7 +746,8 @@ mod tests {
         let zip_path = craft_zip(dir.path(), &data, &[("../pwned.txt", b"pwn")]);
 
         let error = import_from_zip(&ledger, dir.path(), &zip_path).expect_err("必须拒绝越界路径");
-        assert!(matches!(error, BackupError::Invalid(_)), "{error:?}");
+        // 先被 `validate_snapshot` 拦下（账本层的严格校验），错误码就是账本层的
+        assert_eq!(code_of(error), "ledger.attachment.path_unsafe_dir");
         assert!(
             !dir.path().join("pwned.txt").exists(),
             "越界文件不应被写出：{:?}",
@@ -729,7 +786,7 @@ mod tests {
         let zip_path = craft_zip(dir.path(), &data, &[]);
 
         let error = import_from_zip(&ledger, dir.path(), &zip_path).expect_err("必须拒绝");
-        assert!(matches!(error, BackupError::Invalid(_)), "{error:?}");
+        assert_eq!(code_of(error), "ledger.date.invalid_day");
         assert_eq!(
             ledger
                 .list_transactions_by_day(seed::DEFAULT_BOOK_ID, "2025-02-28")
@@ -777,10 +834,10 @@ mod tests {
         // 金额超上限
         let mut too_big = ok.clone();
         too_big.transactions[0].amount_cents = tk_domain::MAX_AMOUNT_CENTS + 1;
-        assert!(matches!(
-            validate_snapshot(&too_big),
-            Err(BackupError::Invalid(_))
-        ));
+        assert_eq!(
+            code_of(validate_snapshot(&too_big).expect_err("金额超上限")),
+            "ledger.amount.over_cap"
+        );
 
         // 附件路径越界
         let mut poisoned = ok.clone();
@@ -793,10 +850,10 @@ mod tests {
             sort_order: 0,
             created_at_ms: 1,
         });
-        assert!(matches!(
-            validate_snapshot(&poisoned),
-            Err(BackupError::Invalid(_))
-        ));
+        assert_eq!(
+            code_of(validate_snapshot(&poisoned).expect_err("附件路径越界")),
+            "ledger.attachment.path_unsafe_dir"
+        );
     }
 
     /// 回归（REV-09）：导入失败（事务回滚）时，正式路径上的旧附件文件必须原封不动。
@@ -862,7 +919,8 @@ mod tests {
         let zip_path = craft_zip(dir.path(), &data, &[(entry, b"NEW")]);
 
         let error = import_from_zip(&ledger, dir.path(), &zip_path).expect_err("同名账本必须让整单失败");
-        assert!(matches!(error, BackupError::Ledger(_)), "{error:?}");
+        // 账本层的错误码要穿透到前端（以前会被压成 `backup.ledger`）
+        assert_eq!(code_of(error), "ledger.book.duplicate");
         assert_eq!(
             fs::read(&absolute).expect("read after"),
             b"OLD",
@@ -912,7 +970,7 @@ mod tests {
             zip.finish().expect("finish");
         }
         let error = import_from_zip(&ledger, dir.path(), &zip_path).expect_err("必须拒绝更新的库版本");
-        assert!(matches!(error, BackupError::Invalid(_)), "{error:?}");
+        assert_eq!(code_of(error), "backup.package.schema_too_new");
     }
 
     #[test]
@@ -930,6 +988,6 @@ mod tests {
             zip.finish().expect("finish");
         }
         let error = import_from_zip(&ledger, dir.path(), &bogus).expect_err("reject");
-        assert!(matches!(error, BackupError::Invalid(_)), "{error:?}");
+        assert_eq!(code_of(error), "backup.package.foreign");
     }
 }

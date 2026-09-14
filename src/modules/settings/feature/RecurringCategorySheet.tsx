@@ -1,6 +1,8 @@
 // 固定收支的分类选择：4 列宫格（与添加页同一套分类色）。
 
 import { categoryColors } from '../../../core/design/categoryColor';
+import { useTranslation } from 'react-i18next';
+import { categoryDisplayName } from '../../../core/domain/categoryName';
 import { toIconName } from '../../../core/design/icons';
 import type { Category, EntryKind } from '../../../core/ipc/types';
 import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../../hooks/theme/useThemeTokens';
@@ -25,13 +27,14 @@ export function RecurringCategorySheet({
     value,
     onSelect,
 }: RecurringCategorySheetProps) {
+    const { t } = useTranslation();
     const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
 
     return (
         <BottomSheet
             open={open}
             onOpenChange={onOpenChange}
-            title={kind === 'expense' ? '选择支出分类' : '选择收入分类'}
+            title={kind === 'expense' ? t('add.chooseExpenseCategory') : t('add.chooseIncomeCategory')}
         >
             <div className="grid grid-cols-4 gap-x-1 gap-y-2">
                 {categories.map((category) => {
@@ -68,7 +71,7 @@ export function RecurringCategorySheet({
                                     selected ? 'font-medium text-text' : 'text-text-secondary',
                                 )}
                             >
-                                {category.name}
+                                {categoryDisplayName(category, t, category.name)}
                             </span>
                         </button>
                     );

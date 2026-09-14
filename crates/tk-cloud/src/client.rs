@@ -14,6 +14,7 @@ use crate::git::{RefAdvertisement, RepoUrl, ServerKind, ZERO_ID};
 use crate::pktline;
 use crate::transport::{HttpMethod, HttpRequest, HttpTransport};
 use crate::{CloudError, CloudResult};
+use tk_domain::error_payload;
 
 /// Git 服务类型。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -205,14 +206,18 @@ impl<'a, T: HttpTransport + ?Sized> GitClient<'a, T> {
         let kind = self.remote.server_kind();
         let (url, headers) = match kind {
             ServerKind::GitHub => {
-                let owner = self
-                    .remote
-                    .owner()
-                    .ok_or_else(|| CloudError::InvalidUrl("缺少 owner".to_string()))?;
-                let repo = self
-                    .remote
-                    .repo()
-                    .ok_or_else(|| CloudError::InvalidUrl("缺少仓库名".to_string()))?;
+                let owner = self.remote.owner().ok_or_else(|| {
+                    CloudError::reported(error_payload!(
+                        "cloud.url.missing_path",
+                        "仓库地址需要包含 owner 与仓库名"
+                    ))
+                })?;
+                let repo = self.remote.repo().ok_or_else(|| {
+                    CloudError::reported(error_payload!(
+                        "cloud.url.missing_path",
+                        "仓库地址需要包含 owner 与仓库名"
+                    ))
+                })?;
                 (
                     format!(
                         "https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={branch}"

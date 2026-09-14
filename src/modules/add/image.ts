@@ -7,6 +7,8 @@
 // 但只允许后端支持的三种 MIME（jpeg / png / webp），其余直接报错——
 // 宁可不加图，也不要写进去一个后端存不下的文件。
 
+import { t } from '../../core/i18n';
+
 /** 单笔附件上限（与 Rust `MAX_ATTACHMENTS_PER_TRANSACTION` 一致）。 */
 export const MAX_ATTACHMENTS = 9;
 /** 压缩后的长边上限。 */
@@ -90,7 +92,7 @@ function readAsDataUrl(file: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => reject(reader.error ?? new Error('读取图片失败'));
+        reader.onerror = () => reject(reader.error ?? new Error(t('add.imageReadFailed')));
         reader.readAsDataURL(file);
     });
 }
@@ -101,7 +103,7 @@ function canvasToJpegDataUrl(canvas: HTMLCanvasElement, quality: number): Promis
         canvas.toBlob(
             (blob) => {
                 if (!blob) {
-                    reject(new Error('图片编码失败'));
+                    reject(new Error(t('add.imageEncodeFailed')));
                     return;
                 }
                 void readAsDataUrl(blob).then(resolve, reject);
@@ -133,7 +135,7 @@ export async function prepareImage(
 
     if (!canCompress()) {
         if (!SUPPORTED_IMAGE_MIMES.includes(file.type)) {
-            throw new Error('当前环境无法压缩该图片格式，请选择 JPG / PNG / WebP');
+            throw new Error(t('add.imageUnsupported'));
         }
         const dataUrl = await readAsDataUrl(file);
         return {
@@ -155,7 +157,7 @@ export async function prepareImage(
         canvas.width = target.width;
         canvas.height = target.height;
         const context = canvas.getContext('2d');
-        if (!context) throw new Error('无法创建绘图上下文');
+        if (!context) throw new Error(t('add.imageContextFailed'));
         context.drawImage(bitmap, 0, 0, target.width, target.height);
         const dataUrl = await canvasToJpegDataUrl(canvas, quality);
         const base64 = dataUrlToBase64(dataUrl);

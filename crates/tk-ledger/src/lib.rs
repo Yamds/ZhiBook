@@ -34,7 +34,7 @@ use tk_domain::{
     CategoryPatch, DaySummary, EntryKind, MAX_AMOUNT_CENTS, MonthStats, NewAccount, NewAttachment,
     NewBook, NewCategory, NewRecurringRule, NewTransaction, RecurringOccurrence, RecurringRule,
     RecurringRulePatch, RecurringRunResult, ShareBreakdown, StatsKind, Transaction,
-    TransactionPatch, TransactionRank, YearSummary,
+    TransactionPatch, TransactionRank, YearSummary, error_payload,
 };
 
 pub use attachments::AttachmentStore;
@@ -97,7 +97,11 @@ impl Ledger {
     fn lock(&self) -> LedgerResult<MutexGuard<'_, Connection>> {
         self.conn
             .lock()
-            .map_err(|_| LedgerError::corrupt("数据库连接锁已损坏，请重启应用"))
+            .map_err(|_| {
+                LedgerError::reported(error_payload!(
+                    "ledger.db.lock_corrupt", "数据库连接锁已损坏，请重启应用"
+                ))
+            })
     }
 
     // -----------------------------------------------------------------------
@@ -128,10 +132,16 @@ impl Ledger {
         let name = validate::book_name(&input.name)?;
         self.with_tx(|conn| {
             if !repo::update_book_name(conn, &input.id, &name, id::now_ms())? {
-                return Err(LedgerError::not_found(format!("账本不存在：{}", input.id)));
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.book.not_found", "账本不存在：{id}"; id = input.id
+                )));
             }
             repo::get_book(conn, &input.id)?
-                .ok_or_else(|| LedgerError::not_found(format!("账本不存在：{}", input.id)))
+                .ok_or_else(|| {
+                    LedgerError::reported(error_payload!(
+                        "ledger.book.not_found", "账本不存在：{id}"; id = input.id
+                    ))
+                })
         })
     }
 
@@ -143,10 +153,15 @@ impl Ledger {
     /// 文件已经没了，库里却还留着指向它们的附件记录（附件是用户唯一副本）。
     pub fn delete_book(&self, id: &str) -> LedgerResult<()> {
         let paths = self.with_tx(|conn| {
-            let book = repo::get_book(conn, id)?
-                .ok_or_else(|| LedgerError::not_found(format!("账本不存在：{id}")))?;
+            let book = repo::get_book(conn, id)?.ok_or_else(|| {
+                LedgerError::reported(error_payload!(
+                    "ledger.book.not_found", "账本不存在：{id}"; id = id
+                ))
+            })?;
             if repo::count_books(conn)? <= 1 {
-                return Err(LedgerError::validation("至少保留一个账本"));
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.book.keep_one", "至少保留一个账本"
+                )));
             }
             let paths = repo::attachment_paths_for_book(conn, &book.id)?;
             repo::insert_tombstone(conn, "book", &book.id, id::now_ms())?;
@@ -170,7 +185,9 @@ impl Ledger {
     pub fn set_current_book(&self, book_id: &str) -> LedgerResult<()> {
         self.with_tx(|conn| {
             if !repo::book_exists(conn, book_id)? {
-                return Err(LedgerError::not_found(format!("账本不存在：{book_id}")));
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.book.not_found", "账本不存在：{id}"; id = book_id
+                )));
             }
             seed::set_meta(conn, seed::META_CURRENT_BOOK_KEY, book_id)
         })
@@ -183,8 +200,8 @@ impl Ledger {
     /// 账户列表；`until_day`（含）之后的账单不计入余额，通常传今天。
     pub fn list_accounts(&self, book_id: &str, until_day: &str) -> LedgerResult<Vec<Account>> {
         if !dates::is_valid_day_key(until_day) {
-            return Err(LedgerError::validation(format!(
-                "日期格式不合法：{until_day}"
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.date.invalid_day", "日期格式不合法：{day}（应为 YYYY-MM-DD）"; day = until_day
             )));
         }
         self.with_conn(|conn| repo::list_accounts(conn, book_id, until_day))
@@ -194,12 +211,11 @@ impl Ledger {
         let name = validate::account_name(&input.name)?;
         validate::icon_name(&input.icon_name)?;
         validate::color(&input.color)?;
-        validate_balance(input.initial_balance_cents, "初始余额")?;
+        validate_balance(input.initial_balance_cents)?;
         self.with_tx(move |conn| {
             if !repo::book_exists(conn, &input.book_id)? {
-                return Err(LedgerError::not_found(format!(
-                    "账本不存在：{}",
-                    input.book_id
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.book.not_found", "账本不存在：{id}"; id = input.book_id
                 )));
             }
             let now = id::now_ms();
@@ -227,10 +243,13 @@ impl Ledger {
         let name = validate::account_name(&input.name)?;
         validate::icon_name(&input.icon_name)?;
         validate::color(&input.color)?;
-        validate_balance(input.initial_balance_cents, "初始余额")?;
+        validate_balance(input.initial_balance_cents)?;
         self.with_tx(|conn| {
-            let existing = repo::get_account_record(conn, &input.id)?
-                .ok_or_else(|| LedgerError::not_found(format!("账户不存在：{}", input.id)))?;
+            let existing = repo::get_account_record(conn, &input.id)?.ok_or_else(|| {
+                LedgerError::reported(error_payload!(
+                    "ledger.account.not_found", "账户不存在：{id}"; id = input.id
+                ))
+            })?;
             let account = Account {
                 kind: input.kind,
                 name,
@@ -249,7 +268,9 @@ impl Ledger {
     pub fn delete_account(&self, id: &str) -> LedgerResult<()> {
         self.with_tx(|conn| {
             if !repo::delete_account(conn, id)? {
-                return Err(LedgerError::not_found(format!("账户不存在：{id}")));
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.account.not_found", "账户不存在：{id}"; id = id
+                )));
             }
             repo::insert_tombstone(conn, "account", id, id::now_ms())?;
             Ok(())
@@ -282,7 +303,9 @@ impl Ledger {
         validate::color(&input.color)?;
         self.with_tx(|conn| {
             if repo::category_name_taken(conn, input.kind, &name, None)? {
-                return Err(LedgerError::validation("同类型下已存在同名分类"));
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.category.duplicate", "同类型下已存在同名分类"
+                )));
             }
             let now = id::now_ms();
             let category = Category {
@@ -306,10 +329,15 @@ impl Ledger {
         validate::icon_name(&input.icon_name)?;
         validate::color(&input.color)?;
         self.with_tx(|conn| {
-            let existing = repo::get_category(conn, &input.id)?
-                .ok_or_else(|| LedgerError::not_found(format!("分类不存在：{}", input.id)))?;
+            let existing = repo::get_category(conn, &input.id)?.ok_or_else(|| {
+                LedgerError::reported(error_payload!(
+                    "ledger.category.not_found", "分类不存在：{id}"; id = input.id
+                ))
+            })?;
             if repo::category_name_taken(conn, existing.kind, &name, Some(&input.id))? {
-                return Err(LedgerError::validation("同类型下已存在同名分类"));
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.category.duplicate", "同类型下已存在同名分类"
+                )));
             }
             let category = Category {
                 name,
@@ -327,7 +355,9 @@ impl Ledger {
     pub fn hide_category(&self, id: &str) -> LedgerResult<()> {
         self.with_tx(|conn| {
             if !repo::hide_category(conn, id, id::now_ms())? {
-                return Err(LedgerError::not_found(format!("分类不存在：{id}")));
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.category.not_found", "分类不存在：{id}"; id = id
+                )));
             }
             Ok(())
         })
@@ -356,7 +386,9 @@ impl Ledger {
         day: &str,
     ) -> LedgerResult<Vec<Transaction>> {
         if !dates::is_valid_day_key(day) {
-            return Err(LedgerError::validation(format!("日期格式不合法：{day}")));
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.date.invalid_day", "日期格式不合法：{day}（应为 YYYY-MM-DD）"; day = day
+            )));
         }
         self.with_conn(|conn| repo::list_transactions_by_day(conn, book_id, day))
     }
@@ -370,7 +402,9 @@ impl Ledger {
         limit: i64,
     ) -> LedgerResult<Vec<Transaction>> {
         if !dates::is_valid_day_key(from_day) || !dates::is_valid_day_key(to_day) {
-            return Err(LedgerError::validation("日期格式不合法"));
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.date.invalid_day_short", "日期格式不合法"
+            )));
         }
         self.with_conn(|conn| {
             repo::list_transactions_range(conn, book_id, from_day, to_day, limit.clamp(1, 200))
@@ -435,7 +469,11 @@ impl Ledger {
         let account_id = normalize_optional_id(input.account_id);
         self.with_tx(move |conn| {
             let existing = repo::get_transaction(conn, &input.id)?
-                .ok_or_else(|| LedgerError::not_found(format!("账单不存在：{}", input.id)))?;
+                .ok_or_else(|| {
+                    LedgerError::reported(error_payload!(
+                        "ledger.transaction.not_found", "账单不存在：{id}"; id = input.id
+                    ))
+                })?;
             ensure_transaction_refs(
                 conn,
                 &existing.book_id,
@@ -466,7 +504,11 @@ impl Ledger {
     pub fn delete_transaction(&self, id: &str) -> LedgerResult<()> {
         let (transaction_id, paths) = self.with_tx(|conn| {
             let transaction = repo::get_transaction(conn, id)?
-                .ok_or_else(|| LedgerError::not_found(format!("账单不存在：{id}")))?;
+                .ok_or_else(|| {
+                    LedgerError::reported(error_payload!(
+                        "ledger.transaction.not_found", "账单不存在：{id}"; id = id
+                    ))
+                })?;
             let paths = repo::attachment_paths_for_transaction(conn, &transaction.id)?;
             repo::insert_tombstone(conn, "transaction", &transaction.id, id::now_ms())?;
             repo::delete_transaction(conn, &transaction.id)?;
@@ -490,8 +532,7 @@ impl Ledger {
                 target: "tk_ledger::attachments",
                 %error,
                 count = relative_paths.len(),
-                "附件文件清理失败；数据库已提交，仅留下孤儿文件"
-            );
+                "附件文件清理失败；数据库已提交，仅留下孤儿文件"            );
         }
     }
 
@@ -524,16 +565,23 @@ impl Ledger {
         months: usize,
     ) -> LedgerResult<ShareBreakdown> {
         self.with_conn(|conn| {
-            let months = dates::trailing_months(end_month, months.max(1))
-                .ok_or_else(|| LedgerError::validation(format!("月份格式不合法：{end_month}")))?;
+            let months = dates::trailing_months(end_month, months.max(1)).ok_or_else(|| {
+                LedgerError::reported(error_payload!(
+                    "ledger.date.invalid_month", "月份格式不合法：{month}（应为 YYYY-MM）"; month = end_month
+                ))
+            })?;
             let from = months
                 .first()
                 .cloned()
-                .ok_or_else(|| LedgerError::validation("月份区间为空"))?;
+                .ok_or_else(|| {
+                    LedgerError::reported(error_payload!("ledger.month.range_empty", "月份区间为空"))
+                })?;
             let to = months
                 .last()
                 .cloned()
-                .ok_or_else(|| LedgerError::validation("月份区间为空"))?;
+                .ok_or_else(|| {
+                    LedgerError::reported(error_payload!("ledger.month.range_empty", "月份区间为空"))
+                })?;
             query::share_breakdown(conn, book_id, &from, &to)
         })
     }
@@ -583,7 +631,9 @@ impl Ledger {
     pub fn save_attachment(&self, input: NewAttachment) -> LedgerResult<Attachment> {
         self.with_tx(|conn| {
             let transaction = repo::get_transaction(conn, &input.transaction_id)?.ok_or_else(|| {
-                LedgerError::not_found(format!("账单不存在：{}", input.transaction_id))
+                LedgerError::reported(error_payload!(
+                    "ledger.transaction.not_found", "账单不存在：{id}"; id = input.transaction_id
+                ))
             })?;
             self.attachments
                 .save(conn, &transaction.id, &input.mime, &input.base64)
@@ -597,7 +647,11 @@ impl Ledger {
     pub fn delete_attachment(&self, attachment_id: &str) -> LedgerResult<()> {
         let path = self.with_tx(|conn| {
             let attachment = repo::get_attachment(conn, attachment_id)?
-                .ok_or_else(|| LedgerError::not_found(format!("附件不存在：{attachment_id}")))?;
+                .ok_or_else(|| {
+                    LedgerError::reported(error_payload!(
+                        "ledger.attachment.not_found", "附件不存在：{id}"; id = attachment_id
+                    ))
+                })?;
             repo::insert_tombstone(conn, "attachment", attachment_id, id::now_ms())?;
             repo::delete_attachment_row(conn, attachment_id)?;
             Ok(attachment.path)
@@ -624,9 +678,8 @@ impl Ledger {
         validate::amount_cents(input.amount_cents)?;
         let note = validate::note(&input.note)?;
         if !dates::is_valid_day_key(&input.start_day) {
-            return Err(LedgerError::validation(format!(
-                "日期格式不合法：{}",
-                input.start_day
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.date.invalid_day", "日期格式不合法：{day}（应为 YYYY-MM-DD）"; day = input.start_day
             )));
         }
         let account_id = normalize_optional_id(input.account_id);
@@ -665,12 +718,18 @@ impl Ledger {
         if let Some(day) = input.skip_through_day.as_deref()
             && !dates::is_valid_day_key(day)
         {
-            return Err(LedgerError::validation(format!("日期格式不合法：{day}")));
+            return Err(LedgerError::reported(error_payload!(
+                "ledger.date.invalid_day", "日期格式不合法：{day}（应为 YYYY-MM-DD）"; day = day
+            )));
         }
         let account_id = normalize_optional_id(input.account_id);
         self.with_tx(move |conn| {
             let existing = repo::get_recurring_rule(conn, &input.id)?
-                .ok_or_else(|| LedgerError::not_found(format!("固定收支不存在：{}", input.id)))?;
+                .ok_or_else(|| {
+                    LedgerError::reported(error_payload!(
+                        "ledger.recurring.not_found", "固定收支不存在：{id}"; id = input.id
+                    ))
+                })?;
             ensure_transaction_refs(
                 conn,
                 &existing.book_id,
@@ -704,7 +763,9 @@ impl Ledger {
     pub fn delete_recurring_rule(&self, id: &str) -> LedgerResult<()> {
         self.with_tx(|conn| {
             if !repo::delete_recurring_rule(conn, id)? {
-                return Err(LedgerError::not_found(format!("固定收支不存在：{id}")));
+                return Err(LedgerError::reported(error_payload!(
+                    "ledger.recurring.not_found", "固定收支不存在：{id}"; id = id
+                )));
             }
             repo::insert_tombstone(conn, "recurring_rule", id, id::now_ms())?;
             Ok(())
@@ -744,7 +805,11 @@ impl Ledger {
                     continue;
                 }
                 let month = dates::month_key_of_day(&occurrence.day)
-                    .ok_or_else(|| LedgerError::validation("日期格式不合法"))?;
+                    .ok_or_else(|| {
+                        LedgerError::reported(error_payload!(
+                            "ledger.date.invalid_day_short", "日期格式不合法"
+                        ))
+                    })?;
                 ensure_transaction_refs(
                     conn,
                     &rule.book_id,
@@ -806,9 +871,11 @@ fn normalize_optional_id(value: Option<String>) -> Option<String> {
     value.filter(|id| !id.trim().is_empty())
 }
 
-fn validate_balance(cents: i64, label: &str) -> LedgerResult<()> {
+fn validate_balance(cents: i64) -> LedgerResult<()> {
     if cents.abs() > MAX_AMOUNT_CENTS {
-        return Err(LedgerError::validation(format!("{label}超出上限")));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.account.balance_over_cap", "账户初始余额超出上限"
+        )));
     }
     Ok(())
 }
@@ -822,17 +889,27 @@ fn ensure_transaction_refs(
     account_id: Option<&str>,
 ) -> LedgerResult<()> {
     if !repo::book_exists(conn, book_id)? {
-        return Err(LedgerError::not_found(format!("账本不存在：{book_id}")));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.book.not_found", "账本不存在：{id}"; id = book_id
+        )));
     }
     let category = repo::get_category(conn, category_id)?
-        .ok_or_else(|| LedgerError::not_found(format!("分类不存在：{category_id}")))?;
+        .ok_or_else(|| {
+            LedgerError::reported(error_payload!(
+                "ledger.category.not_found", "分类不存在：{id}"; id = category_id
+            ))
+        })?;
     if category.kind != kind {
-        return Err(LedgerError::validation("分类与收支类型不一致"));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.category.kind_mismatch", "分类与收支类型不一致"
+        )));
     }
     if let Some(account_id) = account_id
         && !repo::account_belongs_to_book(conn, account_id, book_id)?
     {
-        return Err(LedgerError::validation("账户不属于当前账本"));
+        return Err(LedgerError::reported(error_payload!(
+            "ledger.account.not_in_book", "账户不属于当前账本"
+        )));
     }
     Ok(())
 }
@@ -878,7 +955,7 @@ mod tests {
     fn last_book_cannot_be_deleted() {
         let ledger = TestLedger::new();
         let error = ledger.delete_book(seed::DEFAULT_BOOK_ID).expect_err("拒绝");
-        assert!(matches!(error, LedgerError::Validation(_)), "{error:?}");
+        assert!(matches!(error, LedgerError::Reported(_)), "{error:?}");
     }
 
     #[test]

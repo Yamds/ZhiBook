@@ -2,6 +2,7 @@
 // 嵌在 Popover 内时用 modal={false}，避免抢焦点。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UI_ICONS } from '../../core/design/icons';
 import { AppIcon } from './AppIcon';
 import { cn } from '../utils/cn';
@@ -182,8 +183,10 @@ export function TimePicker({
     minuteStep = 1,
     align = 'end',
     side = 'bottom',
-    'aria-label': ariaLabel = '选择时刻',
+    'aria-label': ariaLabel,
 }: TimePickerProps) {
+    const { t } = useTranslation();
+    const resolvedAriaLabel = ariaLabel ?? t('shared.timePickerAria');
     const [open, setOpen] = useState(false);
     const h = clampHour(hours);
     const m = clampMinute(minutes, minuteStep);
@@ -204,7 +207,7 @@ export function TimePicker({
             <button
                 type="button"
                 disabled={disabled}
-                aria-label={ariaLabel}
+                aria-label={resolvedAriaLabel}
                 className={cn(
                     'inline-flex h-8 items-center gap-1.5 rounded-sm border border-border-subtle bg-field px-2 font-mono text-[12px] tabular-nums text-text transition-colors',
                     'hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
@@ -222,7 +225,7 @@ export function TimePicker({
             <button
                 type="button"
                 disabled={disabled}
-                aria-label={ariaLabel}
+                aria-label={resolvedAriaLabel}
                 className={cn(
                     'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-text-tertiary transition-colors',
                     'hover:bg-inset hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
@@ -248,7 +251,7 @@ export function TimePicker({
             >
                 <div
                     role="group"
-                    aria-label={ariaLabel}
+                    aria-label={resolvedAriaLabel}
                     className="relative isolate select-none"
                     style={{ height: VISIBLE * ITEM_H }}
                 >
@@ -269,7 +272,7 @@ export function TimePicker({
 
                     <div className="relative z-[2] flex h-full items-stretch justify-center gap-1">
                         <WheelColumn
-                            label="时"
+                            label={t('shared.hour')}
                             values={hourValues}
                             value={h}
                             onPick={(nextH) => onChange({ hours: nextH, minutes: m })}
@@ -281,7 +284,7 @@ export function TimePicker({
                             :
                         </span>
                         <WheelColumn
-                            label="分"
+                            label={t('shared.minute')}
                             values={minuteValues}
                             value={m}
                             onPick={(nextM) => onChange({ hours: h, minutes: nextM })}

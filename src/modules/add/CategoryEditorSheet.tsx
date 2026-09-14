@@ -4,6 +4,7 @@
 // 背景色由前景色派生（core/design/categoryColor），这里实时预览。
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { THEME_COLOR_TOKEN, categoryColors } from '../../core/design/categoryColor';
 import { toIconName, type IconName } from '../../core/design/icons';
 import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
@@ -48,6 +49,7 @@ export function CategoryEditorSheet({
     onSubmit,
     onRequestDelete,
 }: CategoryEditorSheetProps) {
+    const { t } = useTranslation();
     const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
 
     const [name, setName] = useState('');
@@ -70,8 +72,8 @@ export function CategoryEditorSheet({
         <BottomSheet
             open={open}
             onOpenChange={onOpenChange}
-            title={category ? '编辑分类' : '新增分类'}
-            description={kind === 'expense' ? '支出分类' : '收入分类'}
+            title={category ? t('add.editCategory') : t('add.newCategory')}
+            description={kind === 'expense' ? t('add.expenseCategory') : t('add.incomeCategory')}
             maxHeightRatio={0.92}
         >
             <div className="flex flex-col gap-3">
@@ -87,8 +89,8 @@ export function CategoryEditorSheet({
                             value={name}
                             onChange={(event) => setName(event.target.value)}
                             maxLength={CATEGORY_NAME_MAX}
-                            placeholder="分类名称"
-                            aria-label="分类名称"
+                            placeholder={t('add.categoryName')}
+                            aria-label={t('add.categoryName')}
                             className={cn(
                                 'h-9 w-full rounded-md border bg-field px-2.5 text-[14px] text-text',
                                 'placeholder:text-text-disabled focus-visible:outline-none',
@@ -98,18 +100,18 @@ export function CategoryEditorSheet({
                             )}
                         />
                         <p className="mt-1 text-[11px] text-text-tertiary">
-                            {trimmed === '' ? '必填' : `${nameLength} / ${CATEGORY_NAME_MAX} 字`}
+                            {trimmed === '' ? t('common.required') : t('add.nameLengthCounter', { current: nameLength, max: CATEGORY_NAME_MAX })}
                         </p>
                     </div>
                 </div>
 
                 <section className="flex flex-col gap-1.5">
-                    <h3 className="text-[12px] font-medium text-text">颜色</h3>
+                    <h3 className="text-[12px] font-medium text-text">{t('add.color')}</h3>
                     <ColorSwatchRow value={color} onChange={setColor} />
                 </section>
 
                 <section className="flex flex-col gap-1.5">
-                    <h3 className="text-[12px] font-medium text-text">图标</h3>
+                    <h3 className="text-[12px] font-medium text-text">{t('add.icon')}</h3>
                     <IconPicker value={iconName} onChange={setIconName} columns={6} />
                 </section>
 
@@ -126,7 +128,7 @@ export function CategoryEditorSheet({
                             onClick={onRequestDelete}
                             className="h-10 rounded-md bg-inset px-3 text-[13px] font-medium text-danger active:bg-muted"
                         >
-                            删除
+                            {t('common.delete')}
                         </button>
                     ) : null}
                     <button
@@ -140,7 +142,7 @@ export function CategoryEditorSheet({
                                 : 'bg-inset text-text-disabled',
                         )}
                     >
-                        {busy ? '保存中' : category ? '保存修改' : '创建分类'}
+                        {busy ? t('common.saving') : category ? t('add.saveChanges') : t('add.createCategory')}
                     </button>
                 </div>
             </div>

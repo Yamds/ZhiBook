@@ -1,6 +1,8 @@
 // 明细列表行：时间 + 分类（图标 + 名称）+ 备注（截断）+ 金额。
 
 import { categoryColors } from '../../core/design/categoryColor';
+import { categoryDisplayName } from '../../core/domain/categoryName';
+import { useTranslation } from 'react-i18next';
 import { FALLBACK_ICON_NAME, toIconName } from '../../core/design/icons';
 import { formatClockTime } from '../../core/domain/date';
 import { formatSignedMoney } from '../../core/domain/money';
@@ -31,6 +33,7 @@ export function TransactionRow({
     highlight,
     onOpen,
 }: TransactionRowProps) {
+    const { t } = useTranslation();
     const colors = categoryColors(category?.color ?? 'theme', brand, surface);
     const isIncome = transaction.kind === 'income';
 
@@ -59,7 +62,7 @@ export function TransactionRow({
             <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex items-baseline gap-2">
                     <span className="truncate text-[14px] font-medium text-text">
-                        {category?.name ?? '未知分类'}
+                        {categoryDisplayName(category, t, t('settings.recurring.unknownCategory'))}
                     </span>
                     <span className="shrink-0 text-[11px] text-text-tertiary tabular-nums">
                         {formatClockTime(transaction.occurredAtMs)}

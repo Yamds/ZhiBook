@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 
 use sha1::{Digest, Sha1};
+use tk_domain::error_payload;
 
 use crate::{CloudError, CloudResult};
 
@@ -116,37 +117,51 @@ pub struct RepoUrl {
 impl RepoUrl {
     pub fn parse(input: &str) -> CloudResult<Self> {
         let trimmed = input.trim().trim_end_matches('/');
-        let (scheme, rest) = trimmed
-            .split_once("://")
-            .ok_or_else(|| CloudError::InvalidUrl("仓库地址必须以 http:// 或 https:// 开头".to_string()))?;
+        let (scheme, rest) = trimmed.split_once("://").ok_or_else(|| {
+            CloudError::reported(error_payload!(
+                "cloud.url.bad_scheme",
+                "仓库地址必须以 http:// 或 https:// 开头"
+            ))
+        })?;
         let scheme = scheme.to_ascii_lowercase();
         if scheme != "http" && scheme != "https" {
-            return Err(CloudError::InvalidUrl(
-                "只支持 http / https 的 Git 仓库地址".to_string(),
-            ));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.url.bad_scheme",
+                "仓库地址必须以 http:// 或 https:// 开头"
+            )));
         }
         let (authority, path) = rest.split_once('/').ok_or_else(|| {
-            CloudError::InvalidUrl("仓库地址缺少 owner/repo 路径".to_string())
+            CloudError::reported(error_payload!(
+                "cloud.url.missing_path",
+                "仓库地址需要包含 owner 与仓库名"
+            ))
         })?;
         let (host, port) = match authority.split_once(':') {
             Some((host, port)) => {
-                let port = port
-                    .parse::<u16>()
-                    .map_err(|_| CloudError::InvalidUrl("端口不是合法数字".to_string()))?;
+                let port = port.parse::<u16>().map_err(|_| {
+                    CloudError::reported(error_payload!(
+                        "cloud.url.bad_port",
+                        "端口不是合法数字"
+                    ))
+                })?;
                 (host.to_string(), Some(port))
             }
             None => (authority.to_string(), None),
         };
         if host.is_empty() {
-            return Err(CloudError::InvalidUrl("仓库地址缺少主机名".to_string()));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.url.missing_host",
+                "仓库地址缺少主机名"
+            )));
         }
         let path = path.trim_end_matches('/');
         let path = path.strip_suffix(".git").unwrap_or(path);
         let segments: Vec<&str> = path.split('/').filter(|item| !item.is_empty()).collect();
         if segments.len() < 2 {
-            return Err(CloudError::InvalidUrl(
-                "仓库地址需要包含 owner 与仓库名".to_string(),
-            ));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.url.missing_path",
+                "仓库地址需要包含 owner 与仓库名"
+            )));
         }
         Ok(Self {
             scheme,

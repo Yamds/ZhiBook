@@ -17,6 +17,7 @@
 // 路由级的一次性意图（带日期进入、编辑哪一条）由 AddPage 解析后传进来。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { parseDayKey, toDayKey, todayDate, todayKey, type CalendarDate } from '../../core/domain/date';
 import { isSubmittableAmount, parseAmountExpression, tryAppendKeypadKey, type KeypadKey } from '../../core/domain/money';
 import type { Category, EntryKind, Transaction } from '../../core/ipc/types';
@@ -76,6 +77,7 @@ export interface AddFormProps {
 }
 
 export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
+    const { t } = useTranslation();
     const isEditing = editing !== null;
     const prefs = useAddEntryPrefs();
     const { currentBook } = useCurrentBook();
@@ -178,9 +180,9 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
     const canSubmit = Boolean(categoryId) && amountValid && !submitting;
 
     const accountName = useMemo(() => {
-        if (!accountId) return '未指定账户';
-        return accounts.find((item) => item.id === accountId)?.name ?? '未指定账户';
-    }, [accountId, accounts]);
+        if (!accountId) return t('add.accountUnspecified');
+        return accounts.find((item) => item.id === accountId)?.name ?? t('add.accountUnspecified');
+    }, [accountId, accounts, t]);
 
     // 日历点某天 → 添加页带日期（FR-ADD-18）；编辑模式不参与
     useEffect(() => {
@@ -240,13 +242,13 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
             pushInfoBar({
                 key: 'add-attachments-full',
                 tone: 'warning',
-                title: '附件已达上限',
-                content: `单笔最多 ${MAX_ATTACHMENTS} 张图片`,
+                title: t('add.attachmentsFull'),
+                content: t('add.attachmentsMax', { count: MAX_ATTACHMENTS }),
             });
             return;
         }
         fileInputRef.current?.click();
-    }, [attachmentCount]);
+    }, [attachmentCount, t]);
 
     const handleFilesPicked = useCallback(
         async (files: FileList | null) => {
@@ -257,8 +259,8 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                 pushInfoBar({
                     key: 'add-attachments-trim',
                     tone: 'warning',
-                    title: `只添加了前 ${slots} 张`,
-                    content: `单笔最多 ${MAX_ATTACHMENTS} 张图片`,
+                    title: t('add.attachmentsTrimmed', { count: slots }),
+                    content: t('add.attachmentsMax', { count: MAX_ATTACHMENTS }),
                 });
             }
             const prepared: PendingAttachment[] = [];
@@ -269,7 +271,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                     pushInfoBar({
                         key: 'add-image-error',
                         tone: 'danger',
-                        title: '图片处理失败',
+                        title: t('add.imageProcessFailed'),
                         content: describeError(error),
                     });
                 }
@@ -278,7 +280,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                 setAttachments((prev) => [...prev, ...prepared]);
             }
         },
-        [attachmentCount],
+        [attachmentCount, t],
     );
 
     const handleRemoveStripItem = useCallback(
@@ -295,22 +297,22 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
     const handleSubmit = useCallback(async () => {
         if (submitting) return;
         if (!bookId) {
-            pushInfoBar({ key: 'add-no-book', tone: 'danger', title: '账本还没准备好', content: '请稍后重试' });
+            pushInfoBar({ key: 'add-no-book', tone: 'danger', title: t('add.bookNotReady'), content: t('add.retryLater') });
             return;
         }
         if (!categoryId) {
-            pushInfoBar({ key: 'add-no-category', tone: 'warning', title: '先选一个分类' });
+            pushInfoBar({ key: 'add-no-category', tone: 'warning', title: t('add.pickCategoryFirst') });
             return;
         }
         if (!parsed.ok || !isSubmittableAmount(parsed.cents)) {
             pushInfoBar({
                 key: 'add-bad-amount',
                 tone: 'warning',
-                title: '金额不正确',
+                title: t('add.amountIncorrect'),
                 content:
                     expression.trim() === ''
-                        ? '请输入金额'
-                        : '金额需大于 0 且不超过 ¥ 999,999,999.99',
+                        ? t('add.enterAmount')
+                        : t('add.amountRange'),
             });
             return;
         }
@@ -374,10 +376,10 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                         ? {
                               key: 'edit-entry',
                               tone: 'warning',
-                              title: `已保存，但 ${failed.length} 张图片没处理好`,
+                              title: t('add.savedWithImageIssue', { count: failed.length }),
                               content: failed[0],
                           }
-                        : { key: 'edit-entry', tone: 'success', title: '已保存修改' },
+                        : { key: 'edit-entry', tone: 'success', title: t('add.changesSaved') },
                 );
                 onExit?.({ focusTransactionId: editing.id });
                 return;
@@ -393,22 +395,24 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                 pushInfoBar({
                     key: 'add-entry',
                     tone: 'warning',
-                    title: `已记一笔，但 ${failed.length} 张图片没存上`,
-                    content: `${failed[0]}（可重新添加图片再存一次）`,
+                    title: t('add.savedWithImageIssue', { count: failed.length }),
+                    content: t('add.retryAttachment', { detail: failed[0] }),
                 });
             } else {
                 pushInfoBar({
                     key: 'add-entry',
                     tone: 'success',
-                    title: '已记一笔',
-                    content: attachments.length > 0 ? `含 ${attachments.length} 张图片` : undefined,
+                    title: t('add.entrySaved'),
+                    content: attachments.length > 0
+                        ? t('add.entrySavedWithImages', { count: attachments.length })
+                        : undefined,
                 });
             }
         } catch (error) {
             pushInfoBar({
                 key: 'add-entry-error',
                 tone: 'danger',
-                title: '保存失败',
+                title: t('add.saveFailed'),
                 content: describeError(error),
             });
         } finally {
@@ -431,6 +435,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
         removedAttachmentIds,
         saveAttachment,
         submitting,
+        t,
         time,
         updateTransaction,
     ]);
@@ -446,7 +451,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                         iconName: draft.iconName,
                         color: draft.color,
                     });
-                    pushInfoBar({ key: 'category-saved', tone: 'success', title: '分类已更新' });
+                    pushInfoBar({ key: 'category-saved', tone: 'success', title: t('add.categoryUpdated') });
                 } else {
                     const created = await createCategory.mutateAsync({
                         kind,
@@ -456,7 +461,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                     });
                     setCategoryOverride(created.id);
                     addEntryPrefsStore.rememberCategory(kind, created.id);
-                    pushInfoBar({ key: 'category-saved', tone: 'success', title: '分类已创建' });
+                    pushInfoBar({ key: 'category-saved', tone: 'success', title: t('add.categoryCreated') });
                 }
                 setSheet(null);
                 setEditingCategory(null);
@@ -475,8 +480,8 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
             pushInfoBar({
                 key: 'category-deleted',
                 tone: 'success',
-                title: '分类已删除',
-                content: '历史账单仍保留这个分类',
+                title: t('add.categoryDeleted'),
+                content: t('add.categoryDeletedBody'),
             });
             setPendingDelete(null);
             setSheet(null);
@@ -485,7 +490,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
             pushInfoBar({
                 key: 'category-delete-error',
                 tone: 'danger',
-                title: '删除失败',
+                title: t('add.deleteFailed'),
                 content: describeError(error),
             });
         } finally {
@@ -506,12 +511,12 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                 <SegmentedControl
                     className="flex-1"
                     items={[
-                        { value: 'expense', label: '支出' },
-                        { value: 'income', label: '收入' },
+                        { value: 'expense', label: t('entryKind.expense') },
+                        { value: 'income', label: t('entryKind.income') },
                     ]}
                     value={kind}
                     onChange={handleKindChange}
-                    ariaLabel="收支切换"
+                    ariaLabel={t('add.kindToggleAria')}
                 />
                 {isEditing ? (
                     <button
@@ -577,7 +582,7 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                 onKey={handleKey}
                 onReset={() => setExpression('')}
                 onSubmit={() => void handleSubmit()}
-                submitLabel={isEditing ? '保存' : '完成'}
+                submitLabel={isEditing ? t('common.save') : t('common.done')}
             />
 
             <input
@@ -626,8 +631,8 @@ export function AddForm({ editing, onExit, intentDate }: AddFormProps) {
                 onOpenChange={(open) => {
                     if (!open) setPendingDelete(null);
                 }}
-                title={`删除分类「${pendingDelete?.name ?? ''}」？`}
-                description="分类会被隐藏，宫格里不再出现；历史账单仍保留这个分类，统计不受影响。"
+                title={t('add.confirmDeleteCategoryTitle', { name: pendingDelete?.name ?? '' })}
+                description={t('add.confirmDeleteCategoryBody')}
                 busy={deleting}
                 onConfirm={() => void handleDeleteCategory()}
             />

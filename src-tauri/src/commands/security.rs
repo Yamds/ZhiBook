@@ -4,11 +4,11 @@
 //! 命令名只允许出现在前端 `src/core/services/security.service.ts`。
 
 use tauri::State;
+use tk_domain::IntoErrorPayload;
 use tk_security::{PinStore, SecurityError};
 
 use crate::AppState;
-
-type CommandResult<T> = Result<T, String>;
+use crate::commands::{CommandResult, join_error};
 
 async fn run<T, F>(state: &State<'_, AppState>, task: F) -> CommandResult<T>
 where
@@ -17,10 +17,10 @@ where
 {
     let data_root = state.data_root.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        task(PinStore::new(data_root)).map_err(|error| error.to_string())
+        task(PinStore::new(data_root)).map_err(IntoErrorPayload::into_error_payload)
     })
     .await
-    .map_err(|error| format!("后台任务异常：{error}"))?
+    .map_err(join_error)?
 }
 
 /// 是否已设置密码。

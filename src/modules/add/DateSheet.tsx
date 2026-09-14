@@ -1,13 +1,14 @@
 // 日期选择弹层（BRD FR-ADD-15）：月历 + 快捷「今天」，可跨月 / 跨年，允许未来日期。
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-    WEEKDAY_LABELS,
     clampDay,
     shiftMonth,
     toDayKey,
     todayDate,
     weekdayIndex,
+    weekdayNarrowLabels,
     type CalendarDate,
 } from '../../core/domain/date';
 import { UI_ICONS } from '../../core/design/icons';
@@ -40,6 +41,7 @@ function buildCalendarCells(year: number, month: number): CalendarDate[] {
 }
 
 export function DateSheet({ open, onOpenChange, value, onSelect }: DateSheetProps) {
+    const { t } = useTranslation();
     const [view, setView] = useState<{ year: number; month: number }>(() => ({
         year: value.year,
         month: value.month,
@@ -60,12 +62,12 @@ export function DateSheet({ open, onOpenChange, value, onSelect }: DateSheetProp
     };
 
     return (
-        <BottomSheet open={open} onOpenChange={onOpenChange} title="选择日期" maxHeightRatio={0.9}>
+        <BottomSheet open={open} onOpenChange={onOpenChange} title={t('add.dateSheetTitle')} maxHeightRatio={0.9}>
             <div className="flex flex-col gap-2.5">
                 <div className="flex items-center gap-1.5">
-                    <QuickChip label="今天" onClick={() => pick(today)} />
+                    <QuickChip label={t('date.today')} onClick={() => pick(today)} />
                     <QuickChip
-                        label="昨天"
+                        label={t('date.yesterday')}
                         onClick={() => {
                             const date = new Date(today.year, today.month - 1, today.day - 1);
                             pick({
@@ -80,7 +82,7 @@ export function DateSheet({ open, onOpenChange, value, onSelect }: DateSheetProp
                 <div className="flex items-center justify-between">
                     <button
                         type="button"
-                        aria-label="上个月"
+                        aria-label={t('date.prevMonth')}
                         onClick={() => setView((prev) => shiftMonth(prev.year, prev.month, -1))}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary active:bg-inset"
                     >
@@ -91,11 +93,11 @@ export function DateSheet({ open, onOpenChange, value, onSelect }: DateSheetProp
                         onClick={() => setView({ year: today.year, month: today.month })}
                         className="rounded-md px-2 py-1 text-[13px] font-semibold text-text active:bg-inset"
                     >
-                        {view.year} 年 {view.month} 月
+                        {t('date.yearMonthSpace', { year: view.year, month: view.month })}
                     </button>
                     <button
                         type="button"
-                        aria-label="下个月"
+                        aria-label={t('date.nextMonth')}
                         onClick={() => setView((prev) => shiftMonth(prev.year, prev.month, 1))}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-secondary active:bg-inset"
                     >
@@ -104,7 +106,7 @@ export function DateSheet({ open, onOpenChange, value, onSelect }: DateSheetProp
                 </div>
 
                 <div className="grid grid-cols-7 text-center text-[11px] font-medium text-text-tertiary">
-                    {WEEKDAY_LABELS.map((label) => (
+                    {weekdayNarrowLabels().map((label) => (
                         <span key={label} className="py-1">
                             {label}
                         </span>

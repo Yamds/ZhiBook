@@ -3,6 +3,7 @@
 // 忘记密码没有后门：只能卸载重装（本地数据会清空），界面上明确告知。
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { securityService } from '../../core/services/security.service';
 import { lockStore } from '../../hooks/security/lockStore';
 import { useLockState } from '../../hooks/security/usePinLock';
@@ -13,14 +14,14 @@ import { PinPad } from './PinPad';
 
 type Step = 'menu' | 'new' | 'confirm' | 'old' | 'changeNew' | 'changeConfirm' | 'disable';
 
-const STEP_TITLE: Record<Step, string> = {
-    menu: '密码锁',
-    new: '设置密码',
-    confirm: '再次输入确认',
-    old: '输入原密码',
-    changeNew: '设置新密码',
-    changeConfirm: '再次输入新密码',
-    disable: '关闭密码锁',
+const STEP_TITLE_KEY: Record<Step, string> = {
+    menu: 'security.pinLock',
+    new: 'security.setPin',
+    confirm: 'security.enterAgainToConfirm',
+    old: 'security.enterCurrentPin',
+    changeNew: 'security.setNewPin',
+    changeConfirm: 'security.enterNewPinAgain',
+    disable: 'security.disablePinLock',
 };
 
 export interface PinSettingsSheetProps {
@@ -29,6 +30,7 @@ export interface PinSettingsSheetProps {
 }
 
 export function PinSettingsSheet({ open, onOpenChange }: PinSettingsSheetProps) {
+    const { t } = useTranslation();
     const { configured } = useLockState();
     const [step, setStep] = useState<Step>('menu');
     const [input, setInput] = useState('');
@@ -69,20 +71,20 @@ export function PinSettingsSheet({ open, onOpenChange }: PinSettingsSheetProps) 
                     if (input !== staged) {
                         setStaged('');
                         go('new');
-                        fail('两次输入不一致，请重新设置');
+                        fail(t('security.pinMismatch'));
                         return;
                     }
                     setBusy(true);
                     await securityService.setPin(input);
                     lockStore.setConfigured(true, false);
-                    pushInfoBar({ key: 'pin-save', tone: 'success', title: '密码锁已开启' });
+                    pushInfoBar({ key: 'pin-save', tone: 'success', title: t('security.pinEnabled') });
                     onOpenChange(false);
                     return;
                 case 'old': {
                     setBusy(true);
                     const ok = await securityService.verifyPin(input);
                     if (!ok) {
-                        fail('原密码不正确');
+                        fail(t('security.currentPinIncorrect'));
                         return;
                     }
                     setOldPin(input);
@@ -97,53 +99,53 @@ export function PinSettingsSheet({ open, onOpenChange }: PinSettingsSheetProps) 
                     if (input !== staged) {
                         setStaged('');
                         go('changeNew');
-                        fail('两次输入不一致，请重新设置');
+                        fail(t('security.pinMismatch'));
                         return;
                     }
                     setBusy(true);
                     await securityService.changePin(oldPin, input);
-                    pushInfoBar({ key: 'pin-save', tone: 'success', title: '密码已修改' });
+                    pushInfoBar({ key: 'pin-save', tone: 'success', title: t('security.pinChanged') });
                     onOpenChange(false);
                     return;
                 case 'disable':
                     setBusy(true);
                     await securityService.clearPin(input);
                     lockStore.setConfigured(false, false);
-                    pushInfoBar({ key: 'pin-save', tone: 'success', title: '密码锁已关闭' });
+                    pushInfoBar({ key: 'pin-save', tone: 'success', title: t('security.pinDisabled') });
                     onOpenChange(false);
                     return;
                 default:
                     return;
             }
         } catch (caught) {
-            fail(caught instanceof Error ? caught.message : '操作失败');
+            fail(caught instanceof Error ? caught.message : t('settings.transfer.failedTitle'));
         } finally {
             setBusy(false);
         }
     };
 
     return (
-        <BottomSheet open={open} onOpenChange={onOpenChange} title={STEP_TITLE[step]}>
+        <BottomSheet open={open} onOpenChange={onOpenChange} title={t(STEP_TITLE_KEY[step])}>
             {step === 'menu' ? (
                 <div className="flex flex-col gap-3">
                     <div className="rounded-md bg-inset px-3 py-3 text-[12.5px] leading-relaxed text-text-secondary">
                         {configured
-                            ? '密码锁已开启：每次打开 App、或离开后台超过 30 秒，都需要输入密码。'
-                            : '开启后，打开 App 需要输入 4~8 位数字密码（键盘由 App 提供）。'}
+                            ? t('security.enabledHint')
+                            : t('security.disabledHint')}
                     </div>
                     {!configured ? (
-                        <MenuButton onClick={() => go('new')}>设置密码</MenuButton>
+                        <MenuButton onClick={() => go('new')}>{t('security.setPin')}</MenuButton>
                     ) : null}
                     {configured ? (
-                        <MenuButton onClick={() => go('old')}>修改密码</MenuButton>
+                        <MenuButton onClick={() => go('old')}>{t('security.changePin')}</MenuButton>
                     ) : null}
                     {configured ? (
                         <MenuButton tone="danger" onClick={() => go('disable')}>
-                            关闭密码锁
+                            {t('security.disablePinLock')}
                         </MenuButton>
                     ) : null}
                     <p className="text-[11.5px] leading-relaxed text-text-tertiary">
-                        密码只保存在本机、无法找回；忘记密码只能卸载重装，届时全部账本数据会一并清空。
+                        {t('security.noRecoveryWarning')}
                     </p>
                 </div>
             ) : (
@@ -160,7 +162,7 @@ export function PinSettingsSheet({ open, onOpenChange }: PinSettingsSheetProps) 
                         onClick={() => go('menu')}
                         className="h-10 rounded-md px-4 text-[13px] text-text-secondary active:bg-inset"
                     >
-                        返回
+                        {t('common.back')}
                     </button>
                 </div>
             )}

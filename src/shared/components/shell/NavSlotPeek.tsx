@@ -22,6 +22,7 @@
 // 动效全部走 useMotion()：关闭动效时直接落到终态（GSAP set），不做过渡。
 
 import React, { useLayoutEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import gsap from 'gsap';
 import { cn } from '../../utils/cn';
 import { MotionIcon, type MotionIconPreset } from '../../ui/motion';
@@ -125,24 +126,27 @@ export interface NavSlotPeekProps {
     onSelect: (id: AppRoute | 'settings') => void;
 }
 
-export const NavSlotPeek: React.FC<NavSlotPeekProps> = ({ target, onSelect }) => (
-    // 零高度锚点：底边卡在导航栏顶边，横向铺满 → 子级 left-1/2 即槽位正中。
-    <div className="pointer-events-none absolute inset-x-0 bottom-full z-0 h-0">
-        <PeekIcon
-            visible={target?.id === SETTINGS_TAB.id}
-            icon={SETTINGS_TAB.icon}
-            label={SETTINGS_TAB.label}
-            iconMotion={PEEK_ICON_MOTION.settings}
-            onClick={() => onSelect(SETTINGS_TAB.id)}
-        />
-        <PeekIcon
-            visible={target?.id === HOME_TAB.id}
-            icon={HOME_TAB.icon}
-            label={HOME_TAB.label}
-            iconMotion={PEEK_ICON_MOTION.home}
-            onClick={() => onSelect(HOME_TAB.id)}
-        />
-    </div>
-);
+export const NavSlotPeek: React.FC<NavSlotPeekProps> = ({ target, onSelect }) => {
+    const { t } = useTranslation();
+    return (
+        // 零高度锚点：底边卡在导航栏顶边，横向铺满 → 子级 left-1/2 即槽位正中。
+        <div className="pointer-events-none absolute inset-x-0 bottom-full z-0 h-0">
+            <PeekIcon
+                visible={target?.id === SETTINGS_TAB.id}
+                icon={SETTINGS_TAB.icon}
+                label={t(SETTINGS_TAB.labelKey)}
+                iconMotion={PEEK_ICON_MOTION.settings}
+                onClick={() => onSelect(SETTINGS_TAB.id)}
+            />
+            <PeekIcon
+                visible={target?.id === HOME_TAB.id}
+                icon={HOME_TAB.icon}
+                label={t(HOME_TAB.labelKey)}
+                iconMotion={PEEK_ICON_MOTION.home}
+                onClick={() => onSelect(HOME_TAB.id)}
+            />
+        </div>
+    );
+};
 
 export default NavSlotPeek;

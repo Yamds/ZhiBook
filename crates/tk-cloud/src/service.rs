@@ -19,7 +19,7 @@ use tk_traits::ConfigStore;
 use tk_crypto::{KeyFile, KeyWrapFile, MasterKey};
 use tk_domain::{
     CloudBackupState, CloudBackupSummary, CloudConnectionInfo, CloudCreatedKey, CloudKeyInfo,
-    CloudKeyInput, CloudRestorePreview, CloudRestoreSummary, MergeSummary,
+    CloudKeyInput, CloudRestorePreview, CloudRestoreSummary, MergeSummary, error_payload,
 };
 use tk_ledger::{id::now_ms, Ledger};
 
@@ -144,9 +144,13 @@ impl CloudService {
             });
         }
         let store = LocalConfigStore::new(&self.data_root);
-        let value = store
-            .read_json(&path)
-            .map_err(|error| CloudError::State(error.to_string()))?;
+        let value = store.read_json(&path).map_err(|error| {
+            CloudError::reported(error_payload!(
+                "cloud.config.read_failed",
+                "云端备份配置读取失败：{detail}";
+                detail = error
+            ))
+        })?;
         let mut config: CloudConfig = serde_json::from_value(value)?;
         config.version = 1;
         if config.branch.trim().is_empty() {
@@ -160,7 +164,13 @@ impl CloudService {
         let value = serde_json::to_value(config)?;
         store
             .write_json_atomic(&self.config_path(), &value)
-            .map_err(|error| CloudError::State(error.to_string()))
+            .map_err(|error| {
+                CloudError::reported(error_payload!(
+                    "cloud.config.write_failed",
+                    "云端备份配置保存失败：{detail}";
+                    detail = error
+                ))
+            })
     }
 
     /// 读取本机密钥。
@@ -170,15 +180,20 @@ impl CloudService {
             return Ok(None);
         }
         let store = LocalConfigStore::new(&self.data_root);
-        let value = store
-            .read_json(&path)
-            .map_err(|error| CloudError::State(error.to_string()))?;
+        let value = store.read_json(&path).map_err(|error| {
+            CloudError::reported(error_payload!(
+                "cloud.key.read_failed",
+                "备份密钥读取失败：{detail}";
+                detail = error
+            ))
+        })?;
         let key: KeyFile = serde_json::from_value(value)?;
         // keyId 会参与本地目录名拼接，形态不对一律当损坏处理。
         if !tk_crypto::is_valid_key_id(&key.key_id) {
-            return Err(CloudError::State(format!(
-                "备份密钥的 keyId 不合法（{}），密钥文件可能已损坏",
-                key.key_id
+            return Err(CloudError::reported(error_payload!(
+                "cloud.key.bad_id",
+                "备份密钥的 keyId 不合法（{key_id}），密钥文件可能已损坏";
+                key_id = key.key_id
             )));
         }
         Ok(Some(key))
@@ -189,7 +204,13 @@ impl CloudService {
         let value = serde_json::to_value(key)?;
         store
             .write_json_atomic(&self.key_path(), &value)
-            .map_err(|error| CloudError::State(error.to_string()))
+            .map_err(|error| {
+                CloudError::reported(error_payload!(
+                    "cloud.key.write_failed",
+                    "备份密钥保存失败：{detail}";
+                    detail = error
+                ))
+            })
     }
 
     fn cache_dir(&self, key_id: &str) -> PathBuf {
@@ -245,17 +266,24 @@ impl CloudService {
     /// 备份进行中不允许改开关（拿不到锁），避免与备份的配置写入互相覆盖。
     pub fn set_auto_backup(&self, enabled: bool) -> CloudResult<CloudBackupState> {
         let _guard = self.backup_lock.try_lock().map_err(|_| {
-            CloudError::State("备份正在进行，请稍后再试".to_string())
+            CloudError::reported(error_payload!(
+                "cloud.backup.busy",
+                "已有备份任务正在执行，请稍后再试"
+            ))
         })?;
         let mut config = self.load_config()?;
         if enabled {
             if !config.is_configured() {
-                return Err(CloudError::State(
-                    "请先填写并保存仓库地址与 Token".to_string(),
-                ));
+                return Err(CloudError::reported(error_payload!(
+                    "cloud.not_configured",
+                    "请先填写仓库地址与 Token 并保存"
+                )));
             }
             if self.load_key()?.is_none() {
-                return Err(CloudError::State("请先生成备份密钥".to_string()));
+                return Err(CloudError::reported(error_payload!(
+                    "cloud.key.missing",
+                    "尚未生成备份密钥"
+                )));
             }
         }
         config.auto_backup_enabled = enabled;
@@ -314,7 +342,10 @@ impl CloudService {
     ) -> CloudResult<CloudConnectionInfo> {
         let repo = RepoUrl::parse(repo_url)?;
         if token.trim().is_empty() {
-            return Err(CloudError::State("请填写访问 Token".to_string()));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.token.empty",
+                "请填写访问 Token"
+            )));
         }
         let branch = if branch.trim().is_empty() {
             DEFAULT_BRANCH.to_string()
@@ -381,9 +412,13 @@ impl CloudService {
         let store = LocalConfigStore::new(&self.data_root);
         let path = self.config_path();
         if path.exists() {
-            store
-                .read_json(&path)
-                .map_err(|error| CloudError::State(error.to_string()))?;
+            store.read_json(&path).map_err(|error| {
+                CloudError::reported(error_payload!(
+                    "cloud.config.read_failed",
+                    "云端备份配置读取失败：{detail}";
+                    detail = error
+                ))
+            })?;
             fs::remove_file(&path)?;
         }
         Ok(())
@@ -396,9 +431,10 @@ impl CloudService {
     /// 生成主密钥（已存在则报错；口令可选）。
     pub fn create_key(&self, passphrase: Option<&str>) -> CloudResult<CloudCreatedKey> {
         if self.load_key()?.is_some() {
-            return Err(CloudError::State(
-                "本机已经有备份密钥；如需更换请先断开云端备份".to_string(),
-            ));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.key.exists",
+                "本机已经有备份密钥；如需更换请先断开云端备份"
+            )));
         }
         let (file, recovery_key) = KeyFile::create(now_ms(), passphrase)?;
         self.save_key(&file)?;
@@ -415,18 +451,22 @@ impl CloudService {
 
     /// 查看恢复密钥（需 PIN 由前端负责；这里只要求本机存在密钥）。
     pub fn view_recovery_key(&self) -> CloudResult<String> {
-        let key = self
-            .load_key()?
-            .ok_or_else(|| CloudError::State("尚未生成备份密钥".to_string()))?;
-        key.recovery_display()
-            .ok_or_else(|| CloudError::State("密钥文件里没有可用的恢复密钥".to_string()))
+        let key = self.load_key()?.ok_or_else(|| {
+            CloudError::reported(error_payload!("cloud.key.missing", "尚未生成备份密钥"))
+        })?;
+        key.recovery_display().ok_or_else(|| {
+            CloudError::reported(error_payload!(
+                "cloud.key.recovery_missing",
+                "密钥文件里没有可用的恢复密钥"
+            ))
+        })
     }
 
     /// 设置 / 更新口令包装。
     pub fn set_passphrase(&self, passphrase: &str) -> CloudResult<CloudKeyInfo> {
-        let mut key = self
-            .load_key()?
-            .ok_or_else(|| CloudError::State("尚未生成备份密钥".to_string()))?;
+        let mut key = self.load_key()?.ok_or_else(|| {
+            CloudError::reported(error_payload!("cloud.key.missing", "尚未生成备份密钥"))
+        })?;
         let master = key.master_key()?;
         key.set_passphrase(&master, passphrase)?;
         self.save_key(&key)?;
@@ -440,9 +480,9 @@ impl CloudService {
 
     /// 移除口令包装（恢复密钥仍可用）。
     pub fn clear_passphrase(&self) -> CloudResult<CloudKeyInfo> {
-        let mut key = self
-            .load_key()?
-            .ok_or_else(|| CloudError::State("尚未生成备份密钥".to_string()))?;
+        let mut key = self.load_key()?.ok_or_else(|| {
+            CloudError::reported(error_payload!("cloud.key.missing", "尚未生成备份密钥"))
+        })?;
         key.remove_passphrase();
         self.save_key(&key)?;
         Ok(CloudKeyInfo {
@@ -461,7 +501,10 @@ impl CloudService {
     /// 手动备份：拿不到锁说明已有备份在跑，直接报错给用户。
     pub fn run_backup(&self, ledger: &Ledger) -> CloudResult<CloudBackupSummary> {
         let _guard = self.backup_lock.try_lock().map_err(|_| {
-            CloudError::State("已有备份任务正在执行，请稍后再试".to_string())
+            CloudError::reported(error_payload!(
+                "cloud.backup.busy",
+                "已有备份任务正在执行，请稍后再试"
+            ))
         })?;
         self.run_backup_locked(ledger)
     }
@@ -469,13 +512,14 @@ impl CloudService {
     fn run_backup_locked(&self, ledger: &Ledger) -> CloudResult<CloudBackupSummary> {
         let mut config = self.load_config()?;
         if !config.is_configured() {
-            return Err(CloudError::State(
-                "请先填写仓库地址与 Token 并保存".to_string(),
-            ));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.not_configured",
+                "请先填写仓库地址与 Token 并保存"
+            )));
         }
-        let key_file = self
-            .load_key()?
-            .ok_or_else(|| CloudError::State("尚未生成备份密钥".to_string()))?;
+        let key_file = self.load_key()?.ok_or_else(|| {
+            CloudError::reported(error_payload!("cloud.key.missing", "尚未生成备份密钥"))
+        })?;
         let master = key_file.master_key()?;
         let branch = config.branch().to_string();
         let client = self.client(&config)?;
@@ -487,18 +531,22 @@ impl CloudService {
         let mut merged: Option<MergeSummary> = None;
         if let Some(head) = remote_head.clone() {
             // 分支安全校验：必须能读到我们的 manifest。
-            let manifest_bytes = client.download_raw(&branch, MANIFEST_PATH).map_err(|error| match error {
-                CloudError::NotFound => CloudError::State(format!(
-                    "远端分支 {branch} 不是制账的备份分支（读不到 manifest.json）；请换一个分支或清空该分支"
-                )),
-                other => other,
-            })?;
+            let manifest_bytes = client
+                .download_raw(&branch, MANIFEST_PATH)
+                .map_err(|error| match error {
+                    CloudError::NotFound => CloudError::reported(error_payload!(
+                        "cloud.branch.unknown",
+                        "远端分支 {branch} 不是制账的备份分支（读不到 manifest.json）；请换一个分支或清空该分支";
+                        branch = branch
+                    )),
+                    other => other,
+                })?;
             let manifest = CloudManifest::from_json(&manifest_bytes)?;
             if manifest.fingerprint != key_file.fingerprint {
-                return Err(CloudError::State(
+                return Err(CloudError::reported(error_payload!(
+                    "cloud.key.mismatch",
                     "云端备份使用了另一把密钥（可能来自其它设备）：请先执行「从云端恢复」导入那把密钥"
-                        .to_string(),
-                ));
+                )));
             }
             let remote_advanced = config
                 .last_pushed_commit
@@ -664,7 +712,13 @@ impl CloudService {
     ) -> CloudResult<PulledPackage> {
         let entry = manifest
             .find(DATA_PATH)
-            .ok_or_else(|| CloudError::Protocol("云端包缺少 data.enc".to_string()))?;
+            .ok_or_else(|| {
+                CloudError::reported(error_payload!(
+                    "cloud.package.missing_entry",
+                    "云端包缺少 {path}";
+                    path = DATA_PATH
+                ))
+            })?;
         let ciphertext = client.download_raw(branch, DATA_PATH)?;
         verify_ciphertext(entry, &ciphertext)?;
         let plain = decrypt_entry(master.as_bytes(), &manifest.key_id, entry, &ciphertext)?;
@@ -684,9 +738,10 @@ impl CloudService {
             }
             // 云端包是网络输入：路径越界就直接拒绝整包，不往磁盘写。
             if !is_safe_cloud_path(&file_entry.path) {
-                return Err(CloudError::Protocol(format!(
-                    "云端附件路径不合法：{}",
-                    file_entry.path
+                return Err(CloudError::reported(error_payload!(
+                    "cloud.attachment.path_unsafe",
+                    "云端附件路径不合法：{path}";
+                    path = file_entry.path
                 )));
             }
             let ciphertext = client.download_raw(branch, &file_entry.path)?;
@@ -717,15 +772,19 @@ impl CloudService {
     ) -> CloudResult<CloudRestorePreview> {
         let config = self.load_config()?;
         if !config.is_configured() {
-            return Err(CloudError::State(
-                "请先填写仓库地址与 Token 并保存".to_string(),
-            ));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.not_configured",
+                "请先填写仓库地址与 Token 并保存"
+            )));
         }
         let client = self.client(&config)?;
         let branch = config.branch().to_string();
         let refs = client.fetch_refs(GitService::UploadPack)?;
         if refs.head_of(&branch).is_none() {
-            return Err(CloudError::State("云端还没有备份".to_string()));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.backup.none",
+                "云端还没有备份"
+            )));
         }
         let manifest_bytes = client.download_raw(&branch, MANIFEST_PATH)?;
         let manifest = CloudManifest::from_json(&manifest_bytes)?;
@@ -762,7 +821,13 @@ impl CloudService {
             self.resolve_key(&client, &branch, &manifest, key_input)?;
         let entry = manifest
             .find(DATA_PATH)
-            .ok_or_else(|| CloudError::Protocol("云端包缺少 data.enc".to_string()))?;
+            .ok_or_else(|| {
+                CloudError::reported(error_payload!(
+                    "cloud.package.missing_entry",
+                    "云端包缺少 {path}";
+                    path = DATA_PATH
+                ))
+            })?;
         let ciphertext = client.download_raw(&branch, DATA_PATH)?;
         verify_ciphertext(entry, &ciphertext)?;
         let plain = decrypt_entry(master.as_bytes(), &manifest.key_id, entry, &ciphertext)?;
@@ -787,15 +852,19 @@ impl CloudService {
     ) -> CloudResult<CloudRestoreSummary> {
         let config = self.load_config()?;
         if !config.is_configured() {
-            return Err(CloudError::State(
-                "请先填写仓库地址与 Token 并保存".to_string(),
-            ));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.not_configured",
+                "请先填写仓库地址与 Token 并保存"
+            )));
         }
         let client = self.client(&config)?;
         let branch = config.branch().to_string();
         let refs = client.fetch_refs(GitService::UploadPack)?;
         if refs.head_of(&branch).is_none() {
-            return Err(CloudError::State("云端还没有备份".to_string()));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.backup.none",
+                "云端还没有备份"
+            )));
         }
         let manifest_bytes = client.download_raw(&branch, MANIFEST_PATH)?;
         let manifest = CloudManifest::from_json(&manifest_bytes)?;
@@ -804,13 +873,22 @@ impl CloudService {
 
         let entry = manifest
             .find(DATA_PATH)
-            .ok_or_else(|| CloudError::Protocol("云端包缺少 data.enc".to_string()))?;
+            .ok_or_else(|| {
+                CloudError::reported(error_payload!(
+                    "cloud.package.missing_entry",
+                    "云端包缺少 {path}";
+                    path = DATA_PATH
+                ))
+            })?;
         let ciphertext = client.download_raw(&branch, DATA_PATH)?;
         verify_ciphertext(entry, &ciphertext)?;
         let plain = decrypt_entry(master.as_bytes(), &manifest.key_id, entry, &ciphertext)?;
         let data = decode_data(&plain)?;
         if data.books.is_empty() {
-            return Err(CloudError::State("云端备份里没有任何账本".to_string()));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.backup.no_books",
+                "云端备份里没有任何账本"
+            )));
         }
         let counts = counts_of(&data);
 
@@ -887,38 +965,54 @@ impl CloudService {
             return Ok((local.master_key()?, true, None));
         }
         let Some(input) = key_input else {
-            return Err(CloudError::State(
-                "本机没有这把云端密钥，请先用口令或恢复密钥解锁".to_string(),
-            ));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.restore.key_required",
+                "本机没有这把云端密钥，请先用口令或恢复密钥解锁"
+            )));
         };
         // key.wrap.json 是明文 JSON（只含包装），换机时直接解析。
         let wrap_bytes = client.download_raw(branch, KEY_WRAP_PATH)?;
         let key_entry = manifest
             .find(KEY_WRAP_PATH)
-            .ok_or_else(|| CloudError::Protocol("云端包缺少 key.wrap.json".to_string()))?;
+            .ok_or_else(|| {
+                CloudError::reported(error_payload!(
+                    "cloud.package.missing_entry",
+                    "云端包缺少 {path}";
+                    path = KEY_WRAP_PATH
+                ))
+            })?;
         verify_ciphertext(key_entry, &wrap_bytes)?;
         let wrap_file: KeyWrapFile = serde_json::from_slice(&wrap_bytes)?;
         if wrap_file.key_id != manifest.key_id || wrap_file.fingerprint != manifest.fingerprint {
-            return Err(CloudError::Protocol(
-                "云端密钥文件与 manifest 不一致，拒绝使用".to_string(),
-            ));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.key.wrap_mismatch",
+                "云端密钥文件与 manifest 不一致，拒绝使用"
+            )));
         }
         // 换机导入的 keyId 会被拼进本地目录名，形态必须合法。
         if !tk_crypto::is_valid_key_id(&wrap_file.key_id) {
-            return Err(CloudError::Protocol(format!(
-                "云端密钥的 keyId 不合法：{}",
-                wrap_file.key_id
+            return Err(CloudError::reported(error_payload!(
+                "cloud.key.remote_bad_id",
+                "云端密钥的 keyId 不合法（{key_id}）";
+                key_id = wrap_file.key_id
             )));
         }
         let master = match input.kind.as_str() {
             "passphrase" => wrap_file.unwrap_passphrase(&input.value)?,
             "recovery" => wrap_file.unwrap_recovery(&input.value)?,
             other => {
-                return Err(CloudError::State(format!("不支持的密钥解锁方式：{other}")));
+                return Err(CloudError::reported(error_payload!(
+                    "cloud.key.unsupported_unlock",
+                    "不支持的密钥解锁方式：{other}";
+                    other = other
+                )));
             }
         };
         if master.fingerprint() != manifest.fingerprint {
-            return Err(CloudError::State("解出的密钥与云端指纹不一致".to_string()));
+            return Err(CloudError::reported(error_payload!(
+                "cloud.key.fingerprint_mismatch",
+                "解出的密钥与云端指纹不一致"
+            )));
         }
         // 换机时把云端密钥导入本机（保留原始包装，便于再次恢复）。
         let imported = KeyFile {
@@ -1079,6 +1173,7 @@ mod tests {
     use crate::pktline;
     use crate::transport::{HttpResponse, MockTransport};
     use tk_crypto::NONCE_BYTES;
+    use tk_domain::IntoErrorPayload;
 
     fn sample_files() -> Vec<BuiltFile> {
         vec![
@@ -1260,8 +1355,9 @@ mod tests {
         let service = CloudService::new(Arc::new(MockTransport::default()), dir.path());
         let ledger = Ledger::open(dir.path()).expect("open ledger");
 
-        // 未配置：开关打不开
-        assert!(service.set_auto_backup(true).is_err());
+        // 未配置：开关打不开（错误带可翻译的码，不是一句拼好的中文）
+        let error = service.set_auto_backup(true).expect_err("unconfigured");
+        assert_eq!(error.into_error_payload().code, "cloud.not_configured");
         assert!(!service.state().expect("state").auto_backup_enabled);
         // 关闭永远允许
         service.set_auto_backup(false).expect("disable");

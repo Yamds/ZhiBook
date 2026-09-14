@@ -19,11 +19,11 @@ export type TrendKind = 'net' | 'asset' | 'liability';
 
 export const DEFAULT_TREND_KIND: TrendKind = 'net';
 
-/** 趋势卡的口径切换项（顺序即展示顺序）。 */
-export const TREND_KINDS: ReadonlyArray<{ value: TrendKind; label: string }> = [
-    { value: 'net', label: '净资产' },
-    { value: 'asset', label: '总资产' },
-    { value: 'liability', label: '负债' },
+/** 趋势卡的口径切换项（顺序即展示顺序；文案在 `assets.trendKind.*`）。 */
+export const TREND_KINDS: ReadonlyArray<{ value: TrendKind; labelKey: string }> = [
+    { value: 'net', labelKey: 'assets.trendKind.net' },
+    { value: 'asset', labelKey: 'assets.trendKind.asset' },
+    { value: 'liability', labelKey: 'assets.trendKind.liability' },
 ];
 
 /** 折线色调：净资产 / 总资产走品牌色，负债走危险色。 */

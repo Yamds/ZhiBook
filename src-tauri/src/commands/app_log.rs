@@ -5,8 +5,10 @@
 
 use serde::Serialize;
 use tauri::State;
+use tk_domain::error_payload;
 
 use crate::AppState;
+use crate::commands::CommandResult;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AppLogTail {
@@ -19,10 +21,12 @@ pub struct AppLogTail {
 pub fn tail_app_log(
     state: State<'_, AppState>,
     lines: Option<usize>,
-) -> Result<AppLogTail, String> {
-    let path =
-        crate::app_log::active_log_path().ok_or_else(|| "当前会话尚未创建日志文件".to_string())?;
-    let text = crate::app_log::read_tail_text(&path, 256 * 1024)?;
+) -> CommandResult<AppLogTail> {
+    let path = crate::app_log::active_log_path().ok_or_else(|| {
+        error_payload!("app.log.no_session_file", "当前会话尚未创建日志文件")
+    })?;
+    let text = crate::app_log::read_tail_text(&path, 256 * 1024)
+        .map_err(|error| error_payload!("app.log.read_failed", "读取当前会话日志失败：{detail}"; detail = error))?;
     let mut values: Vec<String> = text.lines().map(str::to_string).collect();
     let take = lines.unwrap_or(300);
     if values.len() > take {

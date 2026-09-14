@@ -14,6 +14,10 @@ startupTab: string, motionEnabled: boolean, motionLevel: string, motionSpeed: nu
  */
 splashEnabled: boolean, 
 /**
+ * 界面语言（auto / zh-CN）。auto 时由前端按设备语言解析。
+ */
+language: string, 
+/**
  * InfoBar info tone 自动关闭毫秒,0 = 不自动关
  */
 infoBarDismissInfoMs: number, 
