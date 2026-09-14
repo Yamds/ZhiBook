@@ -66,6 +66,7 @@ export function AmountPanel({
 
                 <button
                     type="button"
+                    data-tour="add-date-button"
                     onClick={onPickDate}
                     aria-label="选择账单日期"
                     className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border-0 bg-inset px-1.5 text-[11.5px] text-text-secondary active:bg-muted"

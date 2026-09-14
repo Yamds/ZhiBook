@@ -162,6 +162,7 @@ export type IconName =
     | 'mdi:gift'
     | 'mdi:gift-open-outline'
     | 'mdi:gift-outline'
+    | 'mdi:github'
     | 'mdi:glass-mug-variant'
     | 'mdi:glass-wine'
     | 'mdi:glasses'
@@ -178,6 +179,7 @@ export type IconName =
     | 'mdi:headset'
     | 'mdi:heart-outline'
     | 'mdi:heart-pulse'
+    | 'mdi:help-circle-outline'
     | 'mdi:hiking'
     | 'mdi:home-city-outline'
     | 'mdi:home-currency-usd'
@@ -197,6 +199,7 @@ export type IconName =
     | 'mdi:lamp-outline'
     | 'mdi:laptop'
     | 'mdi:leaf'
+    | 'mdi:license'
     | 'mdi:lightbulb-on-outline'
     | 'mdi:lightbulb-outline'
     | 'mdi:lightning-bolt-outline'
@@ -225,6 +228,7 @@ export type IconName =
     | 'mdi:needle'
     | 'mdi:noodles'
     | 'mdi:notebook-outline'
+    | 'mdi:open-in-new'
     | 'mdi:package-variant-closed'
     | 'mdi:palette-outline'
     | 'mdi:palm-tree'
@@ -524,6 +528,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:gift',
     'mdi:gift-open-outline',
     'mdi:gift-outline',
+    'mdi:github',
     'mdi:glass-mug-variant',
     'mdi:glass-wine',
     'mdi:glasses',
@@ -540,6 +545,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:headset',
     'mdi:heart-outline',
     'mdi:heart-pulse',
+    'mdi:help-circle-outline',
     'mdi:hiking',
     'mdi:home-city-outline',
     'mdi:home-currency-usd',
@@ -559,6 +565,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:lamp-outline',
     'mdi:laptop',
     'mdi:leaf',
+    'mdi:license',
     'mdi:lightbulb-on-outline',
     'mdi:lightbulb-outline',
     'mdi:lightning-bolt-outline',
@@ -587,6 +594,7 @@ export const ICON_NAMES: readonly IconName[] = [
     'mdi:needle',
     'mdi:noodles',
     'mdi:notebook-outline',
+    'mdi:open-in-new',
     'mdi:package-variant-closed',
     'mdi:palette-outline',
     'mdi:palm-tree',
@@ -785,6 +793,12 @@ export const UI_ICONS = {
     databaseExport: 'mdi:database-export-outline',
     databaseImport: 'mdi:database-import-outline',
     key: 'mdi:key-outline',
+    guide: 'mdi:school-outline',
+    help: 'mdi:help-circle-outline',
+    license: 'mdi:license',
+    openInNew: 'mdi:open-in-new',
+    heart: 'mdi:heart-outline',
+    github: 'mdi:github',
 } as const satisfies Record<string, IconName>;
 
 /** 选择器分组顺序。 */

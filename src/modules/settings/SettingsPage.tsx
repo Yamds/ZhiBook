@@ -35,7 +35,7 @@ export function SettingsPage() {
     return (
         <div className="flex h-full min-h-0 w-full flex-col">
             <Tabs value={tab} onValueChange={(value) => setTab(value as SettingsTab)} className="flex min-h-0 flex-1 flex-col">
-                <div className="sticky top-0 z-[5] shrink-0 border-b border-border-subtle bg-canvas/95 backdrop-blur-sm">
+                <div data-tour="settings-tabs" className="sticky top-0 z-[5] shrink-0 border-b border-border-subtle bg-canvas/95 backdrop-blur-sm">
                     <TabsList className="scrollbar-hide min-w-0 shrink overflow-x-auto border-b-0">
                         {SETTINGS_TABS.map((item) => (
                             <TabsTrigger key={item.value} value={item.value}>{item.label}</TabsTrigger>

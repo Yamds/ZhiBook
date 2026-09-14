@@ -76,6 +76,14 @@ export const UI_ICONS = {
     databaseExport: 'database-export-outline',
     databaseImport: 'database-import-outline',
     key: 'key-outline',
+
+    // 设置 · 关于 / 帮助
+    guide: 'school-outline',
+    help: 'help-circle-outline',
+    license: 'license',
+    openInNew: 'open-in-new',
+    heart: 'heart-outline',
+    github: 'github',
 };
 
 /** 内置分类默认图标：与 BRD 第 6 章的推荐表一一对应。 */

@@ -37,6 +37,16 @@ pub fn run() {
             app_log::init(&data_root);
             let snapshot = bootstrap::build_snapshot_for_data_root(&data_root);
             let settings = commands::app_settings::read_app_settings(&data_root);
+            // 全新安装（还没有账本库）→ 首次运行新手引导；老用户升级时库已存在，不打扰。
+            let mut settings = settings;
+            if commands::app_settings::is_fresh_install(&data_root) {
+                settings.ui_preferences.onboarding_completed = false;
+                if let Err(error) =
+                    commands::app_settings::write_app_settings(&data_root, &settings)
+                {
+                    app_log::write_session_line("WARN", "onboarding_marker", &error);
+                }
+            }
             let ledger = match Ledger::open(&data_root) {
                 Ok(ledger) => Ok(Arc::new(ledger)),
                 Err(error) => {

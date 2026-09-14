@@ -6,6 +6,8 @@
 
 import { useState } from 'react';
 import { UI_ICONS } from '../../../core/design/icons';
+import { navigateTo } from '../../../app/navigationStore';
+import { startOnboarding } from '../../onboarding/onboardingStore';
 import { useCloudBackupState } from '../../../hooks/cloud/useCloudBackup';
 import { useCurrentBook } from '../../../hooks/ledger';
 import { useRecurringRules } from '../../../hooks/ledger/useLedgerRecurring';
@@ -76,6 +78,7 @@ export function FeatureTab({ draft, patchDraft }: Props) {
                         label="固定收支"
                         description="每天 05:00 自动记一笔固定支出 / 收入；打开 App 时补齐漏掉的天数"
                         value={recurringValue}
+                        tourId="settings-entry-recurring"
                         onClick={() => setRecurringOpen(true)}
                     />
                     <SettingsEntryRow
@@ -119,6 +122,19 @@ export function FeatureTab({ draft, patchDraft }: Props) {
                         description="导出 zip 备份包（含附件）；导入为覆盖式恢复"
                         value="JSON + ZIP"
                         onClick={() => setDataOpen(true)}
+                    />
+                </SettingsSection>
+
+                <SettingsSection title="帮助" description="随时可以重看操作指引">
+                    <SettingsEntryRow
+                        icon={UI_ICONS.guide}
+                        label="新手引导"
+                        description="重新观看日历、记账与设置的操作指引"
+                        value="重新播放"
+                        onClick={() => {
+                            navigateTo('home');
+                            startOnboarding();
+                        }}
                     />
                 </SettingsSection>
             </SettingsTabSections>

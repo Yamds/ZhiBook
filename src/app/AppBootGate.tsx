@@ -117,7 +117,7 @@ export const AppBootGate: React.FC = () => {
                 data-boot-reveal={revealed ? (irisReveal ? 'iris' : 'on') : 'off'}
             >
                 <RouteErrorBoundary title="主界面渲染失败">
-                    <AppNext />
+                    <AppNext bootSettled={splashDone} />
                 </RouteErrorBoundary>
             </div>
 

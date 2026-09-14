@@ -14,6 +14,13 @@ startupTab: string, motionEnabled: boolean, motionLevel: string, motionSpeed: nu
  */
 splashEnabled: boolean, 
 /**
+ * 新手引导是否已完成。
+ *
+ * 老用户升级时配置文件里没有这个字段 → `default_true`，不打扰；
+ * 全新安装由启动装配层（`src-tauri/src/lib.rs`）根据「账本库是否存在」写 false。
+ */
+onboardingCompleted: boolean, 
+/**
  * InfoBar info tone 自动关闭毫秒,0 = 不自动关
  */
 infoBarDismissInfoMs: number, 

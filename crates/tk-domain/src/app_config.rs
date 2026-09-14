@@ -148,6 +148,12 @@ pub struct AppUiPreferences {
     /// 启动动画(启动页)。关闭后冷启动直接进主界面,不再播放启动层。
     #[serde(rename = "splashEnabled", default = "default_true")]
     pub splash_enabled: bool,
+    /// 新手引导是否已完成。
+    ///
+    /// 老用户升级时配置文件里没有这个字段 → `default_true`，不打扰；
+    /// 全新安装由启动装配层（`src-tauri/src/lib.rs`）根据「账本库是否存在」写 false。
+    #[serde(rename = "onboardingCompleted", default = "default_true")]
+    pub onboarding_completed: bool,
     /// InfoBar info tone 自动关闭毫秒,0 = 不自动关
     #[serde(
         rename = "infoBarDismissInfoMs",
@@ -181,6 +187,7 @@ impl Default for AppUiPreferences {
             motion_speed: default_ui_motion_speed(),
             radius_style: default_ui_radius_style(),
             splash_enabled: true,
+            onboarding_completed: true,
             info_bar_dismiss_info_ms: default_infobar_dismiss_info_ms(),
             info_bar_dismiss_success_ms: default_infobar_dismiss_success_ms(),
             info_bar_dismiss_warning_ms: default_infobar_dismiss_warning_ms(),
@@ -246,6 +253,7 @@ mod tests {
                 motion_enabled: false,
                 motion_speed: 0.8,
                 splash_enabled: false,
+                onboarding_completed: false,
                 info_bar_dismiss_info_ms: 8000,
                 ..AppUiPreferences::default()
             },
@@ -254,6 +262,7 @@ mod tests {
         let json = serde_json::to_string(&cfg).expect("serialize 不应失败");
         assert!(json.contains(r#""theme":"mocha""#));
         assert!(json.contains(r#""splashEnabled":false"#));
+        assert!(json.contains(r#""onboardingCompleted":false"#));
         assert!(json.contains(r#""infoBarDismissInfoMs":8000"#));
         let back: AppSettings = serde_json::from_str(&json).expect("反序列化失败");
         assert_eq!(back, cfg);
@@ -289,6 +298,13 @@ mod tests {
         let json = serde_json::to_string(&parsed).expect("serialize 不应失败");
         assert!(!json.contains("closeAction"));
         assert!(!json.contains("allowPinchZoom"));
+    }
+
+    #[test]
+    fn onboarding_defaults_to_completed_for_legacy_configs() {
+        // 老配置缺字段时默认「已完成」：升级不打扰老用户
+        let parsed: AppSettings = serde_json::from_str("{\"uiPreferences\":{}}").expect("应能读取");
+        assert!(parsed.ui_preferences.onboarding_completed);
     }
 
     #[test]

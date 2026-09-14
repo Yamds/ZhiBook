@@ -71,6 +71,7 @@ export const BottomNav: React.FC<{
                     <button
                         key={item.id}
                         type="button"
+                        data-tour={`nav-${item.id}`}
                         onClick={() => onSelect(item.id)}
                         aria-current={isActive ? 'page' : undefined}
                         className={cn(

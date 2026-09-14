@@ -398,7 +398,7 @@ export function CategoryGrid({
     }, [drag, dropIndex, pageIndex]);
 
     return (
-        <div className="flex min-h-0 flex-col">
+        <div data-tour="add-category-grid" className="flex min-h-0 flex-col">
             {editing ? (
                 <div className="flex items-center justify-end gap-1.5 px-4 pb-1.5">
                     <button

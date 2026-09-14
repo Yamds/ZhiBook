@@ -40,6 +40,8 @@ import {
 import { backActionFor, navigateTo, retapScreen, useNavigation, useRetapHandler } from './navigationStore';
 import { runPageBackHandler } from './pageBackHandler';
 import { closeTopOverlay } from '../shared/ui/overlayStack';
+import { OnboardingTour } from '../modules/onboarding/OnboardingTour';
+import { isOnboardingActive } from '../modules/onboarding/onboardingStore';
 import { SwipeProvider, neighborOf, type NestedSwipeHandler, type SwipeDirection } from './swipeNavigation';
 
 /** 顶部栏右侧的账本入口：数据未就绪时先显示占位名（正常一帧内就被真实名替换）。 */
@@ -72,7 +74,12 @@ function renderScreen(screen: AppScreen) {
     }
 }
 
-export function AppNext() {
+export interface AppNextProps {
+    /** 启动层是否已经退场；新手引导等首启逻辑等它之后再出现。 */
+    bootSettled?: boolean;
+}
+
+export function AppNext({ bootSettled = true }: AppNextProps) {
     const navigation = useNavigation();
     const screen = navigation.screen;
     const [displayedScreen, setDisplayedScreen] = useState<AppScreen>(screen);
@@ -158,9 +165,9 @@ export function AppNext() {
     useHorizontalSwipe(mainRef, handleSwipe);
 
     // ===== Android 返回键 =====
-    // 优先级：最上层弹层（BottomSheet / Dialog）> 页面拦截（分类编辑模式 / 全屏图等）
-    //         > 非首页回首页 > 首页退出确认。
+    // 优先级：新手引导（不许退出）> 最上层弹层 > 页面拦截 > 非首页回首页 > 首页退出确认。
     useEffect(() => registerBackButtonHandler(() => {
+        if (isOnboardingActive()) return 'handled';
         if (closeTopOverlay()) return 'handled';
         if (runPageBackHandler()) return 'handled';
         switch (backActionFor(screen, exitGateOpen)) {
@@ -202,6 +209,7 @@ export function AppNext() {
                     <BottomNav active={screen} onSelect={handleTabSelect} />
                     <InfoBarStack items={bars} onDismiss={dismiss} onAutoDismiss={remove} />
                     <AppExitGate open={exitGateOpen} onOpenChange={setExitGateOpen} />
+                    <OnboardingTour bootSettled={bootSettled} />
                     <GlobalTitleTooltip />
                 </div>
             </TooltipProvider>

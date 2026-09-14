@@ -32,11 +32,13 @@ export function FieldRow({ label, description, isLast: _isLast, layout = 'inline
     return <div className="flex items-center justify-between gap-6 py-5 first:pt-1 last:pb-1"><div className="min-w-0 flex-1 space-y-1"><label className="block text-[13px] font-medium leading-snug text-text">{label}</label>{description && <p className="text-[12px] leading-relaxed text-text-tertiary">{description}</p>}</div>{children && <div className="flex shrink-0 items-center gap-2">{children}</div>}</div>;
 }
 
-/** 设置项入口行：点开一个管理弹窗（固定收支 / 记账提醒 / 密码锁 / 数据 …）。 */
-export function SettingsEntryRow({ icon, label, description, value, onClick, disabled }: { icon?: IconName; label: string; description?: ReactNode; value?: ReactNode; onClick: () => void; disabled?: boolean }) {
+/** 设置项入口行：点开一个管理弹窗（固定收支 / 记账提醒 / 密码锁 / 数据 …）。
+ *  `tourId` 供新手引导定位（渲染成 `data-tour`）。 */
+export function SettingsEntryRow({ icon, label, description, value, onClick, disabled, tourId }: { icon?: IconName; label: string; description?: ReactNode; value?: ReactNode; onClick: () => void; disabled?: boolean; tourId?: string }) {
     return (
         <button
             type="button"
+            data-tour={tourId}
             onClick={onClick}
             disabled={disabled}
             className="flex w-full items-center gap-3 py-5 text-left first:pt-1 last:pb-1 active:opacity-70 disabled:opacity-50"
