@@ -29,7 +29,9 @@ mod merge;
 pub use merge::{merge_into, merged_counts};
 
 /// 备份包标识与格式版本。
-pub const FORMAT: &str = "yamds-bill-backup";
+///
+/// 与 App 标识同源（`cafe.yamds.zhibook`）；尚未正式发布，旧标识不做兼容读。
+pub const FORMAT: &str = "zhibook-backup";
 pub const FORMAT_VERSION: i64 = 1;
 
 const ATTACHMENT_DB_PREFIX: &str = "ledger/";
