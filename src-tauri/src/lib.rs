@@ -41,6 +41,7 @@ pub fn run() {
             let mut settings = settings;
             if commands::app_settings::is_fresh_install(&data_root) {
                 settings.ui_preferences.onboarding_completed = false;
+                settings.ui_preferences.add_tour_completed = false;
                 if let Err(error) =
                     commands::app_settings::write_app_settings(&data_root, &settings)
                 {

@@ -38,7 +38,7 @@ export function SettingsPage() {
                 <div data-tour="settings-tabs" className="sticky top-0 z-[5] shrink-0 border-b border-border-subtle bg-canvas/95 backdrop-blur-sm">
                     <TabsList className="scrollbar-hide min-w-0 shrink overflow-x-auto border-b-0">
                         {SETTINGS_TABS.map((item) => (
-                            <TabsTrigger key={item.value} value={item.value}>{item.label}</TabsTrigger>
+                            <TabsTrigger key={item.value} value={item.value} data-tour={`settings-tab-${item.value}`}>{item.label}</TabsTrigger>
                         ))}
                     </TabsList>
                 </div>

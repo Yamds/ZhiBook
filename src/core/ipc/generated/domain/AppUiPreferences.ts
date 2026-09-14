@@ -21,6 +21,12 @@ splashEnabled: boolean,
  */
 onboardingCompleted: boolean, 
 /**
+ * 添加页的分段引导是否已完成（用户首次进入添加页时触发一次）。
+ *
+ * 与 `onboarding_completed` 同一套新装判定：老配置缺字段 → 默认 true，不打扰。
+ */
+addTourCompleted: boolean, 
+/**
  * InfoBar info tone 自动关闭毫秒,0 = 不自动关
  */
 infoBarDismissInfoMs: number, 

@@ -170,14 +170,20 @@ body {
     overflow: hidden;
 }
 
-button,
-input,
-textarea,
-select,
-optgroup {
-    font-family: inherit;
-    font-size: inherit;
-    line-height: inherit;
+/* 表单元素复位必须待在 base 层：
+   unlayered 规则在 CSS 层叠里优先于 `@layer utilities`，会让按钮上的 `text-[Npx]` /
+   `leading-none` 全部失效（键盘数字曾长期渲染成继承字号，改多大都没反应）。
+   放进 base 后，utility 正常覆盖。 */
+@layer base {
+    button,
+    input,
+    textarea,
+    select,
+    optgroup {
+        font-family: inherit;
+        font-size: inherit;
+        line-height: inherit;
+    }
 }
 
 /* UI 等宽：拉丁 JetBrains + tabular-nums；CJK 走 --font-mono 栈内雅黑/苹方 */

@@ -78,7 +78,6 @@ export function FeatureTab({ draft, patchDraft }: Props) {
                         label="固定收支"
                         description="每天 05:00 自动记一笔固定支出 / 收入；打开 App 时补齐漏掉的天数"
                         value={recurringValue}
-                        tourId="settings-entry-recurring"
                         onClick={() => setRecurringOpen(true)}
                     />
                     <SettingsEntryRow

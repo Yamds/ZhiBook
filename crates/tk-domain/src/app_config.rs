@@ -154,6 +154,11 @@ pub struct AppUiPreferences {
     /// 全新安装由启动装配层（`src-tauri/src/lib.rs`）根据「账本库是否存在」写 false。
     #[serde(rename = "onboardingCompleted", default = "default_true")]
     pub onboarding_completed: bool,
+    /// 添加页的分段引导是否已完成（用户首次进入添加页时触发一次）。
+    ///
+    /// 与 `onboarding_completed` 同一套新装判定：老配置缺字段 → 默认 true，不打扰。
+    #[serde(rename = "addTourCompleted", default = "default_true")]
+    pub add_tour_completed: bool,
     /// InfoBar info tone 自动关闭毫秒,0 = 不自动关
     #[serde(
         rename = "infoBarDismissInfoMs",
@@ -188,6 +193,7 @@ impl Default for AppUiPreferences {
             radius_style: default_ui_radius_style(),
             splash_enabled: true,
             onboarding_completed: true,
+            add_tour_completed: true,
             info_bar_dismiss_info_ms: default_infobar_dismiss_info_ms(),
             info_bar_dismiss_success_ms: default_infobar_dismiss_success_ms(),
             info_bar_dismiss_warning_ms: default_infobar_dismiss_warning_ms(),
@@ -254,6 +260,7 @@ mod tests {
                 motion_speed: 0.8,
                 splash_enabled: false,
                 onboarding_completed: false,
+                add_tour_completed: false,
                 info_bar_dismiss_info_ms: 8000,
                 ..AppUiPreferences::default()
             },
@@ -263,6 +270,7 @@ mod tests {
         assert!(json.contains(r#""theme":"mocha""#));
         assert!(json.contains(r#""splashEnabled":false"#));
         assert!(json.contains(r#""onboardingCompleted":false"#));
+        assert!(json.contains(r#""addTourCompleted":false"#));
         assert!(json.contains(r#""infoBarDismissInfoMs":8000"#));
         let back: AppSettings = serde_json::from_str(&json).expect("反序列化失败");
         assert_eq!(back, cfg);
@@ -305,6 +313,7 @@ mod tests {
         // 老配置缺字段时默认「已完成」：升级不打扰老用户
         let parsed: AppSettings = serde_json::from_str("{\"uiPreferences\":{}}").expect("应能读取");
         assert!(parsed.ui_preferences.onboarding_completed);
+        assert!(parsed.ui_preferences.add_tour_completed);
     }
 
     #[test]

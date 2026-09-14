@@ -24,7 +24,9 @@ export function AppearanceTab({ draft, patchDraft }: Props) {
         <SettingsTabSections>
             <SettingsSection title="界面" description="选中后立即预览并自动保存">
                 <FieldRow label="主题" description="系统跟随 / 浅色 / 暗色 / Catppuccin 风味">
-                    <ThemePicker value={draft.theme} onChange={(value) => patchDraft({ theme: value })} />
+                    <span data-tour="settings-theme" className="inline-flex">
+                        <ThemePicker value={draft.theme} onChange={(value) => patchDraft({ theme: value })} />
+                    </span>
                 </FieldRow>
                 <FieldRow label="圆角风格" description="方正克制 · 标准平衡 · 圆润饱满，全局统一缩放" isLast>
                     <RadiusStyleSegment value={draft.radiusStyle} onChange={(value) => patchDraft({ radiusStyle: value })} />
