@@ -62,11 +62,14 @@ object YamdsHttp {
             }
             val status = connection.responseCode
             // GET 的同主机重定向（Gitea 不同版本的 raw 路径会有 302）自己跟，最多 5 跳。
+            // 注意：必须同时比较 scheme / host / port —— 只比 host 会把
+            // Authorization 头带到 `http://` 或别的端口上（Token 泄露）。
             if (method == "GET" && status in 301..308 && redirects < MAX_REDIRECTS) {
                 val location = connection.getHeaderField("Location")
                 if (!location.isNullOrEmpty()) {
-                    val next = URL(URL(url), location)
-                    if (next.host == URL(url).host) {
+                    val current = URL(url)
+                    val next = URL(current, location)
+                    if (isSameOrigin(current, next)) {
                         connection.disconnect()
                         return execute(method, next.toString(), headersJson, null, redirects + 1)
                     }
@@ -77,6 +80,15 @@ object YamdsHttp {
             connection.disconnect()
         }
     }
+
+    /** 同源判断：scheme / host / port 三者全部一致才允许带着鉴权头跟随重定向。 */
+    private fun isSameOrigin(current: URL, next: URL): Boolean =
+        next.protocol == current.protocol &&
+            next.host == current.host &&
+            effectivePort(next) == effectivePort(current)
+
+    /** `URL.port` 在未显式写出端口时返回 -1，这里换成协议默认端口再比。 */
+    private fun effectivePort(url: URL): Int = if (url.port == -1) url.defaultPort else url.port
 
     private fun read(connection: HttpURLConnection, status: Int): Response {
         val stream: InputStream = if (status in 200..299) {

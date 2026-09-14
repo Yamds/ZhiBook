@@ -7,7 +7,7 @@
 import { THEME_COLOR_TOKEN, isFixedColor } from '../../core/design/categoryColor';
 import { UI_ICONS } from '../../core/design/icons';
 import { useThemePalette } from '../../hooks/theme/useThemePalette';
-import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
+import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import { cn } from '../utils/cn';
 import { AppIcon } from './AppIcon';
 
@@ -19,9 +19,7 @@ export interface ColorSwatchRowProps {
 }
 
 export function ColorSwatchRow({ value, onChange, className }: ColorSwatchRowProps) {
-    const { brand } = useThemeTokens({
-        brand: { name: '--brand-500', fallback: '#ff6b3d' },
-    });
+    const { brand } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
     const { palette } = useThemePalette();
     const invalid = !isFixedColor(value) && value !== THEME_COLOR_TOKEN;
 

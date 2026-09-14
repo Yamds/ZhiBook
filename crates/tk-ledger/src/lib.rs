@@ -911,6 +911,51 @@ mod tests {
     }
 
     #[test]
+    fn hiding_a_category_frees_its_name() {
+        let ledger = TestLedger::new();
+        let created = ledger
+            .create_category(NewCategory {
+                kind: EntryKind::Expense,
+                name: "复用分类".to_string(),
+                icon_name: "mdi:noodles".to_string(),
+                color: "theme".to_string(),
+            })
+            .expect("create");
+        // 可见时不能重名
+        assert!(
+            ledger
+                .create_category(NewCategory {
+                    kind: EntryKind::Expense,
+                    name: "复用分类".to_string(),
+                    icon_name: "mdi:noodles".to_string(),
+                    color: "theme".to_string(),
+                })
+                .is_err(),
+            "可见分类名必须仍然唯一"
+        );
+
+        ledger.hide_category(&created.id).expect("hide");
+
+        // 软删除后名字释放（v4 部分索引）
+        let again = ledger
+            .create_category(NewCategory {
+                kind: EntryKind::Expense,
+                name: "复用分类".to_string(),
+                icon_name: "mdi:tag-outline".to_string(),
+                color: "theme".to_string(),
+            })
+            .expect("重建同名分类");
+        assert_ne!(again.id, created.id);
+
+        // 隐藏的还在（历史账单继续显示），但不在可见列表里
+        let all = ledger.list_categories(true).expect("all");
+        assert!(all.iter().any(|item| item.id == created.id));
+        let visible = ledger.list_categories(false).expect("visible");
+        assert!(!visible.iter().any(|item| item.id == created.id));
+        assert!(visible.iter().any(|item| item.id == again.id));
+    }
+
+    #[test]
     fn hard_deletes_write_tombstones() {
         let ledger = TestLedger::new();
         let book_id = seed::DEFAULT_BOOK_ID.to_string();

@@ -29,7 +29,7 @@ import {
     useYearTransactionRanks,
 } from '../../hooks/ledger';
 import { useCurrentBook } from '../../hooks/ledger/useLedgerBooks';
-import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
+import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import { useThemePalette } from '../../hooks/theme/useThemePalette';
 import { PeriodSelector } from '../../shared/ui/PeriodSelector';
 import { SegmentedControl } from '../../shared/ui';
@@ -66,10 +66,7 @@ export function BillsPage() {
     const { currentBook } = useCurrentBook();
     const bookId = currentBook?.id;
     const today = useMemo(() => todayDate(), []);
-    const { brand, surface } = useThemeTokens({
-        brand: { name: '--brand-500', fallback: '#ff6b3d' },
-        surface: { name: '--surface-card', fallback: '#ffffff' },
-    });
+    const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
     const { palette } = useThemePalette();
 
     const [year, setYear] = useState(today.year);

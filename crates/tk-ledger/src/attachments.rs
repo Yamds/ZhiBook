@@ -8,7 +8,7 @@
 
 use std::fs;
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -173,11 +173,6 @@ fn is_safe_id(value: &str) -> bool {
             .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
 }
 
-/// 附件目录是否已被创建（诊断用）。
-pub fn attachments_root_exists(data_root: &Path) -> bool {
-    data_root.join(ATTACHMENTS_RELATIVE_ROOT).is_dir()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -222,7 +217,12 @@ mod tests {
 
         let data = ledger.read_attachment(&saved.id).expect("read attachment");
         assert_eq!(data.base64, payload);
-        assert!(attachments_root_exists(ledger.data_root()));
+        assert!(
+            ledger
+                .data_root()
+                .join(ATTACHMENTS_RELATIVE_ROOT)
+                .is_dir()
+        );
 
         ledger.delete_attachment(&saved.id).expect("delete");
         assert!(ledger.read_attachment(&saved.id).is_err());

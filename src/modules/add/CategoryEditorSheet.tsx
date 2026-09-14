@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { THEME_COLOR_TOKEN, categoryColors } from '../../core/design/categoryColor';
 import { toIconName, type IconName } from '../../core/design/icons';
-import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
+import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import type { Category, EntryKind } from '../../core/ipc/types';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { BottomSheet } from '../../shared/ui/BottomSheet';
@@ -48,10 +48,7 @@ export function CategoryEditorSheet({
     onSubmit,
     onRequestDelete,
 }: CategoryEditorSheetProps) {
-    const { brand, surface } = useThemeTokens({
-        brand: { name: '--brand-500', fallback: '#ff6b3d' },
-        surface: { name: '--surface-card', fallback: '#ffffff' },
-    });
+    const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
 
     const [name, setName] = useState('');
     const [iconName, setIconName] = useState<IconName>(DEFAULT_ICON);

@@ -8,7 +8,7 @@ import { THEME_COLOR_TOKEN, categoryColors } from '../../core/design/categoryCol
 import { toIconName, type IconName } from '../../core/design/icons';
 import { formatCents } from '../../core/domain/money';
 import type { Account, AccountKind } from '../../core/ipc/types';
-import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
+import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import { BottomSheet } from '../../shared/ui/BottomSheet';
 import { ColorSwatchRow } from '../../shared/ui/ColorSwatchRow';
 import { IconPicker } from '../../shared/ui/IconPicker';
@@ -56,10 +56,7 @@ export function AccountEditorSheet({
     onSubmit,
     onRequestDelete,
 }: AccountEditorSheetProps) {
-    const { brand, surface } = useThemeTokens({
-        brand: { name: '--brand-500', fallback: '#ff6b3d' },
-        surface: { name: '--surface-card', fallback: '#ffffff' },
-    });
+    const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
 
     const [kind, setKind] = useState<AccountKind>(defaultKind);
     const [name, setName] = useState('');

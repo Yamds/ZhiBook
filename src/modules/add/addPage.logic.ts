@@ -7,6 +7,7 @@
 
 import type { Category, EntryKind, Transaction } from '../../core/ipc/types';
 import { parseDayKey, todayDate, type CalendarDate } from '../../core/domain/date';
+import { centsToInputText } from '../../core/domain/money';
 
 /** 宫格列数（每排 4 个）。 */
 export const GRID_COLUMNS = 4;
@@ -274,10 +275,10 @@ export function clockFromMs(ms: number): { hours: number; minutes: number } {
  * 金额（分）→ 键盘表达式原文（编辑账单回填用）。
  *
  * `34450` → `'344.50'`；非正数返回空串（键盘初始态）。
+ * 解析 / 格式化的实现在 `core/domain/money`（唯一入口）。
  */
 export function centsToExpression(cents: number): string {
-    if (!Number.isFinite(cents) || cents <= 0) return '';
-    return (cents / 100).toFixed(2);
+    return Number.isFinite(cents) && cents > 0 ? centsToInputText(cents) : '';
 }
 
 /** 两个日期相差的天数（同一天 = 0）。 */

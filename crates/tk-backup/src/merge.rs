@@ -24,7 +24,7 @@ use std::path::Path;
 use tk_domain::{Account, Attachment, Book, Category, MergeSummary, RecurringRule, Transaction};
 use tk_ledger::{repo, seed, Ledger};
 
-use crate::{BackupData, BackupError, BackupResult, counts_of};
+use crate::{BackupData, BackupError, BackupResult};
 
 /// 账本名上限（与 `tk-ledger::validate` 的 BOOK_NAME_MAX 对齐）。
 const BOOK_NAME_MAX: usize = 20;
@@ -349,17 +349,21 @@ fn merge_categories(
     state: &mut MergeState,
 ) -> tk_ledger::LedgerResult<()> {
     let local = local_index(local_data);
-    // (kind, name) → id：同名不同 id 时把远端并进已有分类。
-    let mut name_index: HashMap<(String, String), String> = local
-        .categories
-        .values()
-        .map(|item| {
-            (
-                (item.kind.as_str().to_string(), item.name.clone()),
-                item.id.clone(),
-            )
-        })
-        .collect();
+    // (kind, name) → id，分两张表：可见 / 隐藏。
+    //
+    // 同名并入的目标是「可见的同名分类」（BRD 的同名并入规则）；隐藏分类只在
+    // 远端那条**也是隐藏**时才允许并进去，否则会把远端一个可见分类悄悄变成隐藏分类
+    // （v4 的部分索引下，隐藏分类之间是可以重名的）。
+    let mut visible_index: HashMap<(String, String), String> = HashMap::new();
+    let mut hidden_index: HashMap<(String, String), String> = HashMap::new();
+    for item in local.categories.values() {
+        let key = (item.kind.as_str().to_string(), item.name.clone());
+        if item.hidden {
+            hidden_index.insert(key, item.id.clone());
+        } else {
+            visible_index.insert(key, item.id.clone());
+        }
+    }
 
     for source in &remote.categories {
         let kind_name = (source.kind.as_str().to_string(), source.name.clone());
@@ -367,29 +371,55 @@ fn merge_categories(
             Some(current) => {
                 if source.updated_at_ms > current.updated_at_ms {
                     let mut incoming = source.clone();
-                    if let Some(other) = name_index.get(&kind_name)
-                        && other != &source.id
-                    {
-                        incoming.name = unique_category_name(conn, source.kind, &source.name, Some(&source.id))?;
+                    // 改名撞车：只有「可见被可见挡住」才需要换名（隐藏的不占名字）。
+                    let collision = !incoming.hidden
+                        && visible_index
+                            .get(&kind_name)
+                            .is_some_and(|other| other != &source.id);
+                    if collision {
+                        incoming.name = unique_category_name(
+                            conn,
+                            source.kind,
+                            &source.name,
+                            Some(&source.id),
+                        )?;
                     }
-                    name_index.remove(&(current.kind.as_str().to_string(), current.name.clone()));
-                    name_index.insert(
-                        (incoming.kind.as_str().to_string(), incoming.name.clone()),
-                        incoming.id.clone(),
-                    );
+                    // 同步两张索引：摘掉旧的 (kind, 原名)，写入新的 (kind, 新名)
+                    let old_key = (current.kind.as_str().to_string(), current.name.clone());
+                    if current.hidden {
+                        hidden_index.remove(&old_key);
+                    } else {
+                        visible_index.remove(&old_key);
+                    }
+                    let new_key = (incoming.kind.as_str().to_string(), incoming.name.clone());
+                    if incoming.hidden {
+                        hidden_index.insert(new_key, incoming.id.clone());
+                    } else {
+                        visible_index.insert(new_key, incoming.id.clone());
+                    }
                     repo::upsert_category(conn, &incoming)?;
                     clear_tombstone(conn, "category", &source.id)?;
                     state.summary.categories.updated += 1;
                 }
             }
             None => {
-                if let Some(existing) = name_index.get(&kind_name) {
+                let existing = visible_index.get(&kind_name).or_else(|| {
+                    source
+                        .hidden
+                        .then(|| hidden_index.get(&kind_name))
+                        .flatten()
+                });
+                if let Some(existing) = existing {
                     // 两台设备各自建了同名分类：远端账单改指向已有分类。
                     state.category_map.insert(source.id.clone(), existing.clone());
                     continue;
                 }
                 repo::upsert_category(conn, source)?;
-                name_index.insert(kind_name, source.id.clone());
+                if source.hidden {
+                    hidden_index.insert(kind_name, source.id.clone());
+                } else {
+                    visible_index.insert(kind_name, source.id.clone());
+                }
                 state.summary.categories.added += 1;
             }
         }
@@ -761,11 +791,6 @@ fn apply_files(
     Ok(())
 }
 
-/// 合并结果的数据计数（内部检查 / 日志用）。
-pub fn merged_counts(remote: &BackupData) -> tk_domain::BackupCounts {
-    counts_of(remote)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -922,6 +947,80 @@ mod tests {
         );
         let merged = a.get_transaction(&transaction.id).expect("get").expect("kept");
         assert_eq!(merged.category_id, cat_a.id, "远端账单应改指已有分类");
+    }
+
+    /// 本机把「奶茶」软删了，另一台设备又建了一个**可见**的同名分类：
+    /// 合并不能把它并进本机的隐藏分类（那相当于把用户的分类惄惄藏起来）。
+    #[test]
+    fn remote_visible_category_is_not_folded_into_a_hidden_one() {
+        let (a, b) = two_devices();
+        let cat_a = a
+            .create_category(tk_domain::NewCategory {
+                kind: EntryKind::Expense,
+                name: "奶茶".to_string(),
+                icon_name: "mdi:paw".to_string(),
+                color: "theme".to_string(),
+            })
+            .expect("cat a");
+        a.hide_category(&cat_a.id).expect("hide on a");
+
+        let cat_b = b
+            .create_category(tk_domain::NewCategory {
+                kind: EntryKind::Expense,
+                name: "奶茶".to_string(),
+                icon_name: "mdi:cup".to_string(),
+                color: "theme".to_string(),
+            })
+            .expect("cat b");
+
+        let remote = crate::gather_data(&b).expect("gather b");
+        merge_into(&a, a.data_root(), &remote, None).expect("merge");
+
+        let visible = a.list_categories(false).expect("visible");
+        assert!(
+            visible.iter().any(|item| item.id == cat_b.id),
+            "远端可见分类应该自成一条，而不是被并进隐藏分类：{visible:?}"
+        );
+        assert!(
+            !visible.iter().any(|item| item.id == cat_a.id),
+            "本机隐藏分类不能因此变回可见"
+        );
+    }
+
+    /// 两边都是隐藏的同名分类时，仍然按「同名并入」处理（不产生多余分类）。
+    #[test]
+    fn hidden_categories_with_the_same_name_are_still_folded() {
+        let (a, b) = two_devices();
+        let cat_a = a
+            .create_category(tk_domain::NewCategory {
+                kind: EntryKind::Expense,
+                name: "奶茶".to_string(),
+                icon_name: "mdi:paw".to_string(),
+                color: "theme".to_string(),
+            })
+            .expect("cat a");
+        a.hide_category(&cat_a.id).expect("hide on a");
+        let cat_b = b
+            .create_category(tk_domain::NewCategory {
+                kind: EntryKind::Expense,
+                name: "奶茶".to_string(),
+                icon_name: "mdi:paw".to_string(),
+                color: "theme".to_string(),
+            })
+            .expect("cat b");
+        b.hide_category(&cat_b.id).expect("hide on b");
+
+        let remote = crate::gather_data(&b).expect("gather b");
+        merge_into(&a, a.data_root(), &remote, None).expect("merge");
+
+        let hidden: Vec<_> = a
+            .list_categories(true)
+            .expect("categories")
+            .into_iter()
+            .filter(|item| item.name == "奶茶")
+            .collect();
+        assert_eq!(hidden.len(), 1, "隐藏同名分类仍应并入：{hidden:?}");
+        assert_eq!(hidden[0].id, cat_a.id);
     }
 
     #[test]

@@ -1,23 +1,13 @@
-//! Layer 3 运行时编排。
+//! Layer 3 运行时编排（**预留落点**）。
 //!
-//! 这里承载应用服务、生命周期、事件协调等运行时行为；Tauri command
-//! 只负责参数转换和错误边界，不直接操作文件或实现业务规则。
-
-use std::path::PathBuf;
-
-#[derive(Clone)]
-pub struct AppRuntime {
-    data_root: PathBuf,
-}
-
-impl AppRuntime {
-    pub fn new(data_root: impl Into<PathBuf>) -> Self {
-        Self {
-            data_root: data_root.into(),
-        }
-    }
-
-    pub fn data_root(&self) -> &std::path::Path {
-        &self.data_root
-    }
-}
+//! 按 `docs/01-architecture.md` 的分层规则，多步骤业务流程的**编排**应该住在这里：
+//! Tauri command 只做参数转换 / 状态取得 / 错误边界，真正的流程（例如
+//! 「拉远端 → 下载 → 解密 → 合并 → 组装 → 打包 → 推送」）属于本 crate。
+//!
+//! 现状：编排实际分散在 `tk-cloud::service`、`tk-backup::merge` 与命令层，
+//! 本 crate 目前没有任何实现。保留它是为了让架构图上的这个槽位有意义——
+//! 删掉之后「新编排该写在哪」就没有明确答案了（docs/08 第六·2 节的保留口径）。
+//!
+//! 引入第一个编排时的约定：
+//! - 不依赖 Tauri；磁盘走 `tk-config::DataPaths`，网络走 `tk-traits` 的抽象注入；
+//! - 业务规则留在各自的 crate，这里只负责「按什么顺序调谁、失败了怎么办」。

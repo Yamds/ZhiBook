@@ -35,7 +35,7 @@ import { useCurrentBook } from '../../hooks/ledger/useLedgerBooks';
 import { useDebouncedValue } from '../../hooks/ui/useDebouncedValue';
 import { useMotion } from '../../hooks/preferences/useMotion';
 import { pushInfoBar } from '../../hooks/ui/globalInfoBarStore';
-import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
+import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import { clearNavigationIntent, navigateTo, useNavigation, useRetapHandler } from '../../app/navigationStore';
 import { usePageBackHandler } from '../../app/pageBackHandler';
 import { AppIcon } from '../../shared/ui/AppIcon';
@@ -65,10 +65,7 @@ export function DetailsPage() {
     const bookId = currentBook?.id;
     const { byId: categoryById } = useCategoryLookup();
     const { data: accounts = [] } = useAccounts(bookId);
-    const { brand, surface } = useThemeTokens({
-        brand: { name: '--brand-500', fallback: '#ff6b3d' },
-        surface: { name: '--surface-card', fallback: '#ffffff' },
-    });
+    const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
 
     const today = useMemo(() => todayDate(), []);
 

@@ -4,7 +4,7 @@
 // `occurredAtMs` = 当天 05:00 的本地时间戳；Rust 侧不做时区推断。
 
 import { logicalDayKey, shiftDayKey, todayKey } from '../../../core/domain/date';
-import { MAX_AMOUNT_CENTS } from '../../../core/domain/money';
+import { centsToInputText, parseAmountInput } from '../../../core/domain/money';
 import type { RecurringOccurrence, RecurringRule } from '../../../core/ipc/types';
 
 /** 每笔固定收支的落库时刻（本地时间）。 */
@@ -93,19 +93,12 @@ export function scheduleLabel(): string {
     return `每天 ${String(RECURRING_HOUR).padStart(2, '0')}:00`;
 }
 
-/** 金额输入（元）→ 分；非法或超限返回 null。 */
+/** 金额输入（元）→ 分；非法、非正数或超限返回 null。 */
 export function parseAmountText(text: string): number | null {
-    const normalized = text.replace(/[,，\s¥￥]/g, '');
-    if (normalized === '') return null;
-    if (!/^\d{1,9}(\.\d{0,2})?$/.test(normalized)) return null;
-    const [integerPart, decimalPart = ''] = normalized.split('.');
-    const cents = Number(integerPart) * 100 + Number((decimalPart + '00').slice(0, 2));
-    if (cents <= 0 || cents > MAX_AMOUNT_CENTS) return null;
-    return cents;
+    return parseAmountInput(text);
 }
 
 /** 分 → 金额输入框预填文本（无多余尾零）。 */
 export function amountTextFromCents(cents: number): string {
-    if (!Number.isFinite(cents) || cents <= 0) return '';
-    return (cents / 100).toFixed(2).replace(/\.?0+$/, '');
+    return centsToInputText(cents, { trimZeros: true });
 }

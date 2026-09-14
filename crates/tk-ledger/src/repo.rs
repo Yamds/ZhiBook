@@ -382,6 +382,10 @@ pub fn get_category(conn: &Connection, id: &str) -> LedgerResult<Option<Category
     Ok(statement.query_row([id], map_category).optional()?)
 }
 
+/// 可见分类里该 (kind, name) 是否已被占用。
+///
+/// 只看 `hidden = 0`：软删除的分类不占名字（与 v4 的部分唯一索引一致），
+/// 否则用户删了一个分类就永远建不回同名分类——而它在列表里也看不到。
 pub fn category_name_taken(
     conn: &Connection,
     kind: EntryKind,
@@ -389,7 +393,8 @@ pub fn category_name_taken(
     exclude_id: Option<&str>,
 ) -> LedgerResult<bool> {
     let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM categories WHERE kind = ?1 AND name = ?2 AND id IS NOT ?3",
+        "SELECT COUNT(*) FROM categories
+         WHERE kind = ?1 AND name = ?2 AND hidden = 0 AND id IS NOT ?3",
         params![kind.as_str(), name, exclude_id],
         |row| row.get(0),
     )?;
@@ -1199,6 +1204,23 @@ mod tests {
             .expect("query")
             .expect("规则应保留");
         assert_eq!(rule.account_id, None);
+    }
+
+    #[test]
+    fn category_name_uniqueness_ignores_hidden_categories() {
+        let conn = memory_db();
+        conn.execute(
+            "INSERT INTO categories (id, kind, name, icon_name, color, sort_order, hidden, created_at_ms, updated_at_ms)
+             VALUES ('c1', 'expense', '餐饮', 'mdi:noodles', 'theme', 0, 0, 1, 1), 
+                    ('c2', 'expense', '已删', 'mdi:noodles', 'theme', 1, 1, 1, 1)",
+            [],
+        )
+        .expect("insert");
+        assert!(category_name_taken(&conn, EntryKind::Expense, "餐饮", None).expect("query"));
+        // 隐藏的不占名字 → 可以重建同名可见分类
+        assert!(!category_name_taken(&conn, EntryKind::Expense, "已删", None).expect("query"));
+        assert!(!category_name_taken(&conn, EntryKind::Income, "餐饮", None).expect("query"));
+        assert!(!category_name_taken(&conn, EntryKind::Expense, "餐饮", Some("c1")).expect("query"));
     }
 
     #[test]

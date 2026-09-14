@@ -201,3 +201,78 @@ export function tryAppendKeypadKey(expression: string, key: KeypadKey): string |
     if (decimalPart === undefined && integerPart.length >= MAX_INTEGER_DIGITS) return null;
     return expression + key;
 }
+
+// ---------------------------------------------------------------------------
+// 金额输入框（文本 ↔ 分）
+//
+// 资产页「初始余额」、固定收支「金额」、账单「键盘回填」三处原先各写了一份
+// 解析 / 格式化；规则（允许负号？空串算 0？去千分位？保留尾零？）不同，
+// 逻辑却完全同源。这里收敛成两个函数，页面只传选项。
+// ---------------------------------------------------------------------------
+
+/** [`parseAmountInput`] 的选项（默认值即「最严」：只收正数、空串非法）。 */
+export interface ParseAmountOptions {
+    /** 允许前导负号（账户初始余额可以为负）。默认 false。 */
+    readonly allowNegative?: boolean;
+    /** 允许结果为 0（账户初始余额可以留空 = 0）。默认 false。 */
+    readonly allowZero?: boolean;
+    /** 空串视为 0；默认 false 表示空串返回 null。 */
+    readonly emptyAsZero?: boolean;
+}
+
+/** 输入框里允许出现的装饰字符（千分位 / 空格 / 货币符号）。 */
+const AMOUNT_NOISE = /[,，\s¥￥]/g;
+const AMOUNT_TEXT_PATTERN = new RegExp(
+    `^(-?)(\\d{0,${MAX_INTEGER_DIGITS}})(?:\\.(\\d{0,2}))?$`,
+);
+
+/**
+ * 金额输入文本（元）→ 分；非法 / 超上限返回 `null`。
+ *
+ * 统一规则：先 trim、剔掉千分位与货币符号；整数部分最多 9 位、小数最多 2 位；
+ * 空串按 `emptyAsZero` 处理；0 按 `allowZero` 处理；负号按 `allowNegative` 处理。
+ * 全程整数运算（`元 * 100 + 分`），不引入浮点误差。
+ */
+export function parseAmountInput(text: string, options: ParseAmountOptions = {}): number | null {
+    const { allowNegative = false, allowZero = false, emptyAsZero = false } = options;
+    const normalized = text.replace(AMOUNT_NOISE, '').trim();
+    if (normalized === '') return emptyAsZero ? 0 : null;
+
+    const match = AMOUNT_TEXT_PATTERN.exec(normalized);
+    if (!match) return null;
+    const [, sign = '', yuanPart = '', fenPart = ''] = match;
+    // `-` / `.` / `¥` 这类「没有任何数字」的输入一律非法（`emptyAsZero` 只管空串）
+    if (yuanPart === '' && fenPart === '') return null;
+    const cents =
+        (yuanPart === '' ? 0 : Number(yuanPart)) * 100 +
+        (fenPart === '' ? 0 : Number(fenPart.padEnd(2, '0')));
+    const signed = cents === 0 ? 0 : sign === '-' ? -cents : cents;
+    if (!Number.isSafeInteger(signed) || Math.abs(signed) > MAX_AMOUNT_CENTS) return null;
+    if (signed === 0 && !allowZero) return null;
+    if (signed < 0 && !allowNegative) return null;
+    return signed;
+}
+
+/** [`centsToInputText`] 的选项。 */
+export interface CentsToInputOptions {
+    /** 0 返回空串（配合 placeholder）。默认 true。 */
+    readonly emptyWhenZero?: boolean;
+    /** 千分位分组（余额输入框用）。默认 false。 */
+    readonly group?: boolean;
+    /** 去掉小数末尾的 0（固定收支金额框用）。默认 false。 */
+    readonly trimZeros?: boolean;
+}
+
+/** 分 → 输入框文本（元），不带货币符号；全程整数运算，不用浮点。 */
+export function centsToInputText(cents: number, options: CentsToInputOptions = {}): string {
+    const { emptyWhenZero = true, group = false, trimZeros = false } = options;
+    const value = Number.isFinite(cents) ? Math.trunc(cents) : 0;
+    if (value === 0 && emptyWhenZero) return '';
+    const negative = value < 0;
+    const abs = Math.abs(value);
+    const yuan = Math.floor(abs / 100);
+    const fen = abs % 100;
+    let text = `${group ? groupThousands(String(yuan)) : String(yuan)}.${String(fen).padStart(2, '0')}`;
+    if (trimZeros) text = text.replace(/\.?0+$/, '');
+    return negative ? `-${text}` : text;
+}

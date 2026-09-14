@@ -22,6 +22,16 @@ import { useEffect, useState } from 'react';
 
 export type TokenMap<K extends string> = Record<K, string>;
 
+/// 「分类视觉」需要的两个 token：品牌色 + 卡片面。
+///
+/// 分类颜色 / 分类图标底色都由 `categoryColors(color, brand, surface)` 算，
+/// 调用点原先各自抄了一份相同的规格字面量；统一到这里后，
+/// 改 token 名或兑底色只需要改一处。
+export const CATEGORY_VISUAL_TOKENS = {
+    brand: { name: '--brand-500', fallback: '#ff6b3d' },
+    surface: { name: '--surface-card', fallback: '#ffffff' },
+} as const;
+
 /// 把 `rgb(r, g, b)` / `rgba(r, g, b, a)` 转 6 位 hex；非法格式返回 null。
 function rgbToHex(rgb: string): string | null {
     const m = rgb.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);

@@ -4,19 +4,13 @@
 // 这里只负责触发、去重与结果提示。
 
 import { useEffect, useRef, useState } from 'react';
+import { msUntilNextHourBoundary } from '../../core/domain/date';
 import {
     dueOccurrences,
     RECURRING_HOUR,
 } from '../../modules/settings/feature/recurring.logic';
 import { pushInfoBar } from '../ui/globalInfoBarStore';
 import { useRecurringRules, useRunRecurringEntries } from './useLedgerRecurring';
-
-/** 距下一个本地 05:00 的毫秒数（+1s 余量，避免边界抖动）。 */
-function msUntilNextFive(now: Date): number {
-    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), RECURRING_HOUR, 0, 5, 0);
-    if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
-    return next.getTime() - now.getTime();
-}
 
 export function useRecurringCatchUp() {
     const rules = useRecurringRules();
@@ -26,9 +20,12 @@ export function useRecurringCatchUp() {
     const runningRef = useRef(false);
     const [tick, setTick] = useState(0);
 
-    // App 保持前台跨过 05:00 时也要补一次。
+    // App 保持前台跨过 05:00 时也要补一次（边界计算复用 core/domain/date 的唯一实现）。
     useEffect(() => {
-        const timer = setTimeout(() => setTick((value) => value + 1), msUntilNextFive(new Date()));
+        const timer = setTimeout(
+            () => setTick((value) => value + 1),
+            msUntilNextHourBoundary(new Date(), RECURRING_HOUR),
+        );
         return () => clearTimeout(timer);
     }, [tick]);
 

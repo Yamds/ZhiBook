@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Category, EntryKind } from '../../core/ipc/types';
 import { categoryColors } from '../../core/design/categoryColor';
 import { UI_ICONS, toIconName } from '../../core/design/icons';
-import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
+import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import { useMotion } from '../../hooks/preferences/useMotion';
 import { LONG_PRESS_DELAY_MS, LONG_PRESS_MOVE_TOLERANCE_PX } from '../../hooks/ui/useLongPress';
 import { AppIcon } from '../../shared/ui/AppIcon';
@@ -134,10 +134,7 @@ export function CategoryGrid({
     onExitEditing,
     onReorder,
 }: CategoryGridProps) {
-    const { brand, surface } = useThemeTokens({
-        brand: { name: '--brand-500', fallback: '#ff6b3d' },
-        surface: { name: '--surface-card', fallback: '#ffffff' },
-    });
+    const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
 
     const entries = useMemo(() => buildGridEntries(categories, kind), [categories, kind]);
     const pages = useMemo(() => paginate(entries), [entries]);

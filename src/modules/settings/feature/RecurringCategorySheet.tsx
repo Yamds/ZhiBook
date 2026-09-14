@@ -3,7 +3,7 @@
 import { categoryColors } from '../../../core/design/categoryColor';
 import { toIconName } from '../../../core/design/icons';
 import type { Category, EntryKind } from '../../../core/ipc/types';
-import { useThemeTokens } from '../../../hooks/theme/useThemeTokens';
+import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../../hooks/theme/useThemeTokens';
 import { AppIcon } from '../../../shared/ui/AppIcon';
 import { BottomSheet } from '../../../shared/ui/BottomSheet';
 import { cn } from '../../../shared/utils/cn';
@@ -25,10 +25,7 @@ export function RecurringCategorySheet({
     value,
     onSelect,
 }: RecurringCategorySheetProps) {
-    const { brand, surface } = useThemeTokens({
-        brand: { name: '--brand-500', fallback: '#ff6b3d' },
-        surface: { name: '--surface-card', fallback: '#ffffff' },
-    });
+    const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
 
     return (
         <BottomSheet

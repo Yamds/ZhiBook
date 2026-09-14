@@ -7,7 +7,7 @@
 //   - 账本可删判定（FR-AST-5：最后一个账本不能删）。
 
 import { parseMonthKey } from '../../core/domain/date';
-import { MAX_AMOUNT_CENTS, formatMoney } from '../../core/domain/money';
+import { centsToInputText, parseAmountInput } from '../../core/domain/money';
 import type { Account, AssetPoint, Book } from '../../core/ipc/types';
 
 /** 账户名上限（与 Rust `validate::ACCOUNT_NAME_MAX` 一致）。 */
@@ -71,24 +71,17 @@ export function isNegativeBalance(balanceCents: number): boolean {
  * - 允许留空（= 0）、允许负号（余额为负的账户）、允许千分位；
  * - 整数最多 9 位、小数最多 2 位，绝对值不能超过单笔上限；
  * - 非法格式返回 null（调用方提示，不静默改写）。
+ *
+ * 解析规则与固定收支金额框同源（`core/domain/money::parseAmountInput`），
+ * 这里只是把「余额」这个场景的选项写死。
  */
 export function parseBalanceCents(raw: string): number | null {
-    const text = raw.trim().replace(/,/g, '');
-    if (text === '') return 0;
-    const match = /^(-?)(\d{0,9})(?:\.(\d{0,2}))?$/.exec(text);
-    if (!match) return null;
-    const [, sign = '', yuanPart = '', fenPart = ''] = match;
-    if (yuanPart === '' && fenPart === '') return null;
-    const cents = (yuanPart === '' ? 0 : Number(yuanPart)) * 100 + (fenPart === '' ? 0 : Number(fenPart.padEnd(2, '0')));
-    if (cents > MAX_AMOUNT_CENTS) return null;
-    return sign === '-' ? -cents : cents;
+    return parseAmountInput(raw, { allowNegative: true, allowZero: true, emptyAsZero: true });
 }
 
 /** 编辑器里的余额文案：0 留空（配合 placeholder），其余用千分位两位小数。 */
 export function balanceInputValue(cents: number): string {
-    if (cents === 0) return '';
-    const negative = cents < 0;
-    return `${negative ? '-' : ''}${formatMoney(Math.abs(cents)).replace('¥ ', '')}`;
+    return centsToInputText(cents, { group: true });
 }
 
 /** 分组小计（资产账户合计 / 负债账户合计）。 */

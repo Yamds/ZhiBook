@@ -10,6 +10,7 @@
 //! 导入 = **覆盖式恢复**：先自动导出当前数据（导入前快照），再在一个事务里整库替换。
 //! 不做合并（v1）；附件文件按需覆盖写入。
 
+use std::collections::HashSet;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -26,7 +27,7 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 mod merge;
-pub use merge::{merge_into, merged_counts};
+pub use merge::merge_into;
 
 /// 备份包标识与格式版本。
 ///
@@ -204,6 +205,20 @@ pub fn validate_snapshot(data: &BackupData) -> BackupResult<()> {
         validate::category_name(&category.name).map_err(|error| bad("分类名不合法", error))?;
         validate::icon_name(&category.icon_name).map_err(|error| bad("分类图标名不合法", error))?;
         validate::color(&category.color).map_err(|error| bad("分类颜色不合法", error))?;
+    }
+    // 可见分类名必须唯一（v4 的部分唯一索引）：提前给中文提示，不要等 SQL 报错。
+    let mut visible_names: HashSet<(String, String)> = HashSet::new();
+    for category in &data.categories {
+        if category.hidden {
+            continue;
+        }
+        let key = (category.kind.as_str().to_string(), category.name.clone());
+        if !visible_names.insert(key) {
+            return Err(BackupError::Invalid(format!(
+                "备份包里存在同名分类：{}",
+                category.name
+            )));
+        }
     }
     for transaction in &data.transactions {
         validate::amount_cents(transaction.amount_cents)
@@ -385,6 +400,14 @@ fn read_zip(zip_path: &Path) -> BackupResult<(BackupManifest, BackupData)> {
         return Err(BackupError::Invalid(
             "备份包版本比当前 App 新，请先升级 App".to_string(),
         ));
+    }
+    // 记账库结构更容易踩坑：新库多出来的字段在老代码里会被静默丢掉，所以直接拒。
+    if manifest.ledger_schema_version > tk_ledger::SCHEMA_VERSION {
+        return Err(BackupError::Invalid(format!(
+            "备份包的记账库版本（{}）比当前 App 支持的（{}）新，请先升级 App",
+            manifest.ledger_schema_version,
+            tk_ledger::SCHEMA_VERSION
+        )));
     }
     let data: BackupData = read_json_entry(&mut archive, "data.json")?;
     Ok((manifest, data))
@@ -856,6 +879,40 @@ mod tests {
             .filter(|name| name.starts_with("import-stage-"))
             .collect();
         assert!(leftovers.is_empty(), "暂存目录必须清理干净：{leftovers:?}");
+    }
+
+    #[test]
+    fn import_rejects_a_newer_ledger_schema() {
+        let dir = tempfile::TempDir::new().expect("dir");
+        let ledger = Ledger::open(dir.path()).expect("open");
+        let data = one_book_snapshot();
+        let zip_path = dir.path().join("newer.zip");
+        {
+            let file = fs::File::create(&zip_path).expect("create");
+            let mut zip = ZipWriter::new(file);
+            let options = SimpleFileOptions::default();
+            let manifest = serde_json::json!({
+                "format": FORMAT,
+                "formatVersion": FORMAT_VERSION,
+                "appVersion": "9.9.9",
+                "ledgerSchemaVersion": tk_ledger::SCHEMA_VERSION + 1,
+                "exportedAtMs": 0,
+                "counts": {"books": 1, "accounts": 0, "categories": 0, "transactions": 0, "attachments": 0, "recurringRules": 0},
+                "files": []
+            })
+            .to_string();
+            let body = data.to_string();
+            for (name, bytes) in [
+                ("manifest.json", manifest.as_bytes()),
+                ("data.json", body.as_bytes()),
+            ] {
+                zip.start_file(name, options).expect("start file");
+                zip.write_all(bytes).expect("write");
+            }
+            zip.finish().expect("finish");
+        }
+        let error = import_from_zip(&ledger, dir.path(), &zip_path).expect_err("必须拒绝更新的库版本");
+        assert!(matches!(error, BackupError::Invalid(_)), "{error:?}");
     }
 
     #[test]

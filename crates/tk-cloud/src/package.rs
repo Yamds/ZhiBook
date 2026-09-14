@@ -37,10 +37,6 @@ pub struct BuiltPackage {
 }
 
 impl BuiltPackage {
-    pub fn total_bytes(&self) -> usize {
-        self.files.iter().map(|item| item.bytes.len()).sum()
-    }
-
     pub fn file(&self, path: &str) -> Option<&BuiltFile> {
         self.files.iter().find(|item| item.path == path)
     }

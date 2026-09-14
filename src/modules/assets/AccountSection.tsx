@@ -7,7 +7,7 @@ import type { Account } from '../../core/ipc/types';
 import { UI_ICONS, toIconName } from '../../core/design/icons';
 import { formatMoney } from '../../core/domain/money';
 import { categoryColors } from '../../core/design/categoryColor';
-import { useThemeTokens } from '../../hooks/theme/useThemeTokens';
+import { CATEGORY_VISUAL_TOKENS, useThemeTokens } from '../../hooks/theme/useThemeTokens';
 import { AppIcon } from '../../shared/ui/AppIcon';
 import { Card, EmptyState } from '../../shared/ui';
 import { cn } from '../../shared/utils/cn';
@@ -29,10 +29,7 @@ export function AccountSection({
     onCreate,
     onEdit,
 }: AccountSectionProps) {
-    const { brand, surface } = useThemeTokens({
-        brand: { name: '--brand-500', fallback: '#ff6b3d' },
-        surface: { name: '--surface-card', fallback: '#ffffff' },
-    });
+    const { brand, surface } = useThemeTokens(CATEGORY_VISUAL_TOKENS);
     const totalAssets = sumBalances(assets);
     const totalLiabilities = sumBalances(liabilities);
     const empty = assets.length === 0 && liabilities.length === 0;

@@ -20,13 +20,18 @@
 //! - `tombstones` 硬删除墓碑：记录被删除的账本 / 账户 / 账单 / 附件 / 固定收支规则，
 //!   合并时与「更新」比较时间戳，避免已删除的数据被其它设备重新带回来
 //! - `books.updated_at_ms` 改名时间（账本没有独立的更新语义，补齐冲突比较基准）
+//!
+//! v4 修改：
+//! - `categories` 的唯一索引改成**部分索引**（`WHERE hidden = 0`）：
+//!   分类是软删除，隐藏后名字不应该再占位（否则用户删了「餐饮」就永远建不回同名分类，
+//!   而列表里又看不到它）。只动索引、不动数据，旧库升级是一次 DROP/CREATE INDEX。
 
 use rusqlite::{Connection, Transaction};
 
 use crate::error::{LedgerError, LedgerResult};
 
 /// 当前 schema 版本。
-pub const SCHEMA_VERSION: i64 = 3;
+pub const SCHEMA_VERSION: i64 = 4;
 
 /// 说明：`transactions.category_id` 故意不加外键——分类只做软删除，
 /// 且历史账单必须能在分类被隐藏后继续显示，不允许任何级联。
@@ -158,6 +163,13 @@ CREATE TABLE if NOT EXISTS tombstones (
 CREATE INDEX IF NOT EXISTS idx_tombstones_deleted ON tombstones (deleted_at_ms);
 "#;
 
+/// v4：分类名唯一性只约束「可见」分类（软删除后名字可以复用）。
+const V4: &str = r#"
+DROP INDEX IF EXISTS idx_categories_kind_name;
+CREATE UNIQUE INDEX idx_categories_kind_name
+    ON categories (kind, name) WHERE hidden = 0;
+"#;
+
 /// 把库升到 [`SCHEMA_VERSION`]；已是最新则直接返回。
 pub fn migrate(conn: &mut Connection) -> LedgerResult<()> {
     let current: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
@@ -174,6 +186,9 @@ pub fn migrate(conn: &mut Connection) -> LedgerResult<()> {
     }
     if current < 3 {
         apply_v3(conn)?;
+    }
+    if current < 4 {
+        apply_v4(conn)?;
     }
     conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     Ok(())
@@ -196,6 +211,13 @@ fn apply_v2(conn: &mut Connection) -> LedgerResult<()> {
 fn apply_v3(conn: &mut Connection) -> LedgerResult<()> {
     let tx: Transaction<'_> = conn.transaction()?;
     tx.execute_batch(V3)?;
+    tx.commit()?;
+    Ok(())
+}
+
+fn apply_v4(conn: &mut Connection) -> LedgerResult<()> {
+    let tx: Transaction<'_> = conn.transaction()?;
+    tx.execute_batch(V4)?;
     tx.commit()?;
     Ok(())
 }
@@ -257,6 +279,67 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM tombstones", [], |row| row.get(0))
             .expect("read tombstones");
         assert_eq!(tombstones, 0);
+    }
+
+    /// v3 旧库升级到 v4：隐藏的分类不再占用名字（部分索引），旧数据不动。
+    #[test]
+    fn migration_from_v3_frees_hidden_category_names() {
+        let mut conn = fresh();
+        {
+            let tx = conn.transaction().expect("tx");
+            tx.execute_batch(V1).expect("v1");
+            tx.execute_batch(V2).expect("v2");
+            tx.execute_batch(V3).expect("v3");
+            tx.execute(
+                "INSERT INTO categories (id, kind, name, icon_name, color, sort_order, hidden, created_at_ms, updated_at_ms)
+                 VALUES ('c1', 'expense', '餐饮', 'mdi:noodles', 'theme', 0, 1, 1, 1)",
+                [],
+            )
+            .expect("hidden category");
+            tx.commit().expect("commit");
+        }
+        conn.pragma_update(None, "user_version", 3).expect("v3 tag");
+        migrate(&mut conn).expect("migrate v3 -> v4");
+
+        let version: i64 = conn
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .expect("read version");
+        assert_eq!(version, 4);
+
+        // 旧数据原封不动
+        let (name, hidden): (String, i64) = conn
+            .query_row("SELECT name, hidden FROM categories WHERE id = 'c1'", [], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })
+            .expect("read category");
+        assert_eq!(name, "餐饮");
+        assert_eq!(hidden, 1);
+
+        // 同名可见分类现在可以插入（旧索引会拒绝）
+        conn.execute(
+            "INSERT INTO categories (id, kind, name, icon_name, color, sort_order, hidden, created_at_ms, updated_at_ms)
+             VALUES ('c2', 'expense', '餐饮', 'mdi:noodles', 'theme', 1, 0, 2, 2)",
+            [],
+        )
+        .expect("重建同名可见分类");
+
+        // 两个可见同名仍然被拒
+        assert!(
+            conn.execute(
+                "INSERT INTO categories (id, kind, name, icon_name, color, sort_order, hidden, created_at_ms, updated_at_ms)
+                 VALUES ('c3', 'expense', '餐饮', 'mdi:noodles', 'theme', 2, 0, 3, 3)",
+                [],
+            )
+            .is_err(),
+            "可见分类名必须仍然唯一"
+        );
+        // 同类型不同 kind 的可见同名不受影响
+        conn.execute(
+            "INSERT INTO categories (id, kind, name, icon_name, color, sort_order, hidden, created_at_ms, updated_at_ms)
+             VALUES ('c4', 'income', '餐饮', 'mdi:noodles', 'theme', 0, 0, 4, 4)",
+            [],
+        )
+        .expect("收入侧同名");
     }
 
     #[test]
