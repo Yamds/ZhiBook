@@ -21,11 +21,11 @@ const DIGIT_ROWS: ReadonlyArray<ReadonlyArray<KeypadKey>> = [
     ['1', '2', '3'],
 ];
 
-/** 键盘字号 48px（本轮需求）；leading-none 避免 48px 字形被 58px 键高挤出。 */
+/** 键盘字号 28px（本轮需求）；leading-none 避免被键高挤出。 */
 const KEY_CLASS =
-    'flex h-[58px] items-center justify-center rounded-md text-[48px] font-semibold leading-none text-text tabular-nums active:bg-inset';
+    'flex h-[58px] items-center justify-center rounded-md text-[28px] font-semibold leading-none text-text tabular-nums active:bg-inset';
 const OPERATOR_CLASS =
-    'flex h-[58px] items-center justify-center rounded-md text-[48px] font-medium leading-none text-text tabular-nums active:bg-inset';
+    'flex h-[58px] items-center justify-center rounded-md text-[28px] font-medium leading-none text-text tabular-nums active:bg-inset';
 
 export interface KeypadProps {
     /** 金额 + 分类是否都就绪（只影响「完成」的视觉强调，点击仍会给提示）。 */

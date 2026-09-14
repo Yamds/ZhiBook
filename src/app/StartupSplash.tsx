@@ -152,7 +152,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
     const subTextRef = useRef<HTMLSpanElement>(null);
     const barRef = useRef<HTMLDivElement>(null);
     const barTrackRef = useRef<HTMLDivElement>(null);
-    const barShineRef = useRef<HTMLDivElement>(null);
     const glowRef = useRef<HTMLDivElement>(null);
     const auroraRef = useRef<HTMLDivElement>(null);
     const versionRef = useRef<HTMLParagraphElement>(null);
@@ -194,7 +193,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
         const subText = subTextRef.current;
         const bar = barRef.current;
         const barTrack = barTrackRef.current;
-        const barShine = barShineRef.current;
         const glow = glowRef.current;
         const aurora = auroraRef.current;
         const brandPulse = brandPulseRef.current;
@@ -287,7 +285,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
         gsap.set(sub, { autoAlpha: 0, y: 8 });
         gsap.set(bar, { autoAlpha: 0, scaleX: 0, transformOrigin: 'left center', clearProps: 'filter' });
         if (barTrack) gsap.set(barTrack, { autoAlpha: 0, y: 0 });
-        if (barShine) gsap.set(barShine, { xPercent: -120, autoAlpha: 0 });
         if (version) gsap.set(version, { autoAlpha: 0, y: 6 });
         if (glow) gsap.set(glow, { autoAlpha: 0, scale: 0.9 });
         if (aurora) gsap.set(aurora, { autoAlpha: 0 });
@@ -433,13 +430,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
         if (barTrack) {
             tl.to(barTrack, { autoAlpha: 1, duration: fast, ease: 'power2.out' }, birthAt + s(0.16));
         }
-        if (barShine && richBoost > 0.4) {
-            tl.to(
-                barShine,
-                { xPercent: 220, autoAlpha: 0.85, duration: baseDur * 1.1, ease: 'power1.inOut' },
-                birthAt + s(0.2),
-            );
-        }
         if (version) {
             tl.to(version, { autoAlpha: 1, y: 0, duration: fast, ease: t.ease.enterMicro }, birthAt + s(0.22));
         }
@@ -464,7 +454,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                     subText,
                     bar,
                     barTrack,
-                    barShine,
                     glow,
                     aurora,
                     brandPulse,
@@ -481,7 +470,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
         const logoWrap = logoWrapRef.current;
         const brandPulse = brandPulseRef.current;
         const bar = barRef.current;
-        const barShine = barShineRef.current;
         const subText = subTextRef.current;
         const particles = particleRefs.current.filter(Boolean) as HTMLSpanElement[];
         const rings = ringRefs.current.filter(Boolean) as HTMLDivElement[];
@@ -523,22 +511,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                     yoyo: true,
                     repeat: -1,
                 }),
-            );
-        }
-        if (barShine && flourish) {
-            loops.push(
-                gsap.fromTo(
-                    barShine,
-                    { xPercent: -120, autoAlpha: 0.35 },
-                    {
-                        xPercent: 220,
-                        autoAlpha: 0.85,
-                        duration: 1.2 * k,
-                        ease: 'power1.inOut',
-                        repeat: -1,
-                        repeatDelay: 0.35 * k,
-                    },
-                ),
             );
         }
         if (flourish) {
@@ -606,7 +578,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
         const subText = subTextRef.current;
         const bar = barRef.current;
         const barTrack = barTrackRef.current;
-        const barShine = barShineRef.current;
         const glow = glowRef.current;
         const aurora = auroraRef.current;
         const brandPulse = brandPulseRef.current;
@@ -636,7 +607,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                 subText,
                 bar,
                 barTrack,
-                barShine,
                 glow,
                 aurora,
                 brandPulse,
@@ -660,15 +630,6 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                 .to(bar, { filter: 'brightness(1.6)', duration: s(0.05), ease: 'power2.out' }, s(0.06))
                 .to(bar, { filter: 'brightness(1)', clearProps: 'filter', duration: s(0.12), ease: 'power2.out' }, s(0.11));
         }
-        if (barShine && flourish) {
-            exitTl.fromTo(
-                barShine,
-                { xPercent: -120, autoAlpha: 0.9 },
-                { xPercent: 220, autoAlpha: 0.9, duration: s(0.14), ease: 'power2.inOut' },
-                0,
-            );
-        }
-
         if (!flourish) {
             notifyReveal();
             exitTl.to(root, { autoAlpha: 0, duration: exitDur * 1.2, ease: 'power2.inOut' }, s(0.12));
@@ -946,14 +907,10 @@ export const StartupSplash: React.FC<StartupSplashProps> = ({ shellReady, irisRe
                 </div>
                 <div
                     ref={barTrackRef}
-                    className="relative h-1.5 w-56 overflow-hidden rounded-full bg-border-subtle shadow-inner"
+                    className="relative h-1.5 w-56 overflow-hidden rounded-full bg-muted"
                     aria-hidden
                 >
                     <div ref={barRef} className="ndf-splash-laser-bar h-full w-full origin-left rounded-full" />
-                    <div
-                        ref={barShineRef}
-                        className="ndf-splash-bar-shine pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-full opacity-0"
-                    />
                 </div>
                 <p ref={versionRef} className="text-xs text-text-tertiary tabular-nums">
                     {APP_VERSION_LABEL}

@@ -334,16 +334,6 @@ samp,
 /* 开屏：粒子 / 轨道环的位移全部交给 GSAP，这里只放静态外观。
    CSS animation 会盖过 inline transform，所以这些元素上不能再挂 transform 关键帧。
    「光波」系列（蓄力环 / 冲击波 / 揭示光边）已在 Android 端下线，相关样式已移除。 */
-@keyframes splash-laser-flow {
-    0% {
-        background-position: 0% 50%;
-    }
-
-    100% {
-        background-position: 200% 50%;
-    }
-}
-
 @keyframes splash-pulse-dot {
 
     0%,
@@ -516,9 +506,8 @@ samp,
 }
 
 .ndf-splash-laser-bar {
-    background: linear-gradient(90deg, var(--brand-600), var(--accent-400), var(--brand-300), var(--brand-600));
-    background-size: 200% 100%;
-    animation: splash-laser-flow 2.2s linear infinite;
+    /* 实心主题主色：不用渐变 / 扫光（橙→粉渐变在浅色主题下显得发脏） */
+    background: var(--brand-500);
 }
 
 .ndf-splash-pulse-dot {
@@ -550,13 +539,6 @@ samp,
             color-mix(in srgb, var(--accent-300) 95%, transparent) 0%,
             color-mix(in srgb, var(--accent-400) 55%, transparent) 42%,
             transparent 74%);
-}
-
-.ndf-splash-bar-shine {
-    background: linear-gradient(90deg,
-            transparent,
-            color-mix(in srgb, var(--text-primary) 35%, transparent),
-            transparent);
 }
 
 /* 主界面就绪入场律动展开动效 */
