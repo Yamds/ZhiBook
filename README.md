@@ -31,6 +31,14 @@
 > 设置入口：在**日历**页，底部「日历」页签上方会探出一个齿轮图标，点它即可；
 > 在设置页里，同一个位置会探出日历图标，点它回到日历（也可以再点一次底部「日历」页签）。
 
+## APP功能图片速览
+<img width="304" height="629" alt="rili" src="https://github.com/user-attachments/assets/1df85b63-fcae-4809-9d1c-35c3c0c7e5bf" />
+<img width="304" height="629" alt="mingxi" src="https://github.com/user-attachments/assets/a4515b42-2dd0-4c27-bca2-273b25abe407" />
+<img width="304" height="629" alt="tianjia" src="https://github.com/user-attachments/assets/974482b9-32c2-4156-aeda-595456068649" />
+<img width="304" height="1154" alt="zhangdan" src="https://github.com/user-attachments/assets/0032906d-ee9b-4293-95c8-66e1511ca9c5" />
+
+
+
 ## 下载与安装
 
 在仓库的 **Releases** 页面下载 APK 安装即可（arm64 设备推荐 `arm64` 包）。
